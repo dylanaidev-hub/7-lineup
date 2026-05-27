@@ -130,6 +130,11 @@ body {
   color: #ffffff;
 }
 
+.squad-row-header button:disabled {
+  cursor: not-allowed;
+  background: #cbd5d1;
+}
+
 .squad-input-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -250,6 +255,11 @@ body {
   padding: 0;
   background: transparent;
   appearance: none;
+  cursor: grab;
+}
+
+.player-token:active {
+  cursor: grabbing;
 }
 
 .kit-disc::before {
@@ -275,7 +285,7 @@ body {
 }
 
 .token-name,
-.player-token small {
+.bench-list small {
   margin-top: 5px;
   max-width: 86px;
   border-radius: 999px;
@@ -294,10 +304,21 @@ body {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
-.player-token small {
+.bench-list {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 2px;
+  max-width: 190px;
+}
+
+.bench-list small {
+  max-width: 88px;
   color: #d9ffe6;
   font-size: 8px;
-  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lineup-header-actions {

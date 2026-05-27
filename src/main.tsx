@@ -156,6 +156,11 @@ const getSharedLineupFromUrl = () => {
 const getRegisteredNames = (player: Player) =>
   [player.starterName, player.substituteName, ...player.extraNames].map((name) => name.trim()).filter(Boolean);
 
+const getBenchNames = (player: Player) =>
+  [player.substituteName, ...player.extraNames].map((name) => name.trim()).filter(Boolean);
+
+const getBenchCount = (players: Player[]) => players.reduce((total, player) => total + getBenchNames(player).length, 0);
+
 const drawRoundedRect = (
   context: CanvasRenderingContext2D,
   x: number,
@@ -197,6 +202,7 @@ function App() {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const pitchRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const benchCount = getBenchCount(players);
 
   const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
     const pitch = pitchRef.current;
@@ -220,13 +226,13 @@ function App() {
     );
   };
 
-  const handleDragStart = (event: ReactPointerEvent<HTMLButtonElement>, id: number) => {
+  const handleDragStart = (event: ReactPointerEvent<HTMLElement>, id: number) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingId(id);
     dragStartRef.current = { id, x: event.clientX, y: event.clientY };
   };
 
-  const handleDragMove = (event: ReactPointerEvent<HTMLButtonElement>, id: number) => {
+  const handleDragMove = (event: ReactPointerEvent<HTMLElement>, id: number) => {
     if (draggingId !== id) return;
     const dragStart = dragStartRef.current;
     if (!dragStart || dragStart.id !== id) return;
@@ -238,7 +244,7 @@ function App() {
     updatePlayerPosition(event, id);
   };
 
-  const stopDragging = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const stopDragging = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -265,7 +271,11 @@ function App() {
 
   const addPlayerInput = (id: number) => {
     setPlayers((current) =>
-      current.map((player) => (player.id === id ? { ...player, extraNames: [...player.extraNames, ""] } : player)),
+      current.map((player) =>
+        player.id === id && player.extraNames.length < 1
+          ? { ...player, extraNames: [...player.extraNames, ""] }
+          : player,
+      ),
     );
   };
 
@@ -356,8 +366,8 @@ function App() {
     players.forEach((player) => {
       const x = px(player.x);
       const y = py(player.y);
-      const names = getRegisteredNames(player);
-      const displayNames = names.length > 0 ? names : [`Player ${player.id}`];
+      const starterName = player.starterName.trim() || `Player ${player.id}`;
+      const benchNames = getBenchNames(player);
 
       context.save();
       context.shadowColor = "rgba(0,0,0,0.34)";
@@ -378,12 +388,14 @@ function App() {
       context.fillText(String(player.id), x, y + 1);
       context.restore();
 
-      displayNames.slice(0, 4).forEach((name, index) => {
-        drawCenteredLabel(context, name, x, y + 62 + index * 32, 170, 18, index === 0 ? "#ffffff" : "#d9ffe6");
-      });
-
-      if (displayNames.length > 4) {
-        drawCenteredLabel(context, `+${displayNames.length - 4} more`, x, y + 190, 150, 16, "#d9ffe6");
+      drawCenteredLabel(context, starterName, x, y + 62, 170, 18);
+      if (benchNames.length > 0) {
+        context.font = "900 15px Inter, Arial, sans-serif";
+        const labelWidth = Math.min(260, Math.max(120, benchNames.join(" / ").length * 8));
+        context.fillStyle = "rgba(16, 42, 25, 0.58)";
+        drawRoundedRect(context, x - labelWidth / 2, y + 78, labelWidth, 30, 15);
+        context.fillStyle = "#d9ffe6";
+        context.fillText(benchNames.join(" / ").toUpperCase(), x, y + 94, labelWidth - 12);
       }
     });
 
@@ -402,14 +414,22 @@ function App() {
       <div className="dashboard-shell mx-auto grid w-full max-w-5xl overflow-hidden shadow-2xl">
         <div className="content-grid">
             <section className="stats-column">
-              <div className="panel-heading">Squad editor</div>
+              <div className="panel-heading">
+                <span>Squad editor</span>
+                <strong>{benchCount}/7 subs</strong>
+              </div>
               <div className="squad-editor">
                 {players.map((player) => (
                   <div key={player.id} className="squad-row">
                     <div className="squad-row-header">
                       <span>{player.id}</span>
                       <strong>Position {player.id}</strong>
-                      <button type="button" onClick={() => addPlayerInput(player.id)} aria-label={`Add player ${player.id}`}>
+                      <button
+                        type="button"
+                        onClick={() => addPlayerInput(player.id)}
+                        disabled={player.extraNames.length >= 1}
+                        aria-label={`Add player ${player.id}`}
+                      >
                         <Plus size={14} />
                       </button>
                     </div>
@@ -424,7 +444,7 @@ function App() {
                         onChange={(event) => renamePlayer(player.id, "substituteName", event.target.value)}
                         placeholder="Dự bị"
                       />
-                      {player.extraNames.map((extraName, index) => (
+                      {player.extraNames.slice(0, 1).map((extraName, index) => (
                         <div key={index} className="extra-player-input">
                           <input
                             value={extraName}
@@ -495,19 +515,20 @@ function App() {
                 <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
 
                 {players.map((player) => {
-                  const registeredNames = getRegisteredNames(player);
-                  const visibleNames = registeredNames.length > 0 ? registeredNames : [`Player ${player.id}`];
+                  const starterName = player.starterName.trim() || `Player ${player.id}`;
+                  const benchNames = getBenchNames(player);
 
                   return (
-                    <button
+                    <div
                       key={player.id}
-                      type="button"
                       onPointerDown={(event) => handleDragStart(event, player.id)}
                       onPointerMove={(event) => handleDragMove(event, player.id)}
                       onPointerUp={stopDragging}
                       onPointerCancel={stopDragging}
                       className="player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none"
                       style={{ left: `${player.x}%`, top: `${player.y}%` }}
+                      role="button"
+                      tabIndex={0}
                       aria-label={`Drag ${player.position}`}
                     >
                       <span
@@ -517,12 +538,15 @@ function App() {
                       >
                         <span className="kit-number">{player.id}</span>
                       </span>
-                      <span className="token-name">{visibleNames[0]}</span>
-                      {visibleNames.slice(1, 4).map((name, index) => (
-                        <small key={`${name}-${index}`}>{name}</small>
-                      ))}
-                      {visibleNames.length > 4 ? <small>+{visibleNames.length - 4} more</small> : null}
-                    </button>
+                      <span className="token-name">{starterName}</span>
+                      {benchNames.length > 0 ? (
+                        <span className="bench-list">
+                          {benchNames.slice(0, 2).map((name, index) => (
+                            <small key={`${name}-${index}`}>{name}</small>
+                          ))}
+                        </span>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
