@@ -80,6 +80,7 @@ function App() {
   const [players, setPlayers] = useState<Player[]>(() => createPlayers("2-3-1"));
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
 
   const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
     const pitch = pitchRef.current;
@@ -106,11 +107,18 @@ function App() {
   const handleDragStart = (event: ReactPointerEvent<HTMLButtonElement>, id: number) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingId(id);
-    updatePlayerPosition(event, id);
+    dragStartRef.current = { id, x: event.clientX, y: event.clientY };
   };
 
   const handleDragMove = (event: ReactPointerEvent<HTMLButtonElement>, id: number) => {
     if (draggingId !== id) return;
+    const dragStart = dragStartRef.current;
+    if (!dragStart || dragStart.id !== id) return;
+
+    const movedX = event.clientX - dragStart.x;
+    const movedY = event.clientY - dragStart.y;
+    if (Math.hypot(movedX, movedY) < 6) return;
+
     updatePlayerPosition(event, id);
   };
 
@@ -119,6 +127,7 @@ function App() {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     setDraggingId(null);
+    dragStartRef.current = null;
   };
 
   const renamePlayer = (id: number, field: "starterName" | "substituteName", name: string) => {
@@ -139,170 +148,104 @@ function App() {
   };
 
   return (
-    <main className="min-h-screen bg-stone-100 text-slate-950">
-      <div className="app-shell mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:py-8">
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Formation board</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-normal text-slate-950 sm:text-4xl">
-                7-a-side lineup designer
-              </h1>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(formations) as FormationKey[]).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => applyFormation(item)}
-                  className={`rounded-lg px-4 py-2 text-sm font-bold shadow-sm transition ${
-                    formation === item
-                      ? "bg-emerald-700 text-white"
-                      : "bg-white text-slate-800 hover:bg-emerald-50"
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-white p-3 shadow-xl shadow-slate-200/80 sm:p-5">
-            <div
-              ref={pitchRef}
-              className="pitch relative mx-auto aspect-[7/10] max-h-[calc(100vh-180px)] min-h-[520px] w-full max-w-[620px] overflow-hidden rounded-xl border-[6px] border-white shadow-pitch touch-none select-none"
-            >
-              <div className="absolute inset-[4%] border-[3px] border-white/95" />
-              <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/95" />
-              <div className="absolute left-1/2 top-1/2 h-[22%] w-[31%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white/95" />
-              <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
-
-              <div className="absolute left-1/2 top-[4%] h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/95" />
-              <div className="absolute left-1/2 top-[4%] h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/95" />
-              <div className="absolute left-1/2 top-[4%] h-[2.2%] w-[20%] -translate-x-1/2 -translate-y-full rounded-t-md border-x-[3px] border-t-[3px] border-white bg-slate-100" />
-              <div className="absolute left-1/2 top-[15.5%] h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-white" />
-
-              <div className="absolute bottom-[4%] left-1/2 h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/95" />
-              <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/95" />
-              <div className="absolute bottom-[4%] left-1/2 h-[2.2%] w-[20%] -translate-x-1/2 translate-y-full rounded-b-md border-x-[3px] border-b-[3px] border-white bg-slate-100" />
-              <div className="absolute bottom-[15.5%] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-white" />
-
-              <div className="pointer-events-none absolute inset-[4%] z-[1]">
-                {pitchZones.map((zone) => (
-                  <div
-                    key={zone.name}
-                    className="zone-tile absolute grid place-items-center border border-dashed border-white/20"
-                    style={{
-                      left: `${zone.x1}%`,
-                      top: `${zone.y1}%`,
-                      width: `${zone.x2 - zone.x1}%`,
-                      height: `${zone.y2 - zone.y1}%`,
-                    }}
-                  >
-                    <span>{zone.name}</span>
+    <main className="match-bg min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10">
+      <header className="app-title-bar mx-auto flex w-full max-w-5xl items-center justify-center shadow-2xl">
+        <h1>7 LINEUP FOOTBALL</h1>
+      </header>
+      <div className="dashboard-shell mx-auto grid w-full max-w-5xl overflow-hidden shadow-2xl">
+        <div className="content-grid">
+            <section className="stats-column">
+              <div className="panel-heading">Squad editor</div>
+              <div className="squad-editor">
+                {players.map((player) => (
+                  <div key={player.id} className="squad-row">
+                    <span>{player.id}</span>
+                    <input
+                      value={player.starterName}
+                      onChange={(event) => renamePlayer(player.id, "starterName", event.target.value)}
+                      placeholder="Đá chính"
+                    />
+                    <input
+                      value={player.substituteName}
+                      onChange={(event) => renamePlayer(player.id, "substituteName", event.target.value)}
+                      placeholder="Dự bị"
+                    />
                   </div>
                 ))}
               </div>
+            </section>
 
-              {players.map((player) => {
-                const starterName = player.starterName.trim();
-                const substituteName = player.substituteName.trim();
-
-                return (
-                  <button
-                    key={player.id}
-                    type="button"
-                    onPointerDown={(event) => handleDragStart(event, player.id)}
-                    onPointerMove={(event) => handleDragMove(event, player.id)}
-                    onPointerUp={stopDragging}
-                    onPointerCancel={stopDragging}
-                    className="group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 outline-none"
-                    style={{ left: `${player.x}%`, top: `${player.y}%` }}
-                    aria-label={`Drag ${player.position}`}
-                  >
-                    <span className="max-w-32 rounded-md bg-slate-950/85 px-2 py-1 text-[10px] font-black uppercase leading-tight text-white shadow-md">
-                      {player.position}
-                    </span>
-                    <span
-                      className={`grid h-12 w-12 place-items-center rounded-full border-4 border-white bg-red-600 text-sm font-black text-white shadow-lg shadow-black/30 transition group-active:scale-110 sm:h-14 sm:w-14 ${
-                        draggingId === player.id ? "ring-4 ring-red-200" : ""
-                      }`}
-                    >
-                      {player.id}
-                    </span>
-                    {starterName || substituteName ? (
-                      <span className="lineup-name-stack max-w-36 rounded-lg bg-white/95 px-2 py-1 text-slate-950 shadow-md">
-                        <span className="block text-xs font-black leading-tight">{starterName || "Starter"}</span>
-                        <span className="block border-t border-slate-200 pt-0.5 text-[10px] font-bold leading-tight text-slate-500">
-                          {substituteName || "Substitute"}
-                        </span>
-                      </span>
-                    ) : null}
+            <section className="lineup-column">
+              <div className="lineup-header">
+                <span>Line up</span>
+                <div className="lineup-header-actions">
+                  <button type="button" onClick={resetPositions}>
+                    <RotateCcw size={14} />
+                    Reset
                   </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        <aside className="rounded-2xl bg-white p-4 shadow-xl shadow-slate-200/80 sm:p-5 md:sticky md:top-6 md:self-start lg:top-8">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-slate-950">Players</h2>
-              <p className="mt-1 text-sm text-slate-500">Top name starts, bottom name is substitute.</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3">
-            {players.map((player) => (
-              <div key={player.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Position {player.id}</span>
-                  <span className="rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-black uppercase text-emerald-800">
-                    {player.position}
-                  </span>
+                  <button type="button" onClick={clearNames}>
+                    <Trash2 size={14} />
+                    Clear
+                  </button>
                 </div>
-                <label className="mt-3 grid gap-1.5">
-                  <span className="text-xs font-bold text-slate-700">Đá chính</span>
-                  <input
-                    value={player.starterName}
-                    onChange={(event) => renamePlayer(player.id, "starterName", event.target.value)}
-                    placeholder="Starter player"
-                    className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-                  />
-                </label>
-                <label className="mt-2 grid gap-1.5">
-                  <span className="text-xs font-bold text-slate-500">Dự bị</span>
-                  <input
-                    value={player.substituteName}
-                    onChange={(event) => renamePlayer(player.id, "substituteName", event.target.value)}
-                    placeholder="Substitute player"
-                    className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-                  />
-                </label>
               </div>
-            ))}
-          </div>
+              <div className="formation-switch">
+                {(Object.keys(formations) as FormationKey[]).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => applyFormation(item)}
+                    className={formation === item ? "active" : ""}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={resetPositions}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800"
-            >
-              <RotateCcw size={17} aria-hidden="true" />
-              Reset
-            </button>
-            <button
-              type="button"
-              onClick={clearNames}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-slate-950 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800"
-            >
-              <Trash2 size={17} aria-hidden="true" />
-              Clear
-            </button>
-          </div>
-        </aside>
+              <div
+                ref={pitchRef}
+                className="pitch relative mx-auto aspect-[7/10] overflow-hidden border-[4px] border-white/80 touch-none select-none"
+              >
+                <div className="absolute inset-[4%] border-[3px] border-white/90" />
+                <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
+                <div className="absolute left-1/2 top-1/2 h-[22%] w-[31%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white/90" />
+                <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
+                <div className="absolute left-1/2 top-[4%] h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+                <div className="absolute left-1/2 top-[4%] h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+                <div className="absolute bottom-[4%] left-1/2 h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+                <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+
+                {players.map((player) => {
+                  const starterName = player.starterName.trim();
+                  const substituteName = player.substituteName.trim();
+
+                  return (
+                    <button
+                      key={player.id}
+                      type="button"
+                      onPointerDown={(event) => handleDragStart(event, player.id)}
+                      onPointerMove={(event) => handleDragMove(event, player.id)}
+                      onPointerUp={stopDragging}
+                      onPointerCancel={stopDragging}
+                      className="player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none"
+                      style={{ left: `${player.x}%`, top: `${player.y}%` }}
+                      aria-label={`Drag ${player.position}`}
+                    >
+                      <span
+                        className={`kit-disc transition group-active:scale-110 ${
+                          draggingId === player.id ? "ring-4 ring-emerald-200" : ""
+                        }`}
+                      >
+                        <span className="kit-number">{player.id}</span>
+                      </span>
+                      <span className="token-name">{starterName || `Player ${player.id}`}</span>
+                      {substituteName ? <small>{substituteName}</small> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+        </div>
       </div>
     </main>
   );
