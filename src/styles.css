@@ -274,6 +274,11 @@ body {
   background: #2f3747;
 }
 
+.lineup-header-actions .share-button {
+  background: #ffffff;
+  color: #2e994c;
+}
+
 @media (max-width: 900px) {
   .dashboard-shell {
     min-height: 0;

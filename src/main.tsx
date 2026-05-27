@@ -1,6 +1,6 @@
-import React, { PointerEvent as ReactPointerEvent, useRef, useState } from "react";
+import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { Check, Clipboard, RotateCcw, Trash2 } from "lucide-react";
 import "./styles.css";
 
 type Player = {
@@ -19,6 +19,11 @@ type PitchZone = {
   x2: number;
   y1: number;
   y2: number;
+};
+
+type SharedLineup = {
+  formation: FormationKey;
+  players: Pick<Player, "id" | "starterName" | "substituteName" | "x" | "y">[];
 };
 
 const pitchZones: PitchZone[] = [
@@ -75,10 +80,80 @@ const createPlayers = (formation: FormationKey, roster?: Pick<Player, "starterNa
     substituteName: roster?.[index]?.substituteName ?? "",
   }));
 
+const isFormationKey = (value: unknown): value is FormationKey =>
+  typeof value === "string" && Object.prototype.hasOwnProperty.call(formations, value);
+
+const clampCoordinate = (value: unknown, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? Math.min(96, Math.max(4, value)) : fallback;
+
+const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] =>
+  formations[sharedLineup.formation].map((point) => {
+    const sharedPlayer = sharedLineup.players.find((player) => player.id === point.id);
+    const x = clampCoordinate(sharedPlayer?.x, point.x);
+    const y = clampCoordinate(sharedPlayer?.y, point.y);
+
+    return {
+      ...point,
+      x,
+      y,
+      position: getZoneName(x, y),
+      starterName: sharedPlayer?.starterName ?? "",
+      substituteName: sharedPlayer?.substituteName ?? "",
+    };
+  });
+
+const encodeSharePayload = (formation: FormationKey, players: Player[]) => {
+  const payload: SharedLineup = {
+    formation,
+    players: players.map(({ id, starterName, substituteName, x, y }) => ({
+      id,
+      starterName,
+      substituteName,
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+    })),
+  };
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+};
+
+const decodeSharePayload = (value: string): SharedLineup | null => {
+  try {
+    const base64 = value.replaceAll("-", "+").replaceAll("_", "/");
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(paddedBase64);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<SharedLineup>;
+
+    if (!isFormationKey(parsed.formation) || !Array.isArray(parsed.players)) {
+      return null;
+    }
+
+    return {
+      formation: parsed.formation,
+      players: parsed.players.filter((player) => typeof player?.id === "number") as SharedLineup["players"],
+    };
+  } catch {
+    return null;
+  }
+};
+
+const getSharedLineupFromUrl = () => {
+  const value = new URLSearchParams(window.location.search).get("lineup");
+  return value ? decodeSharePayload(value) : null;
+};
+
 function App() {
-  const [formation, setFormation] = useState<FormationKey>("2-3-1");
-  const [players, setPlayers] = useState<Player[]>(() => createPlayers("2-3-1"));
+  const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
+  const [formation, setFormation] = useState<FormationKey>(() => sharedLineup?.formation ?? "2-3-1");
+  const [players, setPlayers] = useState<Player[]>(() =>
+    sharedLineup ? createPlayersFromSharedLineup(sharedLineup) : createPlayers("2-3-1"),
+  );
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const pitchRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
 
@@ -147,6 +222,19 @@ function App() {
     setPlayers((current) => current.map((player) => ({ ...player, starterName: "", substituteName: "" })));
   };
 
+  const copyShareLink = async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("lineup", encodeSharePayload(formation, players));
+
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setCopyStatus("copied");
+      window.setTimeout(() => setCopyStatus("idle"), 1800);
+    } catch {
+      window.prompt("Copy share link", url.toString());
+    }
+  };
+
   return (
     <main className="match-bg min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10">
       <header className="app-title-bar mx-auto flex w-full max-w-5xl items-center justify-center shadow-2xl">
@@ -179,6 +267,10 @@ function App() {
               <div className="lineup-header">
                 <span>Line up</span>
                 <div className="lineup-header-actions">
+                  <button type="button" className="share-button" onClick={copyShareLink}>
+                    {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
+                    {copyStatus === "copied" ? "Copied" : "Share"}
+                  </button>
                   <button type="button" onClick={resetPositions}>
                     <RotateCcw size={14} />
                     Reset
