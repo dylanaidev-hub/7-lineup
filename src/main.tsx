@@ -1,6 +1,6 @@
 import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { Check, Clipboard, Download, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Check, Clipboard, Download, Plus, Trash2 } from "lucide-react";
 import "./styles.css";
 
 type Player = {
@@ -477,10 +477,6 @@ function App() {
                   <button type="button" className="download-button" onClick={downloadLineupImage}>
                     <Download size={14} />
                     Download
-                  </button>
-                  <button type="button" onClick={resetPositions}>
-                    <RotateCcw size={14} />
-                    Reset
                   </button>
                   <button type="button" onClick={clearNames}>
                     <Trash2 size={14} />
