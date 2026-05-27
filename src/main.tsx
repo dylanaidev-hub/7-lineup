@@ -1,6 +1,6 @@
 import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { Check, Clipboard, RotateCcw, Trash2 } from "lucide-react";
+import { Check, Clipboard, Download, RotateCcw, Trash2 } from "lucide-react";
 import "./styles.css";
 
 type Player = {
@@ -146,6 +146,22 @@ const getSharedLineupFromUrl = () => {
   return value ? decodeSharePayload(value) : null;
 };
 
+const inlineComputedStyles = (source: Element, target: Element) => {
+  const computedStyle = window.getComputedStyle(source);
+  const targetElement = target as HTMLElement;
+
+  Array.from(computedStyle).forEach((property) => {
+    targetElement.style.setProperty(property, computedStyle.getPropertyValue(property));
+  });
+
+  Array.from(source.children).forEach((child, index) => {
+    const targetChild = target.children.item(index);
+    if (targetChild) {
+      inlineComputedStyles(child, targetChild);
+    }
+  });
+};
+
 function App() {
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
   const [formation, setFormation] = useState<FormationKey>(() => sharedLineup?.formation ?? "2-3-1");
@@ -235,6 +251,55 @@ function App() {
     }
   };
 
+  const downloadLineupImage = async () => {
+    const pitch = pitchRef.current;
+    if (!pitch) return;
+
+    const rect = pitch.getBoundingClientRect();
+    const clone = pitch.cloneNode(true) as HTMLElement;
+    inlineComputedStyles(pitch, clone);
+    clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+    clone.style.width = `${rect.width}px`;
+    clone.style.height = `${rect.height}px`;
+    clone.style.margin = "0";
+
+    const serializedHtml = new XMLSerializer().serializeToString(clone);
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}" viewBox="0 0 ${rect.width} ${rect.height}">
+        <foreignObject width="100%" height="100%">${serializedHtml}</foreignObject>
+      </svg>
+    `;
+    const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+    const image = new Image();
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = reject;
+      image.src = svgUrl;
+    });
+
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(rect.width * scale);
+    canvas.height = Math.round(rect.height * scale);
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      URL.revokeObjectURL(svgUrl);
+      return;
+    }
+
+    context.scale(scale, scale);
+    context.drawImage(image, 0, 0);
+    URL.revokeObjectURL(svgUrl);
+
+    const pngUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = pngUrl;
+    link.download = `7-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
+    link.click();
+  };
+
   return (
     <main className="match-bg min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10">
       <header className="app-title-bar mx-auto flex w-full max-w-5xl items-center justify-center shadow-2xl">
@@ -270,6 +335,10 @@ function App() {
                   <button type="button" className="share-button" onClick={copyShareLink}>
                     {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
                     {copyStatus === "copied" ? "Copied" : "Share"}
+                  </button>
+                  <button type="button" className="download-button" onClick={downloadLineupImage}>
+                    <Download size={14} />
+                    Download
                   </button>
                   <button type="button" onClick={resetPositions}>
                     <RotateCcw size={14} />

@@ -279,6 +279,10 @@ body {
   color: #2e994c;
 }
 
+.lineup-header-actions .download-button {
+  background: #173325;
+}
+
 @media (max-width: 900px) {
   .dashboard-shell {
     min-height: 0;
