@@ -136,7 +136,8 @@ body {
   gap: 8px;
 }
 
-.squad-input-list input {
+.squad-input-list input,
+.extra-player-input input {
   min-width: 0;
   height: 32px;
   border: 1px solid #dfe4e8;
@@ -147,9 +148,25 @@ body {
   outline: none;
 }
 
-.squad-input-list input:focus {
+.squad-input-list input:focus,
+.extra-player-input input:focus {
   border-color: #5ccb84;
   box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.16);
+}
+
+.extra-player-input {
+  display: grid;
+  grid-template-columns: 1fr 32px;
+  gap: 6px;
+}
+
+.extra-player-input button {
+  display: grid;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  background: #2f3747;
+  color: #ffffff;
 }
 
 .lineup-column {
@@ -280,6 +297,7 @@ body {
 .player-token small {
   color: #d9ffe6;
   font-size: 8px;
+  margin-top: 2px;
 }
 
 .lineup-header-actions {

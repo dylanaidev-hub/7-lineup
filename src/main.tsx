@@ -153,20 +153,38 @@ const getSharedLineupFromUrl = () => {
   return value ? decodeSharePayload(value) : null;
 };
 
-const inlineComputedStyles = (source: Element, target: Element) => {
-  const computedStyle = window.getComputedStyle(source);
-  const targetElement = target as HTMLElement;
+const getRegisteredNames = (player: Player) =>
+  [player.starterName, player.substituteName, ...player.extraNames].map((name) => name.trim()).filter(Boolean);
 
-  Array.from(computedStyle).forEach((property) => {
-    targetElement.style.setProperty(property, computedStyle.getPropertyValue(property));
-  });
+const drawRoundedRect = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) => {
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  context.fill();
+};
 
-  Array.from(source.children).forEach((child, index) => {
-    const targetChild = target.children.item(index);
-    if (targetChild) {
-      inlineComputedStyles(child, targetChild);
-    }
-  });
+const drawCenteredLabel = (
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  fontSize: number,
+  color = "#ffffff",
+) => {
+  context.font = `900 ${fontSize}px Inter, Arial, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "rgba(16, 42, 25, 0.64)";
+  drawRoundedRect(context, x - maxWidth / 2, y - fontSize, maxWidth, fontSize * 1.75, fontSize);
+  context.fillStyle = color;
+  context.fillText(text.toUpperCase(), x, y, maxWidth - 12);
 };
 
 function App() {
@@ -251,6 +269,16 @@ function App() {
     );
   };
 
+  const removeExtraPlayerInput = (id: number, index: number) => {
+    setPlayers((current) =>
+      current.map((player) =>
+        player.id === id
+          ? { ...player, extraNames: player.extraNames.filter((_, extraIndex) => extraIndex !== index) }
+          : player,
+      ),
+    );
+  };
+
   const applyFormation = (nextFormation: FormationKey) => {
     setFormation(nextFormation);
     setPlayers((current) => createPlayers(nextFormation, current));
@@ -280,46 +308,84 @@ function App() {
   };
 
   const downloadLineupImage = async () => {
-    const pitch = pitchRef.current;
-    if (!pitch) return;
-
-    const rect = pitch.getBoundingClientRect();
-    const clone = pitch.cloneNode(true) as HTMLElement;
-    inlineComputedStyles(pitch, clone);
-    clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-    clone.style.width = `${rect.width}px`;
-    clone.style.height = `${rect.height}px`;
-    clone.style.margin = "0";
-
-    const serializedHtml = new XMLSerializer().serializeToString(clone);
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}" viewBox="0 0 ${rect.width} ${rect.height}">
-        <foreignObject width="100%" height="100%">${serializedHtml}</foreignObject>
-      </svg>
-    `;
-    const svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
-    const image = new Image();
-
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = reject;
-      image.src = svgUrl;
-    });
-
-    const scale = 2;
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(rect.width * scale);
-    canvas.height = Math.round(rect.height * scale);
+    canvas.width = 1400;
+    canvas.height = 2000;
 
     const context = canvas.getContext("2d");
-    if (!context) {
-      URL.revokeObjectURL(svgUrl);
-      return;
+    if (!context) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const px = (value: number) => (value / 100) * width;
+    const py = (value: number) => (value / 100) * height;
+
+    const fieldGradient = context.createLinearGradient(0, 0, width, height);
+    fieldGradient.addColorStop(0, "#37a84f");
+    fieldGradient.addColorStop(0.5, "#2e9849");
+    fieldGradient.addColorStop(1, "#2a8841");
+    context.fillStyle = fieldGradient;
+    context.fillRect(0, 0, width, height);
+
+    for (let y = 0; y < height; y += 116) {
+      context.fillStyle = "rgba(255,255,255,0.055)";
+      context.fillRect(0, y, width, 58);
+      context.fillStyle = "rgba(0,0,0,0.04)";
+      context.fillRect(0, y + 58, width, 58);
     }
 
-    context.scale(scale, scale);
-    context.drawImage(image, 0, 0);
-    URL.revokeObjectURL(svgUrl);
+    context.strokeStyle = "rgba(255,255,255,0.9)";
+    context.lineWidth = 6;
+    context.strokeRect(px(4), py(4), px(92), py(92));
+    context.beginPath();
+    context.moveTo(px(4), py(50));
+    context.lineTo(px(96), py(50));
+    context.stroke();
+    context.beginPath();
+    context.arc(px(50), py(50), px(15.5), 0, Math.PI * 2);
+    context.stroke();
+    context.fillStyle = "#ffffff";
+    context.beginPath();
+    context.arc(px(50), py(50), 8, 0, Math.PI * 2);
+    context.fill();
+    context.strokeRect(px(26), py(4), px(48), py(15));
+    context.strokeRect(px(37), py(4), px(26), py(7));
+    context.strokeRect(px(26), py(81), px(48), py(15));
+    context.strokeRect(px(37), py(89), px(26), py(7));
+
+    players.forEach((player) => {
+      const x = px(player.x);
+      const y = py(player.y);
+      const names = getRegisteredNames(player);
+      const displayNames = names.length > 0 ? names : [`Player ${player.id}`];
+
+      context.save();
+      context.shadowColor = "rgba(0,0,0,0.34)";
+      context.shadowBlur = 18;
+      context.shadowOffsetY = 10;
+      context.fillStyle = "#f8fafc";
+      context.beginPath();
+      context.arc(x, y, 44, 0, Math.PI * 2);
+      context.fill();
+      context.shadowColor = "transparent";
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = 8;
+      context.stroke();
+      context.fillStyle = "#111827";
+      context.font = "950 36px Inter, Arial, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(String(player.id), x, y + 1);
+      context.restore();
+
+      displayNames.slice(0, 4).forEach((name, index) => {
+        drawCenteredLabel(context, name, x, y + 62 + index * 32, 170, 18, index === 0 ? "#ffffff" : "#d9ffe6");
+      });
+
+      if (displayNames.length > 4) {
+        drawCenteredLabel(context, `+${displayNames.length - 4} more`, x, y + 190, 150, 16, "#d9ffe6");
+      }
+    });
 
     const pngUrl = canvas.toDataURL("image/png");
     const link = document.createElement("a");
@@ -359,12 +425,20 @@ function App() {
                         placeholder="Dự bị"
                       />
                       {player.extraNames.map((extraName, index) => (
-                        <input
-                          key={index}
-                          value={extraName}
-                          onChange={(event) => renameExtraPlayer(player.id, index, event.target.value)}
-                          placeholder={`Cầu thủ ${index + 3}`}
-                        />
+                        <div key={index} className="extra-player-input">
+                          <input
+                            value={extraName}
+                            onChange={(event) => renameExtraPlayer(player.id, index, event.target.value)}
+                            placeholder={`Cầu thủ ${index + 3}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeExtraPlayerInput(player.id, index)}
+                            aria-label={`Remove player ${index + 3}`}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -421,8 +495,8 @@ function App() {
                 <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
 
                 {players.map((player) => {
-                  const starterName = player.starterName.trim();
-                  const substituteName = player.substituteName.trim();
+                  const registeredNames = getRegisteredNames(player);
+                  const visibleNames = registeredNames.length > 0 ? registeredNames : [`Player ${player.id}`];
 
                   return (
                     <button
@@ -443,8 +517,11 @@ function App() {
                       >
                         <span className="kit-number">{player.id}</span>
                       </span>
-                      <span className="token-name">{starterName || `Player ${player.id}`}</span>
-                      {substituteName ? <small>{substituteName}</small> : null}
+                      <span className="token-name">{visibleNames[0]}</span>
+                      {visibleNames.slice(1, 4).map((name, index) => (
+                        <small key={`${name}-${index}`}>{name}</small>
+                      ))}
+                      {visibleNames.length > 4 ? <small>+{visibleNames.length - 4} more</small> : null}
                     </button>
                   );
                 })}
