@@ -1,6 +1,6 @@
 import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { Check, Clipboard, Download, RotateCcw, Trash2 } from "lucide-react";
+import { Check, Clipboard, Download, Plus, RotateCcw, Trash2 } from "lucide-react";
 import "./styles.css";
 
 type Player = {
@@ -8,6 +8,7 @@ type Player = {
   position: string;
   starterName: string;
   substituteName: string;
+  extraNames: string[];
   x: number;
   y: number;
 };
@@ -23,7 +24,7 @@ type PitchZone = {
 
 type SharedLineup = {
   formation: FormationKey;
-  players: Pick<Player, "id" | "starterName" | "substituteName" | "x" | "y">[];
+  players: Pick<Player, "id" | "starterName" | "substituteName" | "extraNames" | "x" | "y">[];
 };
 
 const pitchZones: PitchZone[] = [
@@ -42,7 +43,7 @@ const pitchZones: PitchZone[] = [
 const getZoneName = (x: number, y: number) =>
   pitchZones.find((zone) => x >= zone.x1 && x <= zone.x2 && y >= zone.y1 && y <= zone.y2)?.name ?? "Free Role";
 
-const formations: Record<FormationKey, Omit<Player, "position" | "starterName" | "substituteName">[]> = {
+const formations: Record<FormationKey, Omit<Player, "position" | "starterName" | "substituteName" | "extraNames">[]> = {
   "2-3-1": [
     { id: 1, x: 50, y: 90 },
     { id: 2, x: 34, y: 68 },
@@ -72,12 +73,16 @@ const formations: Record<FormationKey, Omit<Player, "position" | "starterName" |
   ],
 };
 
-const createPlayers = (formation: FormationKey, roster?: Pick<Player, "starterName" | "substituteName">[]): Player[] =>
+const createPlayers = (
+  formation: FormationKey,
+  roster?: Pick<Player, "starterName" | "substituteName" | "extraNames">[],
+): Player[] =>
   formations[formation].map((point, index) => ({
     ...point,
     position: getZoneName(point.x, point.y),
     starterName: roster?.[index]?.starterName ?? "",
     substituteName: roster?.[index]?.substituteName ?? "",
+    extraNames: roster?.[index]?.extraNames ?? [],
   }));
 
 const isFormationKey = (value: unknown): value is FormationKey =>
@@ -99,16 +104,18 @@ const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] =>
       position: getZoneName(x, y),
       starterName: sharedPlayer?.starterName ?? "",
       substituteName: sharedPlayer?.substituteName ?? "",
+      extraNames: Array.isArray(sharedPlayer?.extraNames) ? sharedPlayer.extraNames : [],
     };
   });
 
 const encodeSharePayload = (formation: FormationKey, players: Player[]) => {
   const payload: SharedLineup = {
     formation,
-    players: players.map(({ id, starterName, substituteName, x, y }) => ({
+    players: players.map(({ id, starterName, substituteName, extraNames, x, y }) => ({
       id,
       starterName,
       substituteName,
+      extraNames,
       x: Math.round(x * 10) / 10,
       y: Math.round(y * 10) / 10,
     })),
@@ -225,6 +232,25 @@ function App() {
     setPlayers((current) => current.map((player) => (player.id === id ? { ...player, [field]: name } : player)));
   };
 
+  const renameExtraPlayer = (id: number, index: number, name: string) => {
+    setPlayers((current) =>
+      current.map((player) =>
+        player.id === id
+          ? {
+              ...player,
+              extraNames: player.extraNames.map((extraName, extraIndex) => (extraIndex === index ? name : extraName)),
+            }
+          : player,
+      ),
+    );
+  };
+
+  const addPlayerInput = (id: number) => {
+    setPlayers((current) =>
+      current.map((player) => (player.id === id ? { ...player, extraNames: [...player.extraNames, ""] } : player)),
+    );
+  };
+
   const applyFormation = (nextFormation: FormationKey) => {
     setFormation(nextFormation);
     setPlayers((current) => createPlayers(nextFormation, current));
@@ -235,7 +261,9 @@ function App() {
   };
 
   const clearNames = () => {
-    setPlayers((current) => current.map((player) => ({ ...player, starterName: "", substituteName: "" })));
+    setPlayers((current) =>
+      current.map((player) => ({ ...player, starterName: "", substituteName: "", extraNames: [] })),
+    );
   };
 
   const copyShareLink = async () => {
@@ -312,17 +340,33 @@ function App() {
               <div className="squad-editor">
                 {players.map((player) => (
                   <div key={player.id} className="squad-row">
-                    <span>{player.id}</span>
-                    <input
-                      value={player.starterName}
-                      onChange={(event) => renamePlayer(player.id, "starterName", event.target.value)}
-                      placeholder="Đá chính"
-                    />
-                    <input
-                      value={player.substituteName}
-                      onChange={(event) => renamePlayer(player.id, "substituteName", event.target.value)}
-                      placeholder="Dự bị"
-                    />
+                    <div className="squad-row-header">
+                      <span>{player.id}</span>
+                      <strong>Position {player.id}</strong>
+                      <button type="button" onClick={() => addPlayerInput(player.id)} aria-label={`Add player ${player.id}`}>
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <div className="squad-input-list">
+                      <input
+                        value={player.starterName}
+                        onChange={(event) => renamePlayer(player.id, "starterName", event.target.value)}
+                        placeholder="Đá chính"
+                      />
+                      <input
+                        value={player.substituteName}
+                        onChange={(event) => renamePlayer(player.id, "substituteName", event.target.value)}
+                        placeholder="Dự bị"
+                      />
+                      {player.extraNames.map((extraName, index) => (
+                        <input
+                          key={index}
+                          value={extraName}
+                          onChange={(event) => renameExtraPlayer(player.id, index, event.target.value)}
+                          placeholder={`Cầu thủ ${index + 3}`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

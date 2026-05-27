@@ -80,19 +80,28 @@ body {
 
 .squad-editor {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   padding: 14px;
   background: #ffffff;
+  overflow: auto;
 }
 
 .squad-row {
   display: grid;
-  grid-template-columns: 28px 1fr 1fr;
+  gap: 8px;
+  border: 1px solid #e4e9ed;
+  padding: 10px;
+  background: #f8faf9;
+}
+
+.squad-row-header {
+  display: grid;
+  grid-template-columns: 28px 1fr 30px;
   gap: 8px;
   align-items: center;
 }
 
-.squad-row span {
+.squad-row-header span {
   display: grid;
   height: 26px;
   place-items: center;
@@ -103,7 +112,31 @@ body {
   font-weight: 900;
 }
 
-.squad-row input {
+.squad-row-header strong {
+  color: #273142;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.squad-row-header button {
+  display: grid;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #5ccb84;
+  color: #ffffff;
+}
+
+.squad-input-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.squad-input-list input {
   min-width: 0;
   height: 32px;
   border: 1px solid #dfe4e8;
@@ -114,7 +147,7 @@ body {
   outline: none;
 }
 
-.squad-row input:focus {
+.squad-input-list input:focus {
   border-color: #5ccb84;
   box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.16);
 }
