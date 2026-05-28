@@ -974,11 +974,39 @@ function App() {
         });
     }
 
-    const pngUrl = canvas.toDataURL("image/png");
+    const filename = `${pitchSize}-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
     const link = document.createElement("a");
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) return;
+
+    const file = new File([blob], filename, { type: "image/png" });
+    const canShareFile =
+      "canShare" in navigator &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [file] });
+
+    if (canShareFile && navigator.maxTouchPoints > 0) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "Line Up Football",
+        });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        // Fall back to the normal browser download/open behavior below.
+      }
+    }
+
+    const pngUrl = URL.createObjectURL(blob);
     link.href = pngUrl;
-    link.download = `${pitchSize}-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = filename;
+    link.target = "_blank";
+    link.rel = "noopener";
+    document.body.appendChild(link);
     link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(pngUrl), 1000);
   };
 
   return (
