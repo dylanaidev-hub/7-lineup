@@ -1,6 +1,5 @@
 import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { toPng } from "html-to-image";
 import { Check, Clipboard, Download, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import "./styles.css";
 
@@ -448,12 +447,25 @@ const getBenchCount = (players: Player[]) => players.reduce((total, player) => t
 
 function App() {
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
+  const initialPitchSize = sharedLineup?.pitchSize ?? 7;
+  const initialFormation = sharedLineup?.formation ?? "2-3-1";
+  const initialCustomCount = clampCustomCount(sharedLineup?.customCount);
+  const initialPlayers = sharedLineup
+    ? createPlayersFromSharedLineup(sharedLineup)
+    : createPlayers(initialPitchSize, initialFormation, initialCustomCount || 5);
   const [pitchSize, setPitchSize] = useState<PitchSize>(() => sharedLineup?.pitchSize ?? 7);
   const [formation, setFormation] = useState<FormationKey>(() => sharedLineup?.formation ?? "2-3-1");
-  const [customCount, setCustomCount] = useState(() => clampCustomCount(sharedLineup?.customCount));
-  const [players, setPlayers] = useState<Player[]>(() =>
-    sharedLineup ? createPlayersFromSharedLineup(sharedLineup) : createPlayers(7, "2-3-1", 5),
-  );
+  const [customCount, setCustomCount] = useState(() => initialCustomCount);
+  const [players, setPlayers] = useState<Player[]>(() => initialPlayers);
+  const [savedPlayersByPitch, setSavedPlayersByPitch] = useState<Partial<Record<PitchSize, Player[]>>>(() => ({
+    [initialPitchSize]: initialPlayers,
+  }));
+  const [savedFormationByPitch, setSavedFormationByPitch] = useState<Partial<Record<PitchSize, FormationKey>>>(() => ({
+    [initialPitchSize]: initialFormation,
+  }));
+  const [savedCustomCountByPitch, setSavedCustomCountByPitch] = useState<Partial<Record<PitchSize, number>>>(() => ({
+    [initialPitchSize]: initialCustomCount,
+  }));
   const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(() =>
     sharedLineup?.pitchSize === "custom" ? createOpponentMarkersFromSharedLineup(sharedLineup) : createOpponentMarkers(),
   );
@@ -741,12 +753,17 @@ function App() {
   };
 
   const applyPitchSize = (nextPitchSize: PitchSize) => {
-    const nextFormation = getDefaultFormation(nextPitchSize);
-    const nextCustomCount = nextPitchSize === "custom" ? 5 : customCount;
+    setSavedPlayersByPitch((current) => ({ ...current, [pitchSize]: players }));
+    setSavedFormationByPitch((current) => ({ ...current, [pitchSize]: formation }));
+    setSavedCustomCountByPitch((current) => ({ ...current, [pitchSize]: customCount }));
+
+    const nextFormation = savedFormationByPitch[nextPitchSize] ?? getDefaultFormation(nextPitchSize);
+    const nextCustomCount = savedCustomCountByPitch[nextPitchSize] ?? (nextPitchSize === "custom" ? 5 : customCount);
+    const savedPlayers = savedPlayersByPitch[nextPitchSize];
     setPitchSize(nextPitchSize);
     setFormation(nextFormation);
     setCustomCount(nextCustomCount);
-    setPlayers((current) => createPlayers(nextPitchSize, nextFormation, nextCustomCount, current));
+    setPlayers(savedPlayers ?? createPlayers(nextPitchSize, nextFormation, nextCustomCount));
     setOpponentMarkers(createOpponentMarkers());
     setDrawLines([]);
     setRedoDrawLines([]);
@@ -818,11 +835,146 @@ function App() {
     const pitch = pitchRef.current;
     if (!pitch) return;
 
-    const pngUrl = await toPng(pitch, {
-      cacheBust: true,
-      pixelRatio: 3,
-      backgroundColor: "#37a84f",
+    const scale = 3;
+    const rect = pitch.getBoundingClientRect();
+    const exportPadding = 76 * scale;
+    const pitchWidth = Math.round(rect.width * scale);
+    const pitchHeight = Math.round(rect.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = pitchWidth + exportPadding * 2;
+    canvas.height = pitchHeight + exportPadding * 2;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const sx = pitchWidth / 100;
+    const sy = pitchHeight / 100;
+    const px = (value: number) => exportPadding + value * sx;
+    const py = (value: number) => exportPadding + value * sy;
+    const pw = (value: number) => value * sx;
+    const ph = (value: number) => value * sy;
+    const css = (value: number) => value * scale;
+
+    const fieldGradient = context.createLinearGradient(0, 0, width, height);
+    fieldGradient.addColorStop(0, "#37a84f");
+    fieldGradient.addColorStop(0.5, "#2e9849");
+    fieldGradient.addColorStop(1, "#2a8841");
+    context.fillStyle = fieldGradient;
+    context.fillRect(0, 0, width, height);
+
+    const stripeHeight = css(58);
+    for (let y = 0; y < height; y += stripeHeight * 2) {
+      context.fillStyle = "rgba(255,255,255,0.055)";
+      context.fillRect(0, y, width, stripeHeight);
+      context.fillStyle = "rgba(0,0,0,0.04)";
+      context.fillRect(0, y + stripeHeight, width, stripeHeight);
+    }
+
+    context.strokeStyle = "rgba(255,255,255,0.9)";
+    context.lineWidth = css(3);
+    context.strokeRect(px(4), py(4), pw(92), ph(92));
+    context.beginPath();
+    context.moveTo(px(4), py(50));
+    context.lineTo(px(96), py(50));
+    context.stroke();
+    context.beginPath();
+    context.ellipse(px(50), py(50), pw(15.5), ph(11), 0, 0, Math.PI * 2);
+    context.stroke();
+    context.fillStyle = "#ffffff";
+    context.beginPath();
+    context.arc(px(50), py(50), css(3), 0, Math.PI * 2);
+    context.fill();
+    context.strokeRect(px(26), py(4), pw(48), ph(15));
+    context.strokeRect(px(37), py(4), pw(26), ph(7));
+    context.strokeRect(px(26), py(81), pw(48), ph(15));
+    context.strokeRect(px(37), py(89), pw(26), ph(7));
+
+    if (pitchSize === "custom") {
+      drawLines.forEach((line) => {
+        if (line.points.length < 2) return;
+        context.save();
+        context.strokeStyle = "#facc15";
+        context.lineWidth = css(3);
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.beginPath();
+        context.moveTo(px(line.points[0].x), py(line.points[0].y));
+        line.points.slice(1).forEach((point) => context.lineTo(px(point.x), py(point.y)));
+        context.stroke();
+        context.restore();
+      });
+    }
+
+    activePlayers.forEach((player) => {
+      const x = px(player.x);
+      const y = py(player.y);
+      const starterName = player.starterName.trim() || `Player ${player.id}`;
+      const benchNames = getBenchNames(player);
+
+      context.save();
+      context.shadowColor = "rgba(0,0,0,0.34)";
+      context.shadowBlur = css(5);
+      context.shadowOffsetY = css(3);
+      context.fillStyle = "#f8fafc";
+      context.beginPath();
+      context.arc(x, y, css(17), 0, Math.PI * 2);
+      context.fill();
+      context.shadowColor = "transparent";
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = css(2);
+      context.stroke();
+      context.fillStyle = "#111827";
+      context.font = `950 ${css(13)}px Inter, Arial, sans-serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(String(player.id), x, y + css(0.5));
+      context.restore();
+
+      context.save();
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.font = `900 ${css(9)}px Inter, Arial, sans-serif`;
+      const nameWidth = Math.min(css(86), Math.max(css(52), starterName.length * css(5.6)));
+      context.fillStyle = "rgba(16, 42, 25, 0.58)";
+      context.beginPath();
+      context.roundRect(x - nameWidth / 2, y + css(21), nameWidth, css(18), css(9));
+      context.fill();
+      context.fillStyle = "#ffffff";
+      context.fillText(starterName.toUpperCase(), x, y + css(30), nameWidth - css(8));
+
+      if (benchNames.length > 0) {
+        context.font = `900 ${css(8)}px Inter, Arial, sans-serif`;
+        const benchText = benchNames.slice(0, 2).join(" / ");
+        const benchWidth = Math.min(css(130), Math.max(css(54), benchText.length * css(5)));
+        context.fillStyle = "rgba(16, 42, 25, 0.58)";
+        context.beginPath();
+        context.roundRect(x - benchWidth / 2, y + css(42), benchWidth, css(16), css(8));
+        context.fill();
+        context.fillStyle = "#d9ffe6";
+        context.fillText(benchText.toUpperCase(), x, y + css(50), benchWidth - css(8));
+      }
+      context.restore();
     });
+
+    if (pitchSize === "custom") {
+      opponentMarkers
+        .filter((marker) => marker.onPitch)
+        .forEach((marker) => {
+          context.save();
+          context.fillStyle = "#dc2626";
+          context.strokeStyle = "#ffffff";
+          context.lineWidth = css(2);
+          context.beginPath();
+          context.arc(px(marker.x), py(marker.y), css(10), 0, Math.PI * 2);
+          context.fill();
+          context.stroke();
+          context.restore();
+        });
+    }
+
+    const pngUrl = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.href = pngUrl;
     link.download = `${pitchSize}-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
@@ -1001,7 +1153,7 @@ function App() {
 
               <div
                 ref={pitchRef}
-                className={`pitch relative mx-auto aspect-[7/10] overflow-hidden border-[4px] border-white/80 touch-none select-none ${
+                className={`pitch relative mx-auto aspect-[7/10] border-[4px] border-white/80 touch-none select-none ${
                   isDrawMode ? "draw-mode" : ""
                 }`}
               >

@@ -14,9 +14,16 @@ body {
     sans-serif;
 }
 
+#root {
+  min-height: 100%;
+}
+
 .match-bg {
   display: flex;
+  height: 100vh;
+  height: 100dvh;
   flex-direction: column;
+  overflow: hidden;
   background:
     radial-gradient(circle at 16% 72%, rgba(143, 230, 37, 0.72), transparent 24%),
     radial-gradient(circle at 76% 45%, rgba(87, 130, 67, 0.7), transparent 30%),
@@ -47,14 +54,17 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   background: #eef0f0;
+  overflow: hidden;
 }
 
 .content-grid {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(360px, 1fr);
+  align-items: stretch;
   gap: 18px;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
   padding: 24px;
 }
 
@@ -62,6 +72,13 @@ body {
 .lineup-column {
   min-width: 0;
   min-height: 0;
+}
+
+.stats-column {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .panel-heading,
@@ -81,10 +98,13 @@ body {
 
 .squad-editor {
   display: grid;
+  flex: 1 1 auto;
   gap: 10px;
+  min-height: 0;
   padding: 14px;
   background: #ffffff;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .squad-row {
@@ -177,8 +197,12 @@ body {
 
 .lineup-column {
   display: flex;
+  align-self: start;
+  height: 100%;
   flex-direction: column;
+  padding-bottom: 38px;
   background: #43ad5e;
+  overflow: hidden;
 }
 
 .pitch-size-switch,
@@ -402,6 +426,7 @@ body {
   align-self: center;
   flex: 0 1 auto;
   height: clamp(360px, calc(100vh - 320px), 620px);
+  margin-bottom: 18px;
   width: auto;
   max-width: 100%;
   min-height: 0;
@@ -593,17 +618,40 @@ body {
 }
 
 @media (max-width: 900px) {
+  .match-bg {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .dashboard-shell {
     min-height: 0;
+    overflow: visible;
   }
 
   .content-grid {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .stats-column,
+  .lineup-column {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .lineup-column {
+    position: static;
+    padding-bottom: 24px;
   }
 
   .pitch {
     width: min(100%, 520px);
     height: auto;
+    margin-bottom: 0;
     min-height: 520px;
     max-height: none;
   }
