@@ -1339,6 +1339,30 @@ function App() {
                       ))
                   : null}
               </div>
+              <div className="mobile-lineup-actions">
+                <button type="button" className="share-button" onClick={copyShareLink}>
+                  {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
+                  {copyStatus === "copied" ? "Copied" : "Share"}
+                </button>
+                <button type="button" className="download-button" onClick={downloadLineupImage}>
+                  <Download size={14} />
+                  Download
+                </button>
+                {pitchSize === "custom" ? (
+                  <button
+                    type="button"
+                    className={`draw-button ${isDrawMode ? "active" : ""}`}
+                    onClick={() => setIsDrawMode((current) => !current)}
+                  >
+                    <Pencil size={14} />
+                    Draw
+                  </button>
+                ) : null}
+                <button type="button" onClick={clearNames}>
+                  <Trash2 size={14} />
+                  Clear
+                </button>
+              </div>
             </section>
         </div>
       </div>
