@@ -264,7 +264,7 @@ const createPlayers = (
 
 const isFormationKey = (value: unknown): value is FormationKey =>
   typeof value === "string" &&
-  pitchSizes.some((pitchSize) => Object.prototype.hasOwnProperty.call(formationsBySize[pitchSize], value));
+  pitchOptions.some((option) => Object.prototype.hasOwnProperty.call(formationsBySize[option.value], value));
 
 const clampCoordinate = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(96, Math.max(4, value)) : fallback;
