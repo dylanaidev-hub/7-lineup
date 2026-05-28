@@ -481,12 +481,15 @@ function App() {
   const [redoDrawLines, setRedoDrawLines] = useState<DrawLine[]>([]);
   const [activeDrawLineId, setActiveDrawLineId] = useState<number | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
+  const [selectedMobilePlayerId, setSelectedMobilePlayerId] = useState(1);
   const pitchRef = useRef<HTMLDivElement>(null);
   const drawLayerRef = useRef<SVGSVGElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const activePlayers = pitchSize === "custom" ? players.filter((player) => player.onPitch) : players;
   const benchCount = getBenchCount(activePlayers);
   const formationEntries = getFormationEntries(pitchSize);
+  const selectedMobilePlayer =
+    activePlayers.find((player) => player.id === selectedMobilePlayerId) ?? activePlayers[0] ?? null;
 
   const getPitchPointerPosition = (event: ReactPointerEvent<Element>, options: { clamp?: boolean } = {}) => {
     const pitch = pitchRef.current;
@@ -1138,6 +1141,62 @@ function App() {
                   </div>
                 ) : null}
               </div>
+              {selectedMobilePlayer ? (
+                <div className="mobile-player-editor">
+                  <div className="mobile-player-editor-top">
+                    <label htmlFor="mobile-player-select">Player</label>
+                    <select
+                      id="mobile-player-select"
+                      value={selectedMobilePlayer.id}
+                      onChange={(event) => setSelectedMobilePlayerId(Number(event.target.value))}
+                    >
+                      {activePlayers.map((player) => (
+                        <option key={player.id} value={player.id}>
+                          {player.id}. {player.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="mobile-player-inputs">
+                    <input
+                      value={selectedMobilePlayer.starterName}
+                      onChange={(event) => renamePlayer(selectedMobilePlayer.id, "starterName", event.target.value)}
+                      placeholder="Đá chính"
+                    />
+                    <input
+                      value={selectedMobilePlayer.substituteName}
+                      onChange={(event) => renamePlayer(selectedMobilePlayer.id, "substituteName", event.target.value)}
+                      placeholder="Dự bị"
+                    />
+                    {selectedMobilePlayer.extraNames.slice(0, 1).map((extraName, index) => (
+                      <div key={index} className="mobile-extra-player-input">
+                        <input
+                          value={extraName}
+                          onChange={(event) => renameExtraPlayer(selectedMobilePlayer.id, index, event.target.value)}
+                          placeholder={`Cầu thủ ${index + 3}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeExtraPlayerInput(selectedMobilePlayer.id, index)}
+                          aria-label={`Remove player ${index + 3}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                    {selectedMobilePlayer.extraNames.length < 1 ? (
+                      <button
+                        type="button"
+                        className="mobile-add-player"
+                        onClick={() => addPlayerInput(selectedMobilePlayer.id)}
+                      >
+                        <Plus size={14} />
+                        Thêm dự bị
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               {pitchSize === "custom" ? (
                 <div className="custom-player-tray" aria-label="Custom player tray">
                   <span>Players</span>
