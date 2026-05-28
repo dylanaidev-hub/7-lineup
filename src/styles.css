@@ -25,10 +25,11 @@ body {
 }
 
 .app-title-bar {
-  min-height: 96px;
+  min-height: 142px;
   flex: 0 0 auto;
   background: #171b29;
   border-bottom: 4px solid #5ccb84;
+  padding: 26px 18px 24px;
 }
 
 .app-title-bar h1 {
@@ -180,6 +181,7 @@ body {
   background: #43ad5e;
 }
 
+.pitch-size-switch,
 .formation-switch {
   display: flex;
   gap: 8px;
@@ -187,6 +189,24 @@ body {
   background: #43ad5e;
 }
 
+.pitch-size-switch {
+  padding-bottom: 0;
+}
+
+.header-pitch-size-switch {
+  justify-content: center;
+  margin-top: 18px;
+  padding: 0;
+  background: transparent;
+}
+
+.header-pitch-size-switch button {
+  min-width: 72px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pitch-size-switch button,
 .formation-switch button {
   min-height: 30px;
   border: 0;
@@ -197,9 +217,44 @@ body {
   font-weight: 900;
 }
 
+.pitch-size-switch button.active,
 .formation-switch button.active {
   background: #ffffff;
   color: #2e994c;
+}
+
+.custom-lineup-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px 10px;
+  background: #43ad5e;
+}
+
+.custom-lineup-control label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  padding: 6px 10px 6px 14px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.custom-lineup-control input {
+  width: 72px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2e994c;
+  font-size: 13px;
+  font-weight: 950;
+  text-align: center;
+  outline: none;
 }
 
 .pitch {

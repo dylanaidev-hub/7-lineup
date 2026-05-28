@@ -13,7 +13,18 @@ type Player = {
   y: number;
 };
 
-type FormationKey = "2-3-1" | "3-2-1" | "2-2-2";
+type PitchSize = 5 | 7 | 11 | "custom";
+type FormationKey =
+  | "1-2-1"
+  | "2-1-1"
+  | "1-1-2"
+  | "2-3-1"
+  | "3-2-1"
+  | "2-2-2"
+  | "4-4-2"
+  | "4-3-3"
+  | "3-5-2"
+  | "custom";
 type PitchZone = {
   name: string;
   x1: number;
@@ -23,11 +34,33 @@ type PitchZone = {
 };
 
 type SharedLineup = {
+  pitchSize?: PitchSize;
+  customCount?: number;
   formation: FormationKey;
   players: Pick<Player, "id" | "starterName" | "substituteName" | "extraNames" | "x" | "y">[];
 };
 
-const pitchZones: PitchZone[] = [
+const pitchSizes: PitchSize[] = [5, 7, 11];
+const pitchOptions: { value: PitchSize; label: string }[] = [
+  { value: 5, label: "Sân 5" },
+  { value: 7, label: "Sân 7" },
+  { value: 11, label: "Sân 11" },
+  { value: "custom", label: "Cá nhân hóa" },
+];
+
+const pitchZonesBySize: Record<PitchSize, PitchZone[]> = {
+  5: [
+    { name: "Left Forward", x1: 4, x2: 50, y1: 4, y2: 38 },
+    { name: "Right Forward", x1: 50, x2: 96, y1: 4, y2: 38 },
+    { name: "Left Midfielder", x1: 4, x2: 34, y1: 38, y2: 68 },
+    { name: "Center Midfielder", x1: 34, x2: 66, y1: 38, y2: 68 },
+    { name: "Right Midfielder", x1: 66, x2: 96, y1: 38, y2: 68 },
+    { name: "Left Defender", x1: 4, x2: 34, y1: 68, y2: 84 },
+    { name: "Center Defender", x1: 34, x2: 66, y1: 68, y2: 84 },
+    { name: "Right Defender", x1: 66, x2: 96, y1: 68, y2: 84 },
+    { name: "Goalkeeper", x1: 4, x2: 96, y1: 84, y2: 96 },
+  ],
+  7: [
   { name: "Left Forward", x1: 4, x2: 36, y1: 4, y2: 34 },
   { name: "Striker", x1: 36, x2: 64, y1: 4, y2: 34 },
   { name: "Right Forward", x1: 64, x2: 96, y1: 4, y2: 34 },
@@ -38,13 +71,70 @@ const pitchZones: PitchZone[] = [
   { name: "Center Defender", x1: 34, x2: 66, y1: 62, y2: 82 },
   { name: "Right Defender", x1: 66, x2: 96, y1: 62, y2: 82 },
   { name: "Goalkeeper", x1: 4, x2: 96, y1: 82, y2: 96 },
-];
+  ],
+  11: [
+    { name: "Left Forward", x1: 4, x2: 34, y1: 4, y2: 28 },
+    { name: "Striker", x1: 34, x2: 66, y1: 4, y2: 28 },
+    { name: "Right Forward", x1: 66, x2: 96, y1: 4, y2: 28 },
+    { name: "Left Attacking Midfielder", x1: 4, x2: 34, y1: 28, y2: 45 },
+    { name: "Attacking Midfielder", x1: 34, x2: 66, y1: 28, y2: 45 },
+    { name: "Right Attacking Midfielder", x1: 66, x2: 96, y1: 28, y2: 45 },
+    { name: "Left Midfielder", x1: 4, x2: 30, y1: 45, y2: 62 },
+    { name: "Center Midfielder", x1: 30, x2: 70, y1: 45, y2: 62 },
+    { name: "Right Midfielder", x1: 70, x2: 96, y1: 45, y2: 62 },
+    { name: "Left Back", x1: 4, x2: 24, y1: 62, y2: 84 },
+    { name: "Left Center Back", x1: 24, x2: 50, y1: 62, y2: 84 },
+    { name: "Right Center Back", x1: 50, x2: 76, y1: 62, y2: 84 },
+    { name: "Right Back", x1: 76, x2: 96, y1: 62, y2: 84 },
+    { name: "Goalkeeper", x1: 4, x2: 96, y1: 84, y2: 96 },
+  ],
+  custom: [
+    { name: "Left Forward", x1: 4, x2: 34, y1: 4, y2: 28 },
+    { name: "Striker", x1: 34, x2: 66, y1: 4, y2: 28 },
+    { name: "Right Forward", x1: 66, x2: 96, y1: 4, y2: 28 },
+    { name: "Left Midfielder", x1: 4, x2: 34, y1: 28, y2: 62 },
+    { name: "Center Midfielder", x1: 34, x2: 66, y1: 28, y2: 62 },
+    { name: "Right Midfielder", x1: 66, x2: 96, y1: 28, y2: 62 },
+    { name: "Left Defender", x1: 4, x2: 34, y1: 62, y2: 84 },
+    { name: "Center Defender", x1: 34, x2: 66, y1: 62, y2: 84 },
+    { name: "Right Defender", x1: 66, x2: 96, y1: 62, y2: 84 },
+    { name: "Goalkeeper", x1: 4, x2: 96, y1: 84, y2: 96 },
+  ],
+};
 
-const getZoneName = (x: number, y: number) =>
-  pitchZones.find((zone) => x >= zone.x1 && x <= zone.x2 && y >= zone.y1 && y <= zone.y2)?.name ?? "Free Role";
+const getZoneName = (pitchSize: PitchSize, x: number, y: number) =>
+  pitchZonesBySize[pitchSize].find((zone) => x >= zone.x1 && x <= zone.x2 && y >= zone.y1 && y <= zone.y2)?.name ??
+  "Free Role";
 
-const formations: Record<FormationKey, Omit<Player, "position" | "starterName" | "substituteName" | "extraNames">[]> = {
-  "2-3-1": [
+const formationsBySize: Record<
+  PitchSize,
+  Partial<Record<FormationKey, Omit<Player, "position" | "starterName" | "substituteName" | "extraNames">[]>>
+> = {
+  5: {
+    "1-2-1": [
+      { id: 1, x: 50, y: 90 },
+      { id: 2, x: 50, y: 70 },
+      { id: 3, x: 35, y: 48 },
+      { id: 4, x: 65, y: 48 },
+      { id: 5, x: 50, y: 22 },
+    ],
+    "2-1-1": [
+      { id: 1, x: 50, y: 90 },
+      { id: 2, x: 34, y: 70 },
+      { id: 3, x: 66, y: 70 },
+      { id: 4, x: 50, y: 48 },
+      { id: 5, x: 50, y: 22 },
+    ],
+    "1-1-2": [
+      { id: 1, x: 50, y: 90 },
+      { id: 2, x: 50, y: 70 },
+      { id: 3, x: 50, y: 48 },
+      { id: 4, x: 36, y: 22 },
+      { id: 5, x: 64, y: 22 },
+    ],
+  },
+  7: {
+    "2-3-1": [
     { id: 1, x: 50, y: 90 },
     { id: 2, x: 34, y: 68 },
     { id: 3, x: 66, y: 68 },
@@ -52,8 +142,8 @@ const formations: Record<FormationKey, Omit<Player, "position" | "starterName" |
     { id: 5, x: 50, y: 42 },
     { id: 6, x: 76, y: 45 },
     { id: 7, x: 50, y: 20 },
-  ],
-  "3-2-1": [
+    ],
+    "3-2-1": [
     { id: 1, x: 50, y: 90 },
     { id: 2, x: 25, y: 68 },
     { id: 3, x: 50, y: 70 },
@@ -61,8 +151,8 @@ const formations: Record<FormationKey, Omit<Player, "position" | "starterName" |
     { id: 5, x: 38, y: 43 },
     { id: 6, x: 62, y: 43 },
     { id: 7, x: 50, y: 19 },
-  ],
-  "2-2-2": [
+    ],
+    "2-2-2": [
     { id: 1, x: 50, y: 90 },
     { id: 2, x: 34, y: 68 },
     { id: 3, x: 66, y: 68 },
@@ -70,29 +160,122 @@ const formations: Record<FormationKey, Omit<Player, "position" | "starterName" |
     { id: 5, x: 66, y: 45 },
     { id: 6, x: 39, y: 21 },
     { id: 7, x: 61, y: 21 },
-  ],
+    ],
+  },
+  11: {
+    "4-4-2": [
+      { id: 1, x: 50, y: 90 },
+      { id: 2, x: 16, y: 70 },
+      { id: 3, x: 38, y: 72 },
+      { id: 4, x: 62, y: 72 },
+      { id: 5, x: 84, y: 70 },
+      { id: 6, x: 18, y: 50 },
+      { id: 7, x: 40, y: 50 },
+      { id: 8, x: 60, y: 50 },
+      { id: 9, x: 82, y: 50 },
+      { id: 10, x: 40, y: 20 },
+      { id: 11, x: 60, y: 20 },
+    ],
+    "4-3-3": [
+      { id: 1, x: 50, y: 90 },
+      { id: 2, x: 16, y: 70 },
+      { id: 3, x: 38, y: 72 },
+      { id: 4, x: 62, y: 72 },
+      { id: 5, x: 84, y: 70 },
+      { id: 6, x: 30, y: 50 },
+      { id: 7, x: 50, y: 48 },
+      { id: 8, x: 70, y: 50 },
+      { id: 9, x: 24, y: 20 },
+      { id: 10, x: 50, y: 18 },
+      { id: 11, x: 76, y: 20 },
+    ],
+    "3-5-2": [
+      { id: 1, x: 50, y: 90 },
+      { id: 2, x: 28, y: 72 },
+      { id: 3, x: 50, y: 73 },
+      { id: 4, x: 72, y: 72 },
+      { id: 5, x: 14, y: 52 },
+      { id: 6, x: 36, y: 50 },
+      { id: 7, x: 50, y: 46 },
+      { id: 8, x: 64, y: 50 },
+      { id: 9, x: 86, y: 52 },
+      { id: 10, x: 40, y: 20 },
+      { id: 11, x: 60, y: 20 },
+    ],
+  },
+  custom: {
+    custom: [],
+  },
 };
 
+const getFormationEntries = (pitchSize: PitchSize) =>
+  Object.entries(formationsBySize[pitchSize]) as [FormationKey, Omit<Player, "position" | "starterName" | "substituteName" | "extraNames">[]][];
+
+const getDefaultFormation = (pitchSize: PitchSize) => getFormationEntries(pitchSize)[0][0];
+
+const createCustomFormationPoints = (count: number) => {
+  const playerCount = Math.min(11, Math.max(1, Math.round(count)));
+  if (playerCount === 1) {
+    return [{ id: 1, x: 50, y: 90 }];
+  }
+
+  const rows = [
+    { y: 72, slots: Math.min(4, Math.max(1, Math.ceil((playerCount - 1) * 0.35))) },
+    { y: 48, slots: Math.min(5, Math.max(1, Math.ceil((playerCount - 1) * 0.4))) },
+    { y: 22, slots: 0 },
+  ];
+  rows[2].slots = Math.max(0, playerCount - 1 - rows[0].slots - rows[1].slots);
+
+  const points = [{ id: 1, x: 50, y: 90 }];
+  rows.forEach((row) => {
+    const slots = row.slots;
+    if (slots <= 0) return;
+
+    Array.from({ length: slots }).forEach((_, index) => {
+      const x = slots === 1 ? 50 : 16 + (68 / (slots - 1)) * index;
+      points.push({ id: points.length + 1, x, y: row.y });
+    });
+  });
+
+  return points.slice(0, playerCount);
+};
+
+const getFormationPoints = (pitchSize: PitchSize, formation: FormationKey, customCount = 8) =>
+  pitchSize === "custom"
+    ? createCustomFormationPoints(customCount)
+    : formationsBySize[pitchSize][formation] ?? formationsBySize[pitchSize][getDefaultFormation(pitchSize)]!;
+
+const isPitchSize = (value: unknown): value is PitchSize =>
+  value === "custom" || (typeof value === "number" && pitchSizes.includes(value as PitchSize));
+
 const createPlayers = (
+  pitchSize: PitchSize,
   formation: FormationKey,
+  customCount: number,
   roster?: Pick<Player, "starterName" | "substituteName" | "extraNames">[],
 ): Player[] =>
-  formations[formation].map((point, index) => ({
+  getFormationPoints(pitchSize, formation, customCount).map((point, index) => ({
     ...point,
-    position: getZoneName(point.x, point.y),
+    position: getZoneName(pitchSize, point.x, point.y),
     starterName: roster?.[index]?.starterName ?? "",
     substituteName: roster?.[index]?.substituteName ?? "",
     extraNames: roster?.[index]?.extraNames ?? [],
   }));
 
 const isFormationKey = (value: unknown): value is FormationKey =>
-  typeof value === "string" && Object.prototype.hasOwnProperty.call(formations, value);
+  typeof value === "string" &&
+  pitchSizes.some((pitchSize) => Object.prototype.hasOwnProperty.call(formationsBySize[pitchSize], value));
 
 const clampCoordinate = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(96, Math.max(4, value)) : fallback;
 
-const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] =>
-  formations[sharedLineup.formation].map((point) => {
+const clampCustomCount = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) ? Math.min(11, Math.max(1, Math.round(value))) : 8;
+
+const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] => {
+  const pitchSize = sharedLineup.pitchSize ?? 7;
+  const customCount = clampCustomCount(sharedLineup.customCount);
+  return getFormationPoints(pitchSize, sharedLineup.formation, customCount).map((point) => {
     const sharedPlayer = sharedLineup.players.find((player) => player.id === point.id);
     const x = clampCoordinate(sharedPlayer?.x, point.x);
     const y = clampCoordinate(sharedPlayer?.y, point.y);
@@ -101,15 +284,18 @@ const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] =>
       ...point,
       x,
       y,
-      position: getZoneName(x, y),
+      position: getZoneName(pitchSize, x, y),
       starterName: sharedPlayer?.starterName ?? "",
       substituteName: sharedPlayer?.substituteName ?? "",
       extraNames: Array.isArray(sharedPlayer?.extraNames) ? sharedPlayer.extraNames : [],
     };
   });
+};
 
-const encodeSharePayload = (formation: FormationKey, players: Player[]) => {
+const encodeSharePayload = (pitchSize: PitchSize, formation: FormationKey, customCount: number, players: Player[]) => {
   const payload: SharedLineup = {
+    pitchSize,
+    customCount: pitchSize === "custom" ? customCount : undefined,
     formation,
     players: players.map(({ id, starterName, substituteName, extraNames, x, y }) => ({
       id,
@@ -135,11 +321,15 @@ const decodeSharePayload = (value: string): SharedLineup | null => {
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
     const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<SharedLineup>;
 
-    if (!isFormationKey(parsed.formation) || !Array.isArray(parsed.players)) {
+    const pitchSize = isPitchSize(parsed.pitchSize) ? parsed.pitchSize : 7;
+
+    if (!isFormationKey(parsed.formation) || !formationsBySize[pitchSize][parsed.formation] || !Array.isArray(parsed.players)) {
       return null;
     }
 
     return {
+      pitchSize,
+      customCount: clampCustomCount(parsed.customCount),
       formation: parsed.formation,
       players: parsed.players.filter((player) => typeof player?.id === "number") as SharedLineup["players"],
     };
@@ -194,15 +384,18 @@ const drawCenteredLabel = (
 
 function App() {
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
+  const [pitchSize, setPitchSize] = useState<PitchSize>(() => sharedLineup?.pitchSize ?? 7);
   const [formation, setFormation] = useState<FormationKey>(() => sharedLineup?.formation ?? "2-3-1");
+  const [customCount, setCustomCount] = useState(() => clampCustomCount(sharedLineup?.customCount));
   const [players, setPlayers] = useState<Player[]>(() =>
-    sharedLineup ? createPlayersFromSharedLineup(sharedLineup) : createPlayers("2-3-1"),
+    sharedLineup ? createPlayersFromSharedLineup(sharedLineup) : createPlayers(7, "2-3-1", 8),
   );
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const pitchRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const benchCount = getBenchCount(players);
+  const formationEntries = getFormationEntries(pitchSize);
 
   const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
     const pitch = pitchRef.current;
@@ -217,7 +410,7 @@ function App() {
         player.id === id
           ? {
               ...player,
-              position: getZoneName(x, y),
+              position: getZoneName(pitchSize, x, y),
               x,
               y,
             }
@@ -291,11 +484,26 @@ function App() {
 
   const applyFormation = (nextFormation: FormationKey) => {
     setFormation(nextFormation);
-    setPlayers((current) => createPlayers(nextFormation, current));
+    setPlayers((current) => createPlayers(pitchSize, nextFormation, customCount, current));
+  };
+
+  const applyPitchSize = (nextPitchSize: PitchSize) => {
+    const nextFormation = getDefaultFormation(nextPitchSize);
+    setPitchSize(nextPitchSize);
+    setFormation(nextFormation);
+    setPlayers((current) => createPlayers(nextPitchSize, nextFormation, customCount, current));
+  };
+
+  const applyCustomCount = (nextCount: number) => {
+    const count = clampCustomCount(nextCount);
+    setCustomCount(count);
+    setPitchSize("custom");
+    setFormation("custom");
+    setPlayers((current) => createPlayers("custom", "custom", count, current));
   };
 
   const resetPositions = () => {
-    setPlayers((current) => createPlayers(formation, current));
+    setPlayers((current) => createPlayers(pitchSize, formation, customCount, current));
   };
 
   const clearNames = () => {
@@ -306,7 +514,7 @@ function App() {
 
   const copyShareLink = async () => {
     const url = new URL(window.location.href);
-    url.searchParams.set("lineup", encodeSharePayload(formation, players));
+    url.searchParams.set("lineup", encodeSharePayload(pitchSize, formation, customCount, players));
 
     try {
       await navigator.clipboard.writeText(url.toString());
@@ -402,28 +610,40 @@ function App() {
     const pngUrl = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.href = pngUrl;
-    link.download = `7-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = `${pitchSize}-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
     link.click();
   };
 
   return (
     <main className="match-bg min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10">
-      <header className="app-title-bar mx-auto flex w-full max-w-5xl items-center justify-center shadow-2xl">
-        <h1>7 LINEUP FOOTBALL</h1>
+      <header className="app-title-bar mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-3 shadow-2xl">
+        <h1>Line Up Football</h1>
+        <div className="pitch-size-switch header-pitch-size-switch" aria-label="Choose pitch size">
+          {pitchOptions.map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => applyPitchSize(option.value)}
+              className={pitchSize === option.value ? "active" : ""}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </header>
       <div className="dashboard-shell mx-auto grid w-full max-w-5xl overflow-hidden shadow-2xl">
         <div className="content-grid">
             <section className="stats-column">
               <div className="panel-heading">
                 <span>Squad editor</span>
-                <strong>{benchCount}/7 subs</strong>
+                <strong>{benchCount}/{players.length} subs</strong>
               </div>
               <div className="squad-editor">
                 {players.map((player) => (
                   <div key={player.id} className="squad-row">
                     <div className="squad-row-header">
                       <span>{player.id}</span>
-                      <strong>Position {player.id}</strong>
+                      <strong>{player.position}</strong>
                       <button
                         type="button"
                         onClick={() => addPlayerInput(player.id)}
@@ -468,7 +688,7 @@ function App() {
 
             <section className="lineup-column">
               <div className="lineup-header">
-                <span>Line up</span>
+                <span>{pitchSize === "custom" ? "Cá nhân hóa" : `Sân ${pitchSize}`} line up</span>
                 <div className="lineup-header-actions">
                   <button type="button" className="share-button" onClick={copyShareLink}>
                     {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
@@ -485,17 +705,31 @@ function App() {
                 </div>
               </div>
               <div className="formation-switch">
-                {(Object.keys(formations) as FormationKey[]).map((item) => (
+                {formationEntries.map(([item]) => (
                   <button
                     key={item}
                     type="button"
                     onClick={() => applyFormation(item)}
                     className={formation === item ? "active" : ""}
                   >
-                    {item}
+                    {item === "custom" ? "Tự tạo" : item}
                   </button>
                 ))}
               </div>
+              {pitchSize === "custom" ? (
+                <div className="custom-lineup-control">
+                  <label>
+                    <span>Số cầu thủ</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={11}
+                      value={customCount}
+                      onChange={(event) => applyCustomCount(Number(event.target.value))}
+                    />
+                  </label>
+                </div>
+              ) : null}
 
               <div
                 ref={pitchRef}
