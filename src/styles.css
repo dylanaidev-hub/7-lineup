@@ -184,9 +184,14 @@ body {
 .pitch-size-switch,
 .formation-switch {
   display: flex;
+  align-items: center;
   gap: 8px;
   padding: 10px 12px;
   background: #43ad5e;
+}
+
+.custom-formation-switch {
+  justify-content: space-between;
 }
 
 .pitch-size-switch {
@@ -223,6 +228,24 @@ body {
   color: #2e994c;
 }
 
+.draw-history-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.draw-history-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.draw-history-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .custom-lineup-control {
   display: flex;
   align-items: center;
@@ -255,6 +278,90 @@ body {
   font-weight: 950;
   text-align: center;
   outline: none;
+}
+
+.custom-player-tray,
+.opponent-tray {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+  background: #43ad5e;
+}
+
+.custom-player-tray > span,
+.opponent-tray > span {
+  color: #eaffef;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.custom-player-dot-list,
+.opponent-dot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.custom-player-dot {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  place-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f8fafc 0%, #d7dee7 100%);
+  color: #111827;
+  font-size: 11px;
+  font-weight: 950;
+  cursor: grab;
+  touch-action: none;
+  box-shadow:
+    0 5px 9px rgba(0, 0, 0, 0.24),
+    inset 0 2px 0 rgba(255, 255, 255, 0.68);
+}
+
+.opponent-dot,
+.opponent-pitch-dot {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #dc2626;
+  box-shadow:
+    0 5px 9px rgba(0, 0, 0, 0.24),
+    inset 0 2px 0 rgba(255, 255, 255, 0.24);
+  cursor: grab;
+  touch-action: none;
+}
+
+.opponent-dot {
+  padding: 0;
+}
+
+.opponent-dot.placed {
+  opacity: 0.45;
+}
+
+.opponent-pitch-dot {
+  position: absolute;
+  z-index: 12;
+  padding: 0;
+  transform: translate(-50%, -50%);
+}
+
+.opponent-dot:active,
+.opponent-pitch-dot:active {
+  cursor: grabbing;
+}
+
+.opponent-pitch-dot.dragging {
+  outline: 4px solid rgba(254, 202, 202, 0.8);
 }
 
 .pitch {
@@ -397,6 +504,11 @@ body {
   text-transform: uppercase;
 }
 
+.lineup-header-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .lineup-header-actions button:last-child {
   background: #2f3747;
 }
@@ -408,6 +520,27 @@ body {
 
 .lineup-header-actions .download-button {
   background: #173325;
+}
+
+.lineup-header-actions .draw-button.active {
+  background: #facc15;
+  color: #173325;
+}
+
+.draw-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}
+
+.pitch.draw-mode {
+  cursor: crosshair;
+}
+
+.pitch.draw-mode .player-token,
+.pitch.draw-mode .opponent-pitch-dot {
+  cursor: crosshair;
 }
 
 @media (max-width: 900px) {

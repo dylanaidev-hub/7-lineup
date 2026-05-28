@@ -1,6 +1,6 @@
 import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { Check, Clipboard, Download, Plus, Trash2 } from "lucide-react";
+import { Check, Clipboard, Download, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import "./styles.css";
 
 type Player = {
@@ -11,6 +11,25 @@ type Player = {
   extraNames: string[];
   x: number;
   y: number;
+  onPitch: boolean;
+};
+
+type FormationPoint = {
+  id: number;
+  x: number;
+  y: number;
+};
+
+type OpponentMarker = {
+  id: number;
+  x: number;
+  y: number;
+  onPitch: boolean;
+};
+
+type DrawLine = {
+  id: number;
+  points: { x: number; y: number }[];
 };
 
 type PitchSize = 5 | 7 | 11 | "custom";
@@ -37,7 +56,7 @@ type SharedLineup = {
   pitchSize?: PitchSize;
   customCount?: number;
   formation: FormationKey;
-  players: Pick<Player, "id" | "starterName" | "substituteName" | "extraNames" | "x" | "y">[];
+  players: Pick<Player, "id" | "starterName" | "substituteName" | "extraNames" | "x" | "y" | "onPitch">[];
 };
 
 const pitchSizes: PitchSize[] = [5, 7, 11];
@@ -47,6 +66,14 @@ const pitchOptions: { value: PitchSize; label: string }[] = [
   { value: 11, label: "Sân 11" },
   { value: "custom", label: "Cá nhân hóa" },
 ];
+
+const createOpponentMarkers = (): OpponentMarker[] =>
+  Array.from({ length: 11 }, (_, index) => ({
+    id: index + 1,
+    x: 50,
+    y: 50,
+    onPitch: false,
+  }));
 
 const pitchZonesBySize: Record<PitchSize, PitchZone[]> = {
   5: [
@@ -108,7 +135,7 @@ const getZoneName = (pitchSize: PitchSize, x: number, y: number) =>
 
 const formationsBySize: Record<
   PitchSize,
-  Partial<Record<FormationKey, Omit<Player, "position" | "starterName" | "substituteName" | "extraNames">[]>>
+  Partial<Record<FormationKey, FormationPoint[]>>
 > = {
   5: {
     "1-2-1": [
@@ -209,40 +236,39 @@ const formationsBySize: Record<
 };
 
 const getFormationEntries = (pitchSize: PitchSize) =>
-  Object.entries(formationsBySize[pitchSize]) as [FormationKey, Omit<Player, "position" | "starterName" | "substituteName" | "extraNames">[]][];
+  Object.entries(formationsBySize[pitchSize]) as [FormationKey, FormationPoint[]][];
 
 const getDefaultFormation = (pitchSize: PitchSize) => getFormationEntries(pitchSize)[0][0];
 
 const createCustomFormationPoints = (count: number) => {
   const playerCount = Math.min(11, Math.max(1, Math.round(count)));
-  if (playerCount === 1) {
-    return [{ id: 1, x: 50, y: 90 }];
+  const baseFive: FormationPoint[] = [
+    { id: 1, x: 50, y: 90 },
+    { id: 2, x: 50, y: 70 },
+    { id: 3, x: 35, y: 48 },
+    { id: 4, x: 65, y: 48 },
+    { id: 5, x: 50, y: 22 },
+  ];
+
+  if (playerCount <= 5) {
+    return baseFive.slice(0, playerCount);
   }
 
-  const rows = [
-    { y: 72, slots: Math.min(4, Math.max(1, Math.ceil((playerCount - 1) * 0.35))) },
-    { y: 48, slots: Math.min(5, Math.max(1, Math.ceil((playerCount - 1) * 0.4))) },
-    { y: 22, slots: 0 },
+  const extraPoints: FormationPoint[] = [
+    { id: 6, x: 24, y: 70 },
+    { id: 7, x: 76, y: 70 },
+    { id: 8, x: 50, y: 48 },
+    { id: 9, x: 24, y: 30 },
+    { id: 10, x: 76, y: 30 },
+    { id: 11, x: 50, y: 14 },
   ];
-  rows[2].slots = Math.max(0, playerCount - 1 - rows[0].slots - rows[1].slots);
 
-  const points = [{ id: 1, x: 50, y: 90 }];
-  rows.forEach((row) => {
-    const slots = row.slots;
-    if (slots <= 0) return;
-
-    Array.from({ length: slots }).forEach((_, index) => {
-      const x = slots === 1 ? 50 : 16 + (68 / (slots - 1)) * index;
-      points.push({ id: points.length + 1, x, y: row.y });
-    });
-  });
-
-  return points.slice(0, playerCount);
+  return [...baseFive, ...extraPoints].slice(0, playerCount);
 };
 
 const getFormationPoints = (pitchSize: PitchSize, formation: FormationKey, customCount = 8) =>
   pitchSize === "custom"
-    ? createCustomFormationPoints(customCount)
+    ? createCustomFormationPoints(11)
     : formationsBySize[pitchSize][formation] ?? formationsBySize[pitchSize][getDefaultFormation(pitchSize)]!;
 
 const isPitchSize = (value: unknown): value is PitchSize =>
@@ -252,7 +278,7 @@ const createPlayers = (
   pitchSize: PitchSize,
   formation: FormationKey,
   customCount: number,
-  roster?: Pick<Player, "starterName" | "substituteName" | "extraNames">[],
+  roster?: Pick<Player, "starterName" | "substituteName" | "extraNames" | "onPitch">[],
 ): Player[] =>
   getFormationPoints(pitchSize, formation, customCount).map((point, index) => ({
     ...point,
@@ -260,6 +286,7 @@ const createPlayers = (
     starterName: roster?.[index]?.starterName ?? "",
     substituteName: roster?.[index]?.substituteName ?? "",
     extraNames: roster?.[index]?.extraNames ?? [],
+    onPitch: pitchSize === "custom" ? (roster?.[index]?.onPitch ?? index < customCount) : true,
   }));
 
 const isFormationKey = (value: unknown): value is FormationKey =>
@@ -270,7 +297,7 @@ const clampCoordinate = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(96, Math.max(4, value)) : fallback;
 
 const clampCustomCount = (value: unknown) =>
-  typeof value === "number" && Number.isFinite(value) ? Math.min(11, Math.max(1, Math.round(value))) : 8;
+  typeof value === "number" && Number.isFinite(value) ? Math.min(11, Math.max(0, Math.round(value))) : 0;
 
 const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] => {
   const pitchSize = sharedLineup.pitchSize ?? 7;
@@ -288,6 +315,7 @@ const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] => 
       starterName: sharedPlayer?.starterName ?? "",
       substituteName: sharedPlayer?.substituteName ?? "",
       extraNames: Array.isArray(sharedPlayer?.extraNames) ? sharedPlayer.extraNames : [],
+      onPitch: pitchSize === "custom" ? (sharedPlayer?.onPitch ?? point.id <= customCount) : true,
     };
   });
 };
@@ -297,13 +325,14 @@ const encodeSharePayload = (pitchSize: PitchSize, formation: FormationKey, custo
     pitchSize,
     customCount: pitchSize === "custom" ? customCount : undefined,
     formation,
-    players: players.map(({ id, starterName, substituteName, extraNames, x, y }) => ({
+    players: players.map(({ id, starterName, substituteName, extraNames, x, y, onPitch }) => ({
       id,
       starterName,
       substituteName,
       extraNames,
       x: Math.round(x * 10) / 10,
       y: Math.round(y * 10) / 10,
+      onPitch,
     })),
   };
   const json = JSON.stringify(payload);
@@ -388,38 +417,163 @@ function App() {
   const [formation, setFormation] = useState<FormationKey>(() => sharedLineup?.formation ?? "2-3-1");
   const [customCount, setCustomCount] = useState(() => clampCustomCount(sharedLineup?.customCount));
   const [players, setPlayers] = useState<Player[]>(() =>
-    sharedLineup ? createPlayersFromSharedLineup(sharedLineup) : createPlayers(7, "2-3-1", 8),
+    sharedLineup ? createPlayersFromSharedLineup(sharedLineup) : createPlayers(7, "2-3-1", 5),
   );
+  const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(createOpponentMarkers);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [draggingOpponentId, setDraggingOpponentId] = useState<number | null>(null);
+  const [isDrawMode, setIsDrawMode] = useState(false);
+  const [drawLines, setDrawLines] = useState<DrawLine[]>([]);
+  const [redoDrawLines, setRedoDrawLines] = useState<DrawLine[]>([]);
+  const [activeDrawLineId, setActiveDrawLineId] = useState<number | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const pitchRef = useRef<HTMLDivElement>(null);
+  const drawLayerRef = useRef<SVGSVGElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
-  const benchCount = getBenchCount(players);
+  const activePlayers = pitchSize === "custom" ? players.filter((player) => player.onPitch) : players;
+  const inactiveCustomPlayers = pitchSize === "custom" ? players.filter((player) => !player.onPitch) : [];
+  const benchCount = getBenchCount(activePlayers);
   const formationEntries = getFormationEntries(pitchSize);
 
-  const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
+  const getPitchPointerPosition = (event: ReactPointerEvent<Element>, options: { clamp?: boolean } = {}) => {
     const pitch = pitchRef.current;
-    if (!pitch) return;
+    if (!pitch) return null;
 
     const rect = pitch.getBoundingClientRect();
-    const x = Math.min(96, Math.max(4, ((event.clientX - rect.left) / rect.width) * 100));
-    const y = Math.min(96, Math.max(4, ((event.clientY - rect.top) / rect.height) * 100));
+    const styles = window.getComputedStyle(pitch);
+    const borderLeft = Number.parseFloat(styles.borderLeftWidth) || 0;
+    const borderTop = Number.parseFloat(styles.borderTopWidth) || 0;
+    const contentLeft = rect.left + borderLeft;
+    const contentTop = rect.top + borderTop;
+    const contentWidth = pitch.clientWidth;
+    const contentHeight = pitch.clientHeight;
+    const rawX = ((event.clientX - contentLeft) / contentWidth) * 100;
+    const rawY = ((event.clientY - contentTop) / contentHeight) * 100;
+    const shouldClamp = options.clamp ?? true;
 
-    setPlayers((current) =>
-      current.map((player) =>
+    return {
+      isInside: rawX >= 0 && rawX <= 100 && rawY >= 0 && rawY <= 100,
+      x: shouldClamp ? Math.min(96, Math.max(4, rawX)) : rawX,
+      y: shouldClamp ? Math.min(96, Math.max(4, rawY)) : rawY,
+    };
+  };
+
+  const getDrawPointerPosition = (event: ReactPointerEvent<Element>) => {
+    const drawLayer = drawLayerRef.current;
+    if (!drawLayer) return null;
+
+    const rect = drawLayer.getBoundingClientRect();
+    const rawX = ((event.clientX - rect.left) / rect.width) * 100;
+    const rawY = ((event.clientY - rect.top) / rect.height) * 100;
+
+    return {
+      isInside: rawX >= 0 && rawX <= 100 && rawY >= 0 && rawY <= 100,
+      x: rawX,
+      y: rawY,
+    };
+  };
+
+  const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
+    const position = getPitchPointerPosition(event);
+    if (!position) return;
+
+    setPlayers((current) => {
+      const nextPlayers = current.map((player) =>
         player.id === id
           ? {
               ...player,
-              position: getZoneName(pitchSize, x, y),
-              x,
-              y,
+              position: getZoneName(pitchSize, position.x, position.y),
+              x: position.x,
+              y: position.y,
+              onPitch: pitchSize === "custom" ? position.isInside : true,
             }
           : player,
+      );
+
+      if (pitchSize === "custom") {
+        setCustomCount(nextPlayers.filter((player) => player.onPitch).length);
+      }
+
+      return nextPlayers;
+    });
+  };
+
+  const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number) => {
+    const position = getPitchPointerPosition(event);
+    if (!position) return;
+
+    setOpponentMarkers((current) =>
+      current.map((marker) =>
+        marker.id === id
+          ? {
+              ...marker,
+              onPitch: position.isInside,
+              x: position.x,
+              y: position.y,
+            }
+          : marker,
       ),
     );
   };
 
+  const startDrawing = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isDrawMode) return;
+    const position = getDrawPointerPosition(event);
+    if (!position?.isInside) return;
+
+    const lineId = Date.now();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setActiveDrawLineId(lineId);
+    setRedoDrawLines([]);
+    setDrawLines((current) => [...current, { id: lineId, points: [{ x: position.x, y: position.y }] }]);
+  };
+
+  const continueDrawing = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isDrawMode || activeDrawLineId === null) return;
+    const position = getDrawPointerPosition(event);
+    if (!position) return;
+
+    setDrawLines((current) =>
+      current.map((line) =>
+        line.id === activeDrawLineId
+          ? { ...line, points: [...line.points, { x: position.x, y: position.y }] }
+          : line,
+      ),
+    );
+  };
+
+  const stopDrawing = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setActiveDrawLineId(null);
+  };
+
+  const undoDrawLine = () => {
+    setDrawLines((current) => {
+      if (current.length === 0) return current;
+      const removedLine = current[current.length - 1];
+      setRedoDrawLines((redoCurrent) => [removedLine, ...redoCurrent]);
+      return current.slice(0, -1);
+    });
+  };
+
+  const redoDrawLine = () => {
+    setRedoDrawLines((current) => {
+      if (current.length === 0) return current;
+      const [restoredLine, ...remainingLines] = current;
+      setDrawLines((drawCurrent) => [...drawCurrent, restoredLine]);
+      return remainingLines;
+    });
+  };
+
+  const clearDrawLines = () => {
+    setDrawLines([]);
+    setRedoDrawLines([]);
+  };
+
   const handleDragStart = (event: ReactPointerEvent<HTMLElement>, id: number) => {
+    if (isDrawMode) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingId(id);
     dragStartRef.current = { id, x: event.clientX, y: event.clientY };
@@ -443,6 +597,25 @@ function App() {
     }
     setDraggingId(null);
     dragStartRef.current = null;
+  };
+
+  const handleOpponentDragStart = (event: ReactPointerEvent<HTMLElement>, id: number) => {
+    if (isDrawMode) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingOpponentId(id);
+    updateOpponentPosition(event, id);
+  };
+
+  const handleOpponentDragMove = (event: ReactPointerEvent<HTMLElement>, id: number) => {
+    if (draggingOpponentId !== id) return;
+    updateOpponentPosition(event, id);
+  };
+
+  const stopOpponentDragging = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDraggingOpponentId(null);
   };
 
   const renamePlayer = (id: number, field: "starterName" | "substituteName", name: string) => {
@@ -485,13 +658,25 @@ function App() {
   const applyFormation = (nextFormation: FormationKey) => {
     setFormation(nextFormation);
     setPlayers((current) => createPlayers(pitchSize, nextFormation, customCount, current));
+    if (pitchSize === "custom") {
+      setOpponentMarkers(createOpponentMarkers());
+      setDrawLines([]);
+      setRedoDrawLines([]);
+      setIsDrawMode(false);
+    }
   };
 
   const applyPitchSize = (nextPitchSize: PitchSize) => {
     const nextFormation = getDefaultFormation(nextPitchSize);
+    const nextCustomCount = nextPitchSize === "custom" ? 5 : customCount;
     setPitchSize(nextPitchSize);
     setFormation(nextFormation);
-    setPlayers((current) => createPlayers(nextPitchSize, nextFormation, customCount, current));
+    setCustomCount(nextCustomCount);
+    setPlayers((current) => createPlayers(nextPitchSize, nextFormation, nextCustomCount, current));
+    setOpponentMarkers(createOpponentMarkers());
+    setDrawLines([]);
+    setRedoDrawLines([]);
+    setIsDrawMode(false);
   };
 
   const applyCustomCount = (nextCount: number) => {
@@ -500,21 +685,44 @@ function App() {
     setPitchSize("custom");
     setFormation("custom");
     setPlayers((current) => createPlayers("custom", "custom", count, current));
+    setOpponentMarkers(createOpponentMarkers());
+    setDrawLines([]);
+    setRedoDrawLines([]);
+    setIsDrawMode(false);
   };
 
   const resetPositions = () => {
-    setPlayers((current) => createPlayers(pitchSize, formation, customCount, current));
+    const nextCustomCount = pitchSize === "custom" ? activePlayers.length || 5 : customCount;
+    if (pitchSize === "custom") {
+      setCustomCount(nextCustomCount);
+    }
+    setPlayers((current) => createPlayers(pitchSize, formation, nextCustomCount, current));
+    if (pitchSize === "custom") {
+      setOpponentMarkers(createOpponentMarkers());
+      setDrawLines([]);
+      setRedoDrawLines([]);
+      setIsDrawMode(false);
+    }
   };
 
   const clearNames = () => {
     setPlayers((current) =>
       current.map((player) => ({ ...player, starterName: "", substituteName: "", extraNames: [] })),
     );
+    if (pitchSize === "custom") {
+      setOpponentMarkers(createOpponentMarkers());
+      setDrawLines([]);
+      setRedoDrawLines([]);
+      setIsDrawMode(false);
+    }
   };
 
   const copyShareLink = async () => {
     const url = new URL(window.location.href);
-    url.searchParams.set("lineup", encodeSharePayload(pitchSize, formation, customCount, players));
+    url.searchParams.set(
+      "lineup",
+      encodeSharePayload(pitchSize, formation, pitchSize === "custom" ? activePlayers.length : customCount, players),
+    );
 
     try {
       await navigator.clipboard.writeText(url.toString());
@@ -571,7 +779,7 @@ function App() {
     context.strokeRect(px(26), py(81), px(48), py(15));
     context.strokeRect(px(37), py(89), px(26), py(7));
 
-    players.forEach((player) => {
+    activePlayers.forEach((player) => {
       const x = px(player.x);
       const y = py(player.y);
       const starterName = player.starterName.trim() || `Player ${player.id}`;
@@ -607,6 +815,38 @@ function App() {
       }
     });
 
+    if (pitchSize === "custom") {
+      drawLines.forEach((line) => {
+        if (line.points.length < 2) return;
+        context.save();
+        context.strokeStyle = "#facc15";
+        context.lineWidth = 9;
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.beginPath();
+        context.moveTo(px(line.points[0].x), py(line.points[0].y));
+        line.points.slice(1).forEach((point) => context.lineTo(px(point.x), py(point.y)));
+        context.stroke();
+        context.restore();
+      });
+    }
+
+    if (pitchSize === "custom") {
+      opponentMarkers
+        .filter((marker) => marker.onPitch)
+        .forEach((marker) => {
+          context.save();
+          context.fillStyle = "#dc2626";
+          context.strokeStyle = "#ffffff";
+          context.lineWidth = 5;
+          context.beginPath();
+          context.arc(px(marker.x), py(marker.y), 18, 0, Math.PI * 2);
+          context.fill();
+          context.stroke();
+          context.restore();
+        });
+    }
+
     const pngUrl = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.href = pngUrl;
@@ -636,10 +876,10 @@ function App() {
             <section className="stats-column">
               <div className="panel-heading">
                 <span>Squad editor</span>
-                <strong>{benchCount}/{players.length} subs</strong>
+                <strong>{benchCount}/{activePlayers.length} subs</strong>
               </div>
               <div className="squad-editor">
-                {players.map((player) => (
+                {activePlayers.map((player) => (
                   <div key={player.id} className="squad-row">
                     <div className="squad-row-header">
                       <span>{player.id}</span>
@@ -698,13 +938,25 @@ function App() {
                     <Download size={14} />
                     Download
                   </button>
+                  {pitchSize === "custom" ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`draw-button ${isDrawMode ? "active" : ""}`}
+                        onClick={() => setIsDrawMode((current) => !current)}
+                      >
+                        <Pencil size={14} />
+                        Draw
+                      </button>
+                    </>
+                  ) : null}
                   <button type="button" onClick={clearNames}>
                     <Trash2 size={14} />
                     Clear
                   </button>
                 </div>
               </div>
-              <div className="formation-switch">
+              <div className={`formation-switch ${pitchSize === "custom" ? "custom-formation-switch" : ""}`}>
                 {formationEntries.map(([item]) => (
                   <button
                     key={item}
@@ -715,25 +967,72 @@ function App() {
                     {item === "custom" ? "Tự tạo" : item}
                   </button>
                 ))}
+                {pitchSize === "custom" ? (
+                  <div className="draw-history-actions">
+                    <button type="button" onClick={undoDrawLine} disabled={drawLines.length === 0}>
+                      <Undo2 size={14} />
+                      Undo
+                    </button>
+                    <button type="button" onClick={redoDrawLine} disabled={redoDrawLines.length === 0}>
+                      <Redo2 size={14} />
+                      Redo
+                    </button>
+                    <button type="button" onClick={clearDrawLines} disabled={drawLines.length === 0}>
+                      Clear Lines
+                    </button>
+                  </div>
+                ) : null}
               </div>
               {pitchSize === "custom" ? (
-                <div className="custom-lineup-control">
-                  <label>
-                    <span>Số cầu thủ</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={11}
-                      value={customCount}
-                      onChange={(event) => applyCustomCount(Number(event.target.value))}
-                    />
-                  </label>
+                <div className="custom-player-tray" aria-label="Custom player tray">
+                  <span>Players</span>
+                  <div className="custom-player-dot-list">
+                    {inactiveCustomPlayers.map((player) => (
+                      <button
+                        key={player.id}
+                        type="button"
+                        className="custom-player-dot"
+                        onPointerDown={(event) => handleDragStart(event, player.id)}
+                        onPointerMove={(event) => handleDragMove(event, player.id)}
+                        onPointerUp={stopDragging}
+                        onPointerCancel={stopDragging}
+                        aria-label={`Drag player ${player.id}`}
+                      >
+                        {player.id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {pitchSize === "custom" ? (
+                <div className="opponent-tray" aria-label="Opponent marker tray">
+                  <span>Opponent</span>
+                  <div className="opponent-dot-list">
+                    {opponentMarkers.map((marker) => (
+                      <button
+                        key={marker.id}
+                        type="button"
+                        className={`opponent-dot ${marker.onPitch ? "placed" : ""}`}
+                        onPointerDown={(event) => handleOpponentDragStart(event, marker.id)}
+                        onPointerMove={(event) => handleOpponentDragMove(event, marker.id)}
+                        onPointerUp={stopOpponentDragging}
+                        onPointerCancel={stopOpponentDragging}
+                        aria-label={`Drag opponent ${marker.id}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
               <div
                 ref={pitchRef}
-                className="pitch relative mx-auto aspect-[7/10] overflow-hidden border-[4px] border-white/80 touch-none select-none"
+                className={`pitch relative mx-auto aspect-[7/10] overflow-hidden border-[4px] border-white/80 touch-none select-none ${
+                  isDrawMode ? "draw-mode" : ""
+                }`}
+                onPointerDown={startDrawing}
+                onPointerMove={continueDrawing}
+                onPointerUp={stopDrawing}
+                onPointerCancel={stopDrawing}
               >
                 <div className="absolute inset-[4%] border-[3px] border-white/90" />
                 <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
@@ -744,7 +1043,28 @@ function App() {
                 <div className="absolute bottom-[4%] left-1/2 h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
                 <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
 
-                {players.map((player) => {
+                <svg
+                  ref={drawLayerRef}
+                  className="draw-layer"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  {drawLines.map((line) => (
+                    <polyline
+                      key={line.id}
+                      points={line.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                      fill="none"
+                      stroke="#facc15"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.15"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                </svg>
+
+                {activePlayers.map((player) => {
                   const starterName = player.starterName.trim() || `Player ${player.id}`;
                   const benchNames = getBenchNames(player);
 
@@ -779,6 +1099,23 @@ function App() {
                     </div>
                   );
                 })}
+                {pitchSize === "custom"
+                  ? opponentMarkers
+                      .filter((marker) => marker.onPitch)
+                      .map((marker) => (
+                        <button
+                          key={`opponent-${marker.id}`}
+                          type="button"
+                          className={`opponent-pitch-dot ${draggingOpponentId === marker.id ? "dragging" : ""}`}
+                          style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+                          onPointerDown={(event) => handleOpponentDragStart(event, marker.id)}
+                          onPointerMove={(event) => handleOpponentDragMove(event, marker.id)}
+                          onPointerUp={stopOpponentDragging}
+                          onPointerCancel={stopOpponentDragging}
+                          aria-label={`Drag opponent ${marker.id}`}
+                        />
+                      ))
+                  : null}
               </div>
             </section>
         </div>
