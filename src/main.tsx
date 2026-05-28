@@ -1,5 +1,6 @@
 import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
+import { toPng } from "html-to-image";
 import { Check, Clipboard, Download, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import "./styles.css";
 
@@ -57,6 +58,8 @@ type SharedLineup = {
   customCount?: number;
   formation: FormationKey;
   players: Pick<Player, "id" | "starterName" | "substituteName" | "extraNames" | "x" | "y" | "onPitch">[];
+  opponentMarkers?: OpponentMarker[];
+  drawLines?: DrawLine[];
 };
 
 const pitchSizes: PitchSize[] = [5, 7, 11];
@@ -296,8 +299,43 @@ const isFormationKey = (value: unknown): value is FormationKey =>
 const clampCoordinate = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(96, Math.max(4, value)) : fallback;
 
+const clampDrawCoordinate = (value: unknown, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : fallback;
+
 const clampCustomCount = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(11, Math.max(0, Math.round(value))) : 0;
+
+const createOpponentMarkersFromSharedLineup = (sharedLineup: SharedLineup): OpponentMarker[] => {
+  const sharedMarkers = Array.isArray(sharedLineup.opponentMarkers) ? sharedLineup.opponentMarkers : [];
+
+  return createOpponentMarkers().map((marker) => {
+    const sharedMarker = sharedMarkers.find((item) => item.id === marker.id);
+    return sharedMarker
+      ? {
+          id: marker.id,
+          x: clampCoordinate(sharedMarker.x, marker.x),
+          y: clampCoordinate(sharedMarker.y, marker.y),
+          onPitch: Boolean(sharedMarker.onPitch),
+        }
+      : marker;
+  });
+};
+
+const createDrawLinesFromSharedLineup = (sharedLineup: SharedLineup): DrawLine[] =>
+  Array.isArray(sharedLineup.drawLines)
+    ? sharedLineup.drawLines
+        .filter((line) => typeof line?.id === "number" && Array.isArray(line.points))
+        .map((line) => ({
+          id: line.id,
+          points: line.points
+            .filter((point) => typeof point?.x === "number" && typeof point?.y === "number")
+            .map((point) => ({
+              x: clampDrawCoordinate(point.x, 50),
+              y: clampDrawCoordinate(point.y, 50),
+            })),
+        }))
+        .filter((line) => line.points.length > 0)
+    : [];
 
 const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] => {
   const pitchSize = sharedLineup.pitchSize ?? 7;
@@ -320,7 +358,14 @@ const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] => 
   });
 };
 
-const encodeSharePayload = (pitchSize: PitchSize, formation: FormationKey, customCount: number, players: Player[]) => {
+const encodeSharePayload = (
+  pitchSize: PitchSize,
+  formation: FormationKey,
+  customCount: number,
+  players: Player[],
+  opponentMarkers: OpponentMarker[],
+  drawLines: DrawLine[],
+) => {
   const payload: SharedLineup = {
     pitchSize,
     customCount: pitchSize === "custom" ? customCount : undefined,
@@ -334,6 +379,25 @@ const encodeSharePayload = (pitchSize: PitchSize, formation: FormationKey, custo
       y: Math.round(y * 10) / 10,
       onPitch,
     })),
+    opponentMarkers:
+      pitchSize === "custom"
+        ? opponentMarkers.map(({ id, x, y, onPitch }) => ({
+            id,
+            x: Math.round(x * 10) / 10,
+            y: Math.round(y * 10) / 10,
+            onPitch,
+          }))
+        : undefined,
+    drawLines:
+      pitchSize === "custom"
+        ? drawLines.map((line) => ({
+            id: line.id,
+            points: line.points.map((point) => ({
+              x: Math.round(point.x * 10) / 10,
+              y: Math.round(point.y * 10) / 10,
+            })),
+          }))
+        : undefined,
   };
   const json = JSON.stringify(payload);
   const bytes = new TextEncoder().encode(json);
@@ -361,6 +425,8 @@ const decodeSharePayload = (value: string): SharedLineup | null => {
       customCount: clampCustomCount(parsed.customCount),
       formation: parsed.formation,
       players: parsed.players.filter((player) => typeof player?.id === "number") as SharedLineup["players"],
+      opponentMarkers: Array.isArray(parsed.opponentMarkers) ? parsed.opponentMarkers : [],
+      drawLines: Array.isArray(parsed.drawLines) ? parsed.drawLines : [],
     };
   } catch {
     return null;
@@ -380,37 +446,6 @@ const getBenchNames = (player: Player) =>
 
 const getBenchCount = (players: Player[]) => players.reduce((total, player) => total + getBenchNames(player).length, 0);
 
-const drawRoundedRect = (
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) => {
-  context.beginPath();
-  context.roundRect(x, y, width, height, radius);
-  context.fill();
-};
-
-const drawCenteredLabel = (
-  context: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  fontSize: number,
-  color = "#ffffff",
-) => {
-  context.font = `900 ${fontSize}px Inter, Arial, sans-serif`;
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillStyle = "rgba(16, 42, 25, 0.64)";
-  drawRoundedRect(context, x - maxWidth / 2, y - fontSize, maxWidth, fontSize * 1.75, fontSize);
-  context.fillStyle = color;
-  context.fillText(text.toUpperCase(), x, y, maxWidth - 12);
-};
-
 function App() {
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
   const [pitchSize, setPitchSize] = useState<PitchSize>(() => sharedLineup?.pitchSize ?? 7);
@@ -419,14 +454,18 @@ function App() {
   const [players, setPlayers] = useState<Player[]>(() =>
     sharedLineup ? createPlayersFromSharedLineup(sharedLineup) : createPlayers(7, "2-3-1", 5),
   );
-  const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(createOpponentMarkers);
+  const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(() =>
+    sharedLineup?.pitchSize === "custom" ? createOpponentMarkersFromSharedLineup(sharedLineup) : createOpponentMarkers(),
+  );
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [draggingOpponentId, setDraggingOpponentId] = useState<number | null>(null);
   const [dragPreview, setDragPreview] = useState<{ type: "player" | "opponent"; id: number; x: number; y: number } | null>(
     null,
   );
   const [isDrawMode, setIsDrawMode] = useState(false);
-  const [drawLines, setDrawLines] = useState<DrawLine[]>([]);
+  const [drawLines, setDrawLines] = useState<DrawLine[]>(() =>
+    sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : [],
+  );
   const [redoDrawLines, setRedoDrawLines] = useState<DrawLine[]>([]);
   const [activeDrawLineId, setActiveDrawLineId] = useState<number | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
@@ -434,7 +473,6 @@ function App() {
   const drawLayerRef = useRef<SVGSVGElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const activePlayers = pitchSize === "custom" ? players.filter((player) => player.onPitch) : players;
-  const inactiveCustomPlayers = pitchSize === "custom" ? players.filter((player) => !player.onPitch) : [];
   const benchCount = getBenchCount(activePlayers);
   const formationEntries = getFormationEntries(pitchSize);
 
@@ -477,26 +515,28 @@ function App() {
   };
 
   const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
-    const position = getPitchPointerPosition(event);
+    const position = getPitchPointerPosition(event, { clamp: pitchSize !== "custom" });
     if (!position) return;
     setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
+
+    if (pitchSize === "custom") return;
 
     setPlayers((current) => {
       const nextPlayers = current.map((player) =>
         player.id === id
           ? {
               ...player,
-              position: getZoneName(pitchSize, position.x, position.y),
-              x: position.x,
-              y: position.y,
-              onPitch: pitchSize === "custom" ? position.isInside : true,
+              position: getZoneName(
+                pitchSize,
+                position.isInside ? Math.min(96, Math.max(4, position.x)) : player.x,
+                position.isInside ? Math.min(96, Math.max(4, position.y)) : player.y,
+              ),
+              x: position.isInside ? Math.min(96, Math.max(4, position.x)) : player.x,
+              y: position.isInside ? Math.min(96, Math.max(4, position.y)) : player.y,
+              onPitch: true,
             }
           : player,
       );
-
-      if (pitchSize === "custom") {
-        setCustomCount(nextPlayers.filter((player) => player.onPitch).length);
-      }
 
       return nextPlayers;
     });
@@ -598,6 +638,31 @@ function App() {
   };
 
   const stopDragging = (event: ReactPointerEvent<HTMLElement>) => {
+    const id = draggingId;
+    if (id !== null && pitchSize === "custom") {
+      const position = getPitchPointerPosition(event, { clamp: false });
+      if (position) {
+        setPlayers((current) => {
+          const nextPlayers = current.map((player) => {
+            if (player.id !== id) return player;
+
+            const x = position.isInside ? Math.min(96, Math.max(4, position.x)) : player.x;
+            const y = position.isInside ? Math.min(96, Math.max(4, position.y)) : player.y;
+
+            return {
+              ...player,
+              position: getZoneName(pitchSize, x, y),
+              x,
+              y,
+              onPitch: position.isInside,
+            };
+          });
+          setCustomCount(nextPlayers.filter((player) => player.onPitch).length);
+          return nextPlayers;
+        });
+      }
+    }
+
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -730,7 +795,14 @@ function App() {
     const url = new URL(window.location.href);
     url.searchParams.set(
       "lineup",
-      encodeSharePayload(pitchSize, formation, pitchSize === "custom" ? activePlayers.length : customCount, players),
+      encodeSharePayload(
+        pitchSize,
+        formation,
+        pitchSize === "custom" ? activePlayers.length : customCount,
+        players,
+        opponentMarkers,
+        drawLines,
+      ),
     );
 
     try {
@@ -743,120 +815,14 @@ function App() {
   };
 
   const downloadLineupImage = async () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 1400;
-    canvas.height = 2000;
+    const pitch = pitchRef.current;
+    if (!pitch) return;
 
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-    const px = (value: number) => (value / 100) * width;
-    const py = (value: number) => (value / 100) * height;
-
-    const fieldGradient = context.createLinearGradient(0, 0, width, height);
-    fieldGradient.addColorStop(0, "#37a84f");
-    fieldGradient.addColorStop(0.5, "#2e9849");
-    fieldGradient.addColorStop(1, "#2a8841");
-    context.fillStyle = fieldGradient;
-    context.fillRect(0, 0, width, height);
-
-    for (let y = 0; y < height; y += 116) {
-      context.fillStyle = "rgba(255,255,255,0.055)";
-      context.fillRect(0, y, width, 58);
-      context.fillStyle = "rgba(0,0,0,0.04)";
-      context.fillRect(0, y + 58, width, 58);
-    }
-
-    context.strokeStyle = "rgba(255,255,255,0.9)";
-    context.lineWidth = 6;
-    context.strokeRect(px(4), py(4), px(92), py(92));
-    context.beginPath();
-    context.moveTo(px(4), py(50));
-    context.lineTo(px(96), py(50));
-    context.stroke();
-    context.beginPath();
-    context.arc(px(50), py(50), px(15.5), 0, Math.PI * 2);
-    context.stroke();
-    context.fillStyle = "#ffffff";
-    context.beginPath();
-    context.arc(px(50), py(50), 8, 0, Math.PI * 2);
-    context.fill();
-    context.strokeRect(px(26), py(4), px(48), py(15));
-    context.strokeRect(px(37), py(4), px(26), py(7));
-    context.strokeRect(px(26), py(81), px(48), py(15));
-    context.strokeRect(px(37), py(89), px(26), py(7));
-
-    activePlayers.forEach((player) => {
-      const x = px(player.x);
-      const y = py(player.y);
-      const starterName = player.starterName.trim() || `Player ${player.id}`;
-      const benchNames = getBenchNames(player);
-
-      context.save();
-      context.shadowColor = "rgba(0,0,0,0.34)";
-      context.shadowBlur = 18;
-      context.shadowOffsetY = 10;
-      context.fillStyle = "#f8fafc";
-      context.beginPath();
-      context.arc(x, y, 44, 0, Math.PI * 2);
-      context.fill();
-      context.shadowColor = "transparent";
-      context.strokeStyle = "#ffffff";
-      context.lineWidth = 8;
-      context.stroke();
-      context.fillStyle = "#111827";
-      context.font = "950 36px Inter, Arial, sans-serif";
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillText(String(player.id), x, y + 1);
-      context.restore();
-
-      drawCenteredLabel(context, starterName, x, y + 62, 170, 18);
-      if (benchNames.length > 0) {
-        context.font = "900 15px Inter, Arial, sans-serif";
-        const labelWidth = Math.min(260, Math.max(120, benchNames.join(" / ").length * 8));
-        context.fillStyle = "rgba(16, 42, 25, 0.58)";
-        drawRoundedRect(context, x - labelWidth / 2, y + 78, labelWidth, 30, 15);
-        context.fillStyle = "#d9ffe6";
-        context.fillText(benchNames.join(" / ").toUpperCase(), x, y + 94, labelWidth - 12);
-      }
+    const pngUrl = await toPng(pitch, {
+      cacheBust: true,
+      pixelRatio: 3,
+      backgroundColor: "#37a84f",
     });
-
-    if (pitchSize === "custom") {
-      drawLines.forEach((line) => {
-        if (line.points.length < 2) return;
-        context.save();
-        context.strokeStyle = "#facc15";
-        context.lineWidth = 9;
-        context.lineCap = "round";
-        context.lineJoin = "round";
-        context.beginPath();
-        context.moveTo(px(line.points[0].x), py(line.points[0].y));
-        line.points.slice(1).forEach((point) => context.lineTo(px(point.x), py(point.y)));
-        context.stroke();
-        context.restore();
-      });
-    }
-
-    if (pitchSize === "custom") {
-      opponentMarkers
-        .filter((marker) => marker.onPitch)
-        .forEach((marker) => {
-          context.save();
-          context.fillStyle = "#dc2626";
-          context.strokeStyle = "#ffffff";
-          context.lineWidth = 5;
-          context.beginPath();
-          context.arc(px(marker.x), py(marker.y), 18, 0, Math.PI * 2);
-          context.fill();
-          context.stroke();
-          context.restore();
-        });
-    }
-
-    const pngUrl = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.href = pngUrl;
     link.download = `${pitchSize}-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
@@ -996,11 +962,11 @@ function App() {
                 <div className="custom-player-tray" aria-label="Custom player tray">
                   <span>Players</span>
                   <div className="custom-player-dot-list">
-                    {inactiveCustomPlayers.map((player) => (
+                    {players.map((player) => (
                       <button
                         key={player.id}
                         type="button"
-                        className="custom-player-dot"
+                        className={`custom-player-dot ${player.onPitch ? "placed" : ""}`}
                         onPointerDown={(event) => handleDragStart(event, player.id)}
                         onPointerMove={(event) => handleDragMove(event, player.id)}
                         onPointerUp={stopDragging}
@@ -1038,10 +1004,6 @@ function App() {
                 className={`pitch relative mx-auto aspect-[7/10] overflow-hidden border-[4px] border-white/80 touch-none select-none ${
                   isDrawMode ? "draw-mode" : ""
                 }`}
-                onPointerDown={startDrawing}
-                onPointerMove={continueDrawing}
-                onPointerUp={stopDrawing}
-                onPointerCancel={stopDrawing}
               >
                 <div className="absolute inset-[4%] border-[3px] border-white/90" />
                 <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
@@ -1072,6 +1034,16 @@ function App() {
                     />
                   ))}
                 </svg>
+                {isDrawMode ? (
+                  <div
+                    className="draw-hit-layer"
+                    onPointerDown={startDrawing}
+                    onPointerMove={continueDrawing}
+                    onPointerUp={stopDrawing}
+                    onPointerCancel={stopDrawing}
+                    aria-hidden="true"
+                  />
+                ) : null}
 
                 {activePlayers.map((player) => {
                   const starterName = player.starterName.trim() || `Player ${player.id}`;
@@ -1084,7 +1056,9 @@ function App() {
                       onPointerMove={(event) => handleDragMove(event, player.id)}
                       onPointerUp={stopDragging}
                       onPointerCancel={stopDragging}
-                      className="player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none"
+                  className={`player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none ${
+                    draggingId === player.id ? "dragging" : ""
+                  }`}
                       style={{ left: `${player.x}%`, top: `${player.y}%` }}
                       role="button"
                       tabIndex={0}
