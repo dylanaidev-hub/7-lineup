@@ -453,6 +453,9 @@ function App() {
   const initialPlayers = sharedLineup
     ? createPlayersFromSharedLineup(sharedLineup)
     : createPlayers(initialPitchSize, initialFormation, initialCustomCount || 5);
+  const initialOpponentMarkers =
+    sharedLineup?.pitchSize === "custom" ? createOpponentMarkersFromSharedLineup(sharedLineup) : createOpponentMarkers();
+  const initialDrawLines = sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : [];
   const [pitchSize, setPitchSize] = useState<PitchSize>(() => sharedLineup?.pitchSize ?? 7);
   const [formation, setFormation] = useState<FormationKey>(() => sharedLineup?.formation ?? "2-3-1");
   const [customCount, setCustomCount] = useState(() => initialCustomCount);
@@ -466,18 +469,22 @@ function App() {
   const [savedCustomCountByPitch, setSavedCustomCountByPitch] = useState<Partial<Record<PitchSize, number>>>(() => ({
     [initialPitchSize]: initialCustomCount,
   }));
-  const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(() =>
-    sharedLineup?.pitchSize === "custom" ? createOpponentMarkersFromSharedLineup(sharedLineup) : createOpponentMarkers(),
-  );
+  const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(() => initialOpponentMarkers);
+  const [savedOpponentMarkersByPitch, setSavedOpponentMarkersByPitch] = useState<
+    Partial<Record<PitchSize, OpponentMarker[]>>
+  >(() => ({
+    [initialPitchSize]: initialOpponentMarkers,
+  }));
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [draggingOpponentId, setDraggingOpponentId] = useState<number | null>(null);
   const [dragPreview, setDragPreview] = useState<{ type: "player" | "opponent"; id: number; x: number; y: number } | null>(
     null,
   );
   const [isDrawMode, setIsDrawMode] = useState(false);
-  const [drawLines, setDrawLines] = useState<DrawLine[]>(() =>
-    sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : [],
-  );
+  const [drawLines, setDrawLines] = useState<DrawLine[]>(() => initialDrawLines);
+  const [savedDrawLinesByPitch, setSavedDrawLinesByPitch] = useState<Partial<Record<PitchSize, DrawLine[]>>>(() => ({
+    [initialPitchSize]: initialDrawLines,
+  }));
   const [redoDrawLines, setRedoDrawLines] = useState<DrawLine[]>([]);
   const [activeDrawLineId, setActiveDrawLineId] = useState<number | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
@@ -759,16 +766,20 @@ function App() {
     setSavedPlayersByPitch((current) => ({ ...current, [pitchSize]: players }));
     setSavedFormationByPitch((current) => ({ ...current, [pitchSize]: formation }));
     setSavedCustomCountByPitch((current) => ({ ...current, [pitchSize]: customCount }));
+    setSavedOpponentMarkersByPitch((current) => ({ ...current, [pitchSize]: opponentMarkers }));
+    setSavedDrawLinesByPitch((current) => ({ ...current, [pitchSize]: drawLines }));
 
     const nextFormation = savedFormationByPitch[nextPitchSize] ?? getDefaultFormation(nextPitchSize);
     const nextCustomCount = savedCustomCountByPitch[nextPitchSize] ?? (nextPitchSize === "custom" ? 5 : customCount);
     const savedPlayers = savedPlayersByPitch[nextPitchSize];
+    const savedOpponentMarkers = savedOpponentMarkersByPitch[nextPitchSize];
+    const savedDrawLines = savedDrawLinesByPitch[nextPitchSize];
     setPitchSize(nextPitchSize);
     setFormation(nextFormation);
     setCustomCount(nextCustomCount);
     setPlayers(savedPlayers ?? createPlayers(nextPitchSize, nextFormation, nextCustomCount));
-    setOpponentMarkers(createOpponentMarkers());
-    setDrawLines([]);
+    setOpponentMarkers(savedOpponentMarkers ?? createOpponentMarkers());
+    setDrawLines(savedDrawLines ?? []);
     setRedoDrawLines([]);
     setIsDrawMode(false);
   };
