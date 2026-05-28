@@ -364,6 +364,36 @@ body {
   outline: 4px solid rgba(254, 202, 202, 0.8);
 }
 
+.drag-preview {
+  position: fixed;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0.9;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.32));
+}
+
+.drag-preview.player-preview {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f8fafc 0%, #d7dee7 100%);
+  color: #111827;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.drag-preview.opponent-preview {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #dc2626;
+}
+
 .pitch {
   align-self: center;
   flex: 0 1 auto;

@@ -422,6 +422,9 @@ function App() {
   const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(createOpponentMarkers);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [draggingOpponentId, setDraggingOpponentId] = useState<number | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ type: "player" | "opponent"; id: number; x: number; y: number } | null>(
+    null,
+  );
   const [isDrawMode, setIsDrawMode] = useState(false);
   const [drawLines, setDrawLines] = useState<DrawLine[]>([]);
   const [redoDrawLines, setRedoDrawLines] = useState<DrawLine[]>([]);
@@ -476,6 +479,7 @@ function App() {
   const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
     const position = getPitchPointerPosition(event);
     if (!position) return;
+    setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
 
     setPlayers((current) => {
       const nextPlayers = current.map((player) =>
@@ -501,6 +505,7 @@ function App() {
   const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number) => {
     const position = getPitchPointerPosition(event);
     if (!position) return;
+    setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
 
     setOpponentMarkers((current) =>
       current.map((marker) =>
@@ -576,6 +581,7 @@ function App() {
     if (isDrawMode) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingId(id);
+    setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
     dragStartRef.current = { id, x: event.clientX, y: event.clientY };
   };
 
@@ -596,6 +602,7 @@ function App() {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     setDraggingId(null);
+    setDragPreview(null);
     dragStartRef.current = null;
   };
 
@@ -603,6 +610,7 @@ function App() {
     if (isDrawMode) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingOpponentId(id);
+    setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
     updateOpponentPosition(event, id);
   };
 
@@ -616,6 +624,7 @@ function App() {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     setDraggingOpponentId(null);
+    setDragPreview(null);
   };
 
   const renamePlayer = (id: number, field: "starterName" | "substituteName", name: string) => {
@@ -1120,6 +1129,15 @@ function App() {
             </section>
         </div>
       </div>
+      {dragPreview ? (
+        <div
+          className={`drag-preview ${dragPreview.type === "opponent" ? "opponent-preview" : "player-preview"}`}
+          style={{ left: dragPreview.x, top: dragPreview.y }}
+          aria-hidden="true"
+        >
+          {dragPreview.type === "player" ? dragPreview.id : null}
+        </div>
+      ) : null}
     </main>
   );
 }
