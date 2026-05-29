@@ -1,4 +1,4 @@
-import React, { PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
+import React, { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { Check, Clipboard, Download, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import "./styles.css";
@@ -60,6 +60,23 @@ type SharedLineup = {
   opponentMarkers?: OpponentMarker[];
   drawLines?: DrawLine[];
 };
+
+type StoredLineupState = {
+  version: 1;
+  pitchSize: PitchSize;
+  formation: FormationKey;
+  customCount: number;
+  players: Player[];
+  savedPlayersByPitch: Partial<Record<PitchSize, Player[]>>;
+  savedFormationByPitch: Partial<Record<PitchSize, FormationKey>>;
+  savedCustomCountByPitch: Partial<Record<PitchSize, number>>;
+  opponentMarkers: OpponentMarker[];
+  savedOpponentMarkersByPitch: Partial<Record<PitchSize, OpponentMarker[]>>;
+  drawLines: DrawLine[];
+  savedDrawLinesByPitch: Partial<Record<PitchSize, DrawLine[]>>;
+};
+
+const lineupStorageKey = "lineup-football-default-state-v1";
 
 const pitchSizes: PitchSize[] = [5, 7, 11];
 const pitchOptions: { value: PitchSize; label: string }[] = [
@@ -437,6 +454,43 @@ const getSharedLineupFromUrl = () => {
   return value ? decodeSharePayload(value) : null;
 };
 
+const getStoredLineupState = (): StoredLineupState | null => {
+  try {
+    const value = window.localStorage.getItem(lineupStorageKey);
+    if (!value) return null;
+
+    const parsed = JSON.parse(value) as Partial<StoredLineupState>;
+    if (!isPitchSize(parsed.pitchSize) || !isFormationKey(parsed.formation) || !Array.isArray(parsed.players)) {
+      return null;
+    }
+
+    return {
+      version: 1,
+      pitchSize: parsed.pitchSize,
+      formation: parsed.formation,
+      customCount: clampCustomCount(parsed.customCount),
+      players: parsed.players,
+      savedPlayersByPitch: parsed.savedPlayersByPitch ?? {},
+      savedFormationByPitch: parsed.savedFormationByPitch ?? {},
+      savedCustomCountByPitch: parsed.savedCustomCountByPitch ?? {},
+      opponentMarkers: Array.isArray(parsed.opponentMarkers) ? parsed.opponentMarkers : createOpponentMarkers(),
+      savedOpponentMarkersByPitch: parsed.savedOpponentMarkersByPitch ?? {},
+      drawLines: Array.isArray(parsed.drawLines) ? parsed.drawLines : [],
+      savedDrawLinesByPitch: parsed.savedDrawLinesByPitch ?? {},
+    };
+  } catch {
+    return null;
+  }
+};
+
+const saveStoredLineupState = (state: StoredLineupState) => {
+  try {
+    window.localStorage.setItem(lineupStorageKey, JSON.stringify(state));
+  } catch {
+    // Storage may be unavailable in private browsing or restricted webviews.
+  }
+};
+
 const getRegisteredNames = (player: Player) =>
   [player.starterName, player.substituteName, ...player.extraNames].map((name) => name.trim()).filter(Boolean);
 
@@ -447,32 +501,40 @@ const getBenchCount = (players: Player[]) => players.reduce((total, player) => t
 
 function App() {
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
-  const initialPitchSize = sharedLineup?.pitchSize ?? 7;
-  const initialFormation = sharedLineup?.formation ?? "2-3-1";
-  const initialCustomCount = clampCustomCount(sharedLineup?.customCount);
+  const storedLineup = useMemo(() => (sharedLineup ? null : getStoredLineupState()), [sharedLineup]);
+  const initialPitchSize = sharedLineup?.pitchSize ?? storedLineup?.pitchSize ?? 7;
+  const initialFormation = sharedLineup?.formation ?? storedLineup?.formation ?? "2-3-1";
+  const initialCustomCount = sharedLineup ? clampCustomCount(sharedLineup.customCount) : (storedLineup?.customCount ?? 0);
   const initialPlayers = sharedLineup
     ? createPlayersFromSharedLineup(sharedLineup)
-    : createPlayers(initialPitchSize, initialFormation, initialCustomCount || 5);
+    : (storedLineup?.players ?? createPlayers(initialPitchSize, initialFormation, initialCustomCount || 5));
   const initialOpponentMarkers =
-    sharedLineup?.pitchSize === "custom" ? createOpponentMarkersFromSharedLineup(sharedLineup) : createOpponentMarkers();
-  const initialDrawLines = sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : [];
-  const [pitchSize, setPitchSize] = useState<PitchSize>(() => sharedLineup?.pitchSize ?? 7);
-  const [formation, setFormation] = useState<FormationKey>(() => sharedLineup?.formation ?? "2-3-1");
+    sharedLineup?.pitchSize === "custom"
+      ? createOpponentMarkersFromSharedLineup(sharedLineup)
+      : (storedLineup?.opponentMarkers ?? createOpponentMarkers());
+  const initialDrawLines =
+    sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : (storedLineup?.drawLines ?? []);
+  const [pitchSize, setPitchSize] = useState<PitchSize>(() => initialPitchSize);
+  const [formation, setFormation] = useState<FormationKey>(() => initialFormation);
   const [customCount, setCustomCount] = useState(() => initialCustomCount);
   const [players, setPlayers] = useState<Player[]>(() => initialPlayers);
   const [savedPlayersByPitch, setSavedPlayersByPitch] = useState<Partial<Record<PitchSize, Player[]>>>(() => ({
+    ...(storedLineup?.savedPlayersByPitch ?? {}),
     [initialPitchSize]: initialPlayers,
   }));
   const [savedFormationByPitch, setSavedFormationByPitch] = useState<Partial<Record<PitchSize, FormationKey>>>(() => ({
+    ...(storedLineup?.savedFormationByPitch ?? {}),
     [initialPitchSize]: initialFormation,
   }));
   const [savedCustomCountByPitch, setSavedCustomCountByPitch] = useState<Partial<Record<PitchSize, number>>>(() => ({
+    ...(storedLineup?.savedCustomCountByPitch ?? {}),
     [initialPitchSize]: initialCustomCount,
   }));
   const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(() => initialOpponentMarkers);
   const [savedOpponentMarkersByPitch, setSavedOpponentMarkersByPitch] = useState<
     Partial<Record<PitchSize, OpponentMarker[]>>
   >(() => ({
+    ...(storedLineup?.savedOpponentMarkersByPitch ?? {}),
     [initialPitchSize]: initialOpponentMarkers,
   }));
   const [draggingId, setDraggingId] = useState<number | null>(null);
@@ -483,6 +545,7 @@ function App() {
   const [isDrawMode, setIsDrawMode] = useState(false);
   const [drawLines, setDrawLines] = useState<DrawLine[]>(() => initialDrawLines);
   const [savedDrawLinesByPitch, setSavedDrawLinesByPitch] = useState<Partial<Record<PitchSize, DrawLine[]>>>(() => ({
+    ...(storedLineup?.savedDrawLinesByPitch ?? {}),
     [initialPitchSize]: initialDrawLines,
   }));
   const [redoDrawLines, setRedoDrawLines] = useState<DrawLine[]>([]);
@@ -497,6 +560,50 @@ function App() {
   const formationEntries = getFormationEntries(pitchSize);
   const selectedMobilePlayer =
     activePlayers.find((player) => player.id === selectedMobilePlayerId) ?? activePlayers[0] ?? null;
+
+  useEffect(() => {
+    saveStoredLineupState({
+      version: 1,
+      pitchSize,
+      formation,
+      customCount,
+      players,
+      savedPlayersByPitch: {
+        ...savedPlayersByPitch,
+        [pitchSize]: players,
+      },
+      savedFormationByPitch: {
+        ...savedFormationByPitch,
+        [pitchSize]: formation,
+      },
+      savedCustomCountByPitch: {
+        ...savedCustomCountByPitch,
+        [pitchSize]: customCount,
+      },
+      opponentMarkers,
+      savedOpponentMarkersByPitch: {
+        ...savedOpponentMarkersByPitch,
+        [pitchSize]: opponentMarkers,
+      },
+      drawLines,
+      savedDrawLinesByPitch: {
+        ...savedDrawLinesByPitch,
+        [pitchSize]: drawLines,
+      },
+    });
+  }, [
+    customCount,
+    drawLines,
+    formation,
+    opponentMarkers,
+    pitchSize,
+    players,
+    savedCustomCountByPitch,
+    savedDrawLinesByPitch,
+    savedFormationByPitch,
+    savedOpponentMarkersByPitch,
+    savedPlayersByPitch,
+  ]);
 
   const getPitchPointerPosition = (event: ReactPointerEvent<Element>, options: { clamp?: boolean } = {}) => {
     const pitch = pitchRef.current;
@@ -811,8 +918,17 @@ function App() {
   };
 
   const clearNames = () => {
+    const nextCustomCount = pitchSize === "custom" ? activePlayers.length || 5 : customCount;
+    if (pitchSize === "custom") {
+      setCustomCount(nextCustomCount);
+    }
     setPlayers((current) =>
-      current.map((player) => ({ ...player, starterName: "", substituteName: "", extraNames: [] })),
+      createPlayers(pitchSize, formation, nextCustomCount, current).map((player) => ({
+        ...player,
+        starterName: "",
+        substituteName: "",
+        extraNames: [],
+      })),
     );
     if (pitchSize === "custom") {
       setOpponentMarkers(createOpponentMarkers());
