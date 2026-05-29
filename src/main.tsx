@@ -1,5 +1,7 @@
 import React, { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
+import { motion } from "framer-motion";
+import { create } from "zustand";
 import { Check, Clipboard, Download, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import "./styles.css";
 
@@ -32,7 +34,52 @@ type DrawLine = {
   points: { x: number; y: number }[];
 };
 
+type TacticalMarker = {
+  id: string;
+  label: string;
+  type: "player" | "opponent" | "ball";
+  x: number;
+  y: number;
+  onPitch: boolean;
+};
+
+type TacticalFrame = TacticalMarker[];
+
+type TacticalPlaybook = {
+  id: string;
+  name: string;
+  frames: TacticalFrame[];
+};
+
+type TacticalStore = {
+  isAnimationMode: boolean;
+  tactics: TacticalPlaybook[];
+  activeTacticId: string;
+  frames: TacticalFrame[];
+  draftFrame: TacticalFrame;
+  playbackFrames: TacticalFrame[] | null;
+  currentFrameIndex: number;
+  isPlaying: boolean;
+  isLooping: boolean;
+  setAnimationMode: (value: boolean) => void;
+  selectFrame: (index: number) => void;
+  addFrame: () => void;
+  removeFrame: (index: number) => void;
+  clearFrames: () => void;
+  updateMarker: (id: string, x: number, y: number, onPitch?: boolean) => void;
+  toggleLoop: () => void;
+  saveTactic: () => void;
+  createTactic: () => void;
+  loadTactic: (id: string) => void;
+  deleteTactic: (id: string) => void;
+  play: () => void;
+  pause: () => void;
+  stop: () => void;
+  nextFrame: () => void;
+};
+
 type PitchSize = 5 | 7 | 11 | "custom";
+type Language = "vi" | "en";
 type FormationKey =
   | "1-2-1"
   | "2-1-1"
@@ -85,6 +132,520 @@ const pitchOptions: { value: PitchSize; label: string }[] = [
   { value: 11, label: "Sân 11" },
   { value: "custom", label: "Cá nhân hóa" },
 ];
+
+type AppCopy = {
+  lineupTab: string;
+  tacticsTab: string;
+  squadEditor: string;
+  subs: string;
+  starterPlaceholder: string;
+  substitutePlaceholder: string;
+  extraPlayerPlaceholder: string;
+  lineupSuffix: string;
+  custom: string;
+  share: string;
+  shareAll: string;
+  copied: string;
+  download: string;
+  draw: string;
+  clear: string;
+  undo: string;
+  redo: string;
+  clearLines: string;
+  player: string;
+  players: string;
+  opponent: string;
+  tacticalTitle: string;
+  tacticListTitle: string;
+  tacticUnit: string;
+  framesUnit: string;
+  play: string;
+  pause: string;
+  stop: string;
+  loop: string;
+  frame: string;
+  addFrame: string;
+  addPlayer: string;
+  addSubstitute: string;
+  clearAll: string;
+  tacticalHelp: string;
+  save: string;
+  saved: string;
+  newTactic: string;
+  tacticName: string;
+  delete: string;
+  switchLanguage: string;
+  chooseAppMode: string;
+  choosePitchSize: string;
+  tacticalTimeline: string;
+  savedTactics: string;
+  dragBall: string;
+  dragPlayer: string;
+  dragOpponent: string;
+  customPlayerTray: string;
+  opponentTray: string;
+  pitchLabels: Record<PitchSize, string>;
+};
+
+const copyByLanguage = {
+  vi: {
+    lineupTab: "Đội hình",
+    tacticsTab: "Bảng chiến thuật động",
+    squadEditor: "Chỉnh đội hình",
+    subs: "dự bị",
+    starterPlaceholder: "Đá chính",
+    substitutePlaceholder: "Dự bị",
+    extraPlayerPlaceholder: "Cầu thủ",
+    lineupSuffix: "đội hình",
+    custom: "Cá nhân hóa",
+    share: "Chia sẻ",
+    shareAll: "Chia sẻ tất cả",
+    copied: "Đã sao chép",
+    download: "Tải ảnh",
+    draw: "Vẽ",
+    clear: "Xoá",
+    undo: "Hoàn tác",
+    redo: "Làm lại",
+    clearLines: "Xoá nét vẽ",
+    player: "Cầu thủ",
+    players: "Cầu thủ",
+    opponent: "Đối thủ",
+    tacticalTitle: "Bảng chiến thuật động",
+    tacticListTitle: "Danh sách tactic",
+    tacticUnit: "tactic",
+    framesUnit: "bước",
+    play: "Chạy",
+    pause: "Tạm dừng",
+    stop: "Dừng",
+    loop: "Lặp",
+    frame: "Bước",
+    addFrame: "Thêm bước",
+    addPlayer: "Thêm cầu thủ",
+    addSubstitute: "Thêm dự bị",
+    clearAll: "Xoá tất cả",
+    tacticalHelp: "Chọn bước, kéo cầu thủ hoặc bóng đến vị trí mới, sau đó thêm bước tiếp theo và bấm Chạy để xem bài phối hợp.",
+    save: "Lưu",
+    saved: "Đã lưu",
+    newTactic: "Tạo mới",
+    tacticName: "Chiến thuật",
+    delete: "Xoá",
+    switchLanguage: "Đổi ngôn ngữ",
+    chooseAppMode: "Chọn chế độ",
+    choosePitchSize: "Chọn loại sân",
+    tacticalTimeline: "Timeline chiến thuật",
+    savedTactics: "Danh sách chiến thuật đã lưu",
+    dragBall: "Kéo bóng",
+    dragPlayer: "Kéo cầu thủ",
+    dragOpponent: "Kéo đối thủ",
+    customPlayerTray: "Danh sách cầu thủ tuỳ chỉnh",
+    opponentTray: "Danh sách đối thủ",
+    pitchLabels: {
+      5: "Sân 5",
+      7: "Sân 7",
+      11: "Sân 11",
+      custom: "Cá nhân hóa",
+    } satisfies Record<PitchSize, string>,
+  },
+  en: {
+    lineupTab: "Line up",
+    tacticsTab: "Tactics board",
+    squadEditor: "Squad editor",
+    subs: "subs",
+    starterPlaceholder: "Starter",
+    substitutePlaceholder: "Substitute",
+    extraPlayerPlaceholder: "Player",
+    lineupSuffix: "line up",
+    custom: "Custom",
+    share: "Share",
+    shareAll: "Share all",
+    copied: "Copied",
+    download: "Download",
+    draw: "Draw",
+    clear: "Clear",
+    undo: "Undo",
+    redo: "Redo",
+    clearLines: "Clear lines",
+    player: "Player",
+    players: "Players",
+    opponent: "Opponent",
+    tacticalTitle: "Tactics board",
+    tacticListTitle: "Tactic list",
+    tacticUnit: "tactic",
+    framesUnit: "frames",
+    play: "Play",
+    pause: "Pause",
+    stop: "Stop",
+    loop: "Loop",
+    frame: "Frame",
+    addFrame: "Add frame",
+    addPlayer: "Add player",
+    addSubstitute: "Add substitute",
+    clearAll: "Clear all",
+    tacticalHelp: "Select a frame, drag players or the ball to new positions, then add the next frame and press Play to preview the move.",
+    save: "Save",
+    saved: "Saved",
+    newTactic: "New",
+    tacticName: "Tactic",
+    delete: "Delete",
+    switchLanguage: "Switch language",
+    chooseAppMode: "Choose app mode",
+    choosePitchSize: "Choose pitch size",
+    tacticalTimeline: "Tactical timeline",
+    savedTactics: "Saved tactics",
+    dragBall: "Drag ball",
+    dragPlayer: "Drag player",
+    dragOpponent: "Drag opponent",
+    customPlayerTray: "Custom player tray",
+    opponentTray: "Opponent marker tray",
+    pitchLabels: {
+      5: "5-a-side",
+      7: "7-a-side",
+      11: "11-a-side",
+      custom: "Custom",
+    } satisfies Record<PitchSize, string>,
+  },
+} satisfies Record<Language, AppCopy>;
+
+const createInitialTacticalFrame = (): TacticalFrame => [
+  { id: "p1", label: "1", type: "player", x: 50, y: 90, onPitch: true },
+  { id: "p2", label: "2", type: "player", x: 34, y: 68, onPitch: true },
+  { id: "p3", label: "3", type: "player", x: 66, y: 68, onPitch: true },
+  { id: "p4", label: "4", type: "player", x: 24, y: 45, onPitch: true },
+  { id: "p5", label: "5", type: "player", x: 50, y: 42, onPitch: true },
+  { id: "p6", label: "6", type: "player", x: 76, y: 45, onPitch: true },
+  { id: "p7", label: "7", type: "player", x: 50, y: 20, onPitch: true },
+  ...Array.from({ length: 4 }, (_, index) => ({
+    id: `p${index + 8}`,
+    label: `${index + 8}`,
+    type: "player" as const,
+    x: 50,
+    y: 50,
+    onPitch: false,
+  })),
+  ...Array.from({ length: 11 }, (_, index) => ({
+    id: `o${index + 1}`,
+    label: `${index + 1}`,
+    type: "opponent" as const,
+    x: 50,
+    y: 50,
+    onPitch: false,
+  })),
+  { id: "ball", label: "", type: "ball", x: 50, y: 56, onPitch: true },
+];
+
+const cloneTacticalFrame = (frame: TacticalFrame): TacticalFrame => frame.map((marker) => ({ ...marker }));
+
+const tacticalStorageKey = "lineup-football-tactics-state-v1";
+
+const cloneTacticalFrames = (frames: TacticalFrame[]): TacticalFrame[] => frames.map(cloneTacticalFrame);
+
+const createTacticalId = () => `tactic-${Date.now()}-${Math.round(Math.random() * 1000)}`;
+
+const createDefaultTacticalPlaybook = (): TacticalPlaybook => ({
+  id: "tactic-default",
+  name: "Chiến thuật 1",
+  frames: [],
+});
+
+const clampTacticalCoordinate = (value: unknown, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? Math.min(96, Math.max(4, value)) : fallback;
+
+const normalizeTacticalFrame = (frame: unknown): TacticalFrame | null => {
+  if (!Array.isArray(frame)) return null;
+
+  const normalized = frame
+    .filter((marker) => marker && typeof marker === "object")
+    .map((marker) => {
+      const item = marker as Partial<TacticalMarker>;
+      if (typeof item.id !== "string" || (item.type !== "player" && item.type !== "opponent" && item.type !== "ball")) {
+        return null;
+      }
+
+      return {
+        id: item.id,
+        label: typeof item.label === "string" ? item.label : "",
+        type: item.type,
+        x: clampTacticalCoordinate(item.x, 50),
+        y: clampTacticalCoordinate(item.y, 50),
+        onPitch: Boolean(item.onPitch),
+      };
+    })
+    .filter(Boolean) as TacticalFrame;
+
+  return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeTacticalPlaybooks = (value: unknown): TacticalPlaybook[] => {
+  if (!Array.isArray(value)) return [createDefaultTacticalPlaybook()];
+
+  const tactics = value
+    .filter((tactic) => tactic && typeof tactic === "object")
+    .map((tactic, index) => {
+      const item = tactic as Partial<TacticalPlaybook>;
+      const frames = Array.isArray(item.frames) ? item.frames.map(normalizeTacticalFrame).filter(Boolean) : [];
+
+      return {
+        id: typeof item.id === "string" && item.id ? item.id : `tactic-${index + 1}`,
+        name: typeof item.name === "string" && item.name.trim() ? item.name.trim() : `Chiến thuật ${index + 1}`,
+        frames: frames as TacticalFrame[],
+      };
+    })
+    .filter(Boolean) as TacticalPlaybook[];
+
+  return tactics.length > 0 ? tactics : [createDefaultTacticalPlaybook()];
+};
+
+const encodeTacticalPayload = (tactics: TacticalPlaybook[]) => {
+  const json = JSON.stringify({
+    version: 1,
+    tactics: tactics.map((tactic) => ({
+      ...tactic,
+      frames: tactic.frames.map((frame) =>
+        frame.map((marker) => ({
+          ...marker,
+          x: Math.round(marker.x * 10) / 10,
+          y: Math.round(marker.y * 10) / 10,
+        })),
+      ),
+    })),
+  });
+  const bytes = new TextEncoder().encode(json);
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+};
+
+const decodeTacticalPayload = (value: string): TacticalPlaybook[] | null => {
+  try {
+    const base64 = value.replaceAll("-", "+").replaceAll("_", "/");
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(paddedBase64);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as { tactics?: unknown };
+
+    return normalizeTacticalPlaybooks(parsed.tactics);
+  } catch {
+    return null;
+  }
+};
+
+const saveStoredTactics = (tactics: TacticalPlaybook[]) => {
+  try {
+    window.localStorage.setItem(tacticalStorageKey, JSON.stringify({ version: 1, tactics }));
+  } catch {
+    // Storage may be unavailable in private browsing or restricted webviews.
+  }
+};
+
+const getInitialTacticalPlaybooks = () => {
+  const sharedValue = new URLSearchParams(window.location.search).get("tactics");
+  const sharedTactics = sharedValue ? decodeTacticalPayload(sharedValue) : null;
+  if (sharedTactics) {
+    saveStoredTactics(sharedTactics);
+    return sharedTactics;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(tacticalStorageKey);
+    if (!storedValue) return [createDefaultTacticalPlaybook()];
+
+    const parsed = JSON.parse(storedValue) as { tactics?: unknown };
+    return normalizeTacticalPlaybooks(parsed.tactics);
+  } catch {
+    return [createDefaultTacticalPlaybook()];
+  }
+};
+
+const initialTacticalPlaybooks = getInitialTacticalPlaybooks();
+const initialTacticalPlaybook = initialTacticalPlaybooks[0] ?? createDefaultTacticalPlaybook();
+
+const useTacticalStore = create<TacticalStore>((set, get) => ({
+  isAnimationMode: true,
+  tactics: initialTacticalPlaybooks,
+  activeTacticId: initialTacticalPlaybook.id,
+  frames: cloneTacticalFrames(initialTacticalPlaybook.frames),
+  draftFrame: createInitialTacticalFrame(),
+  playbackFrames: null,
+  currentFrameIndex: 0,
+  isPlaying: false,
+  isLooping: false,
+  setAnimationMode: (value) => set({ isAnimationMode: value }),
+  selectFrame: (index) =>
+    set((state) => ({
+      currentFrameIndex: state.frames.length === 0 ? 0 : Math.min(Math.max(index, 0), state.frames.length - 1),
+      isPlaying: false,
+      playbackFrames: null,
+    })),
+  addFrame: () =>
+    set((state) => {
+      const currentFrame = state.frames[state.currentFrameIndex] ?? state.draftFrame;
+      const nextFrames = [...state.frames, cloneTacticalFrame(currentFrame)];
+      return { frames: nextFrames, currentFrameIndex: nextFrames.length - 1, isAnimationMode: true, playbackFrames: null };
+    }),
+  removeFrame: (index) =>
+    set((state) => {
+      if (state.frames.length === 0) return state;
+      if (state.frames.length === 1) {
+        const nextTactics = state.tactics.map((tactic) =>
+          tactic.id === state.activeTacticId ? { ...tactic, frames: [] } : tactic,
+        );
+        saveStoredTactics(nextTactics);
+        return {
+          tactics: nextTactics,
+          frames: [],
+          draftFrame: cloneTacticalFrame(state.frames[0] ?? state.draftFrame),
+          currentFrameIndex: 0,
+          isPlaying: false,
+          playbackFrames: null,
+        };
+      }
+      const nextFrames = state.frames.filter((_, frameIndex) => frameIndex !== index);
+      const nextTactics = state.tactics.map((tactic) =>
+        tactic.id === state.activeTacticId ? { ...tactic, frames: cloneTacticalFrames(nextFrames) } : tactic,
+      );
+      saveStoredTactics(nextTactics);
+      return {
+        tactics: nextTactics,
+        frames: nextFrames,
+        currentFrameIndex: Math.min(state.currentFrameIndex, nextFrames.length - 1),
+        isPlaying: false,
+        playbackFrames: null,
+      };
+    }),
+  clearFrames: () =>
+    set((state) => {
+      const nextTactics = state.tactics.map((tactic) =>
+        tactic.id === state.activeTacticId ? { ...tactic, frames: [] } : tactic,
+      );
+      saveStoredTactics(nextTactics);
+      return {
+        tactics: nextTactics,
+        frames: [],
+        draftFrame: createInitialTacticalFrame(),
+        playbackFrames: null,
+        currentFrameIndex: 0,
+        isPlaying: false,
+      };
+    }),
+  updateMarker: (id, x, y, onPitch) =>
+    set((state) => {
+      const updateFrame = (frame: TacticalFrame) =>
+        frame.map((marker) => (marker.id === id ? { ...marker, x, y, onPitch: onPitch ?? marker.onPitch } : marker));
+
+      if (state.frames.length === 0) {
+        return { draftFrame: updateFrame(state.draftFrame), playbackFrames: null };
+      }
+
+      return {
+        frames: state.frames.map((frame, frameIndex) =>
+          frameIndex === state.currentFrameIndex ? updateFrame(frame) : frame,
+        ),
+        playbackFrames: null,
+      };
+    }),
+  toggleLoop: () => set((state) => ({ isLooping: !state.isLooping })),
+  saveTactic: () =>
+    set((state) => {
+      const nextTactics = state.tactics.map((tactic) =>
+        tactic.id === state.activeTacticId ? { ...tactic, frames: cloneTacticalFrames(state.frames) } : tactic,
+      );
+      saveStoredTactics(nextTactics);
+      return { tactics: nextTactics };
+    }),
+  createTactic: () =>
+    set((state) => {
+      const savedTactics = state.tactics.map((tactic) =>
+        tactic.id === state.activeTacticId ? { ...tactic, frames: cloneTacticalFrames(state.frames) } : tactic,
+      );
+      const nextTactic: TacticalPlaybook = {
+        id: createTacticalId(),
+        name: `Chiến thuật ${savedTactics.length + 1}`,
+        frames: [],
+      };
+      const nextTactics = [...savedTactics, nextTactic];
+      saveStoredTactics(nextTactics);
+      return {
+        tactics: nextTactics,
+        activeTacticId: nextTactic.id,
+        frames: cloneTacticalFrames(nextTactic.frames),
+        draftFrame: createInitialTacticalFrame(),
+        playbackFrames: null,
+        currentFrameIndex: 0,
+        isPlaying: false,
+      };
+    }),
+  loadTactic: (id) =>
+    set((state) => {
+      const currentSavedTactics = state.tactics.map((tactic) =>
+        tactic.id === state.activeTacticId ? { ...tactic, frames: cloneTacticalFrames(state.frames) } : tactic,
+      );
+      const tactic = currentSavedTactics.find((item) => item.id === id);
+      if (!tactic) return state;
+
+      saveStoredTactics(currentSavedTactics);
+      return {
+        tactics: currentSavedTactics,
+        activeTacticId: tactic.id,
+        frames: cloneTacticalFrames(tactic.frames),
+        draftFrame: createInitialTacticalFrame(),
+        playbackFrames: null,
+        currentFrameIndex: 0,
+        isPlaying: false,
+      };
+    }),
+  deleteTactic: (id) =>
+    set((state) => {
+      if (state.tactics.length <= 1) return state;
+
+      const savedTactics = state.tactics.map((tactic) =>
+        tactic.id === state.activeTacticId ? { ...tactic, frames: cloneTacticalFrames(state.frames) } : tactic,
+      );
+      const nextTactics = savedTactics.filter((tactic) => tactic.id !== id);
+      const nextActive = id === state.activeTacticId ? nextTactics[0] : nextTactics.find((tactic) => tactic.id === state.activeTacticId);
+      if (!nextActive) return state;
+
+      saveStoredTactics(nextTactics);
+      return {
+        tactics: nextTactics,
+        activeTacticId: nextActive.id,
+        frames: cloneTacticalFrames(nextActive.frames),
+        draftFrame: createInitialTacticalFrame(),
+        playbackFrames: null,
+        currentFrameIndex: 0,
+        isPlaying: false,
+      };
+    }),
+  play: () =>
+    set((state) => {
+      if (state.frames.length === 0) return { isPlaying: false, currentFrameIndex: 0, playbackFrames: null };
+      return {
+        isPlaying: true,
+        currentFrameIndex: 0,
+        isAnimationMode: true,
+        playbackFrames: [cloneTacticalFrame(state.draftFrame), ...cloneTacticalFrames(state.frames)],
+      };
+    }),
+  pause: () => set({ isPlaying: false, currentFrameIndex: 0, playbackFrames: null }),
+  stop: () =>
+    set((state) => ({
+      isPlaying: false,
+      currentFrameIndex: 0,
+      playbackFrames: [cloneTacticalFrame(state.draftFrame)],
+    })),
+  nextFrame: () =>
+    set((state) => {
+      if (!state.isPlaying) return state;
+      const sequenceLength = state.playbackFrames?.length ?? state.frames.length;
+      const nextIndex = state.currentFrameIndex + 1;
+      if (nextIndex >= sequenceLength) {
+        if (state.isLooping) {
+          return { currentFrameIndex: 0, isPlaying: true };
+        }
+        return { currentFrameIndex: 0, isPlaying: false, playbackFrames: [cloneTacticalFrame(state.draftFrame)] };
+      }
+      return { currentFrameIndex: nextIndex };
+    }),
+}));
 
 const createOpponentMarkers = (): OpponentMarker[] =>
   Array.from({ length: 11 }, (_, index) => ({
@@ -454,6 +1015,11 @@ const getSharedLineupFromUrl = () => {
   return value ? decodeSharePayload(value) : null;
 };
 
+const getInitialAppTab = (): "lineup" | "tactics" => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("tab") === "tactics" || params.has("tactics") ? "tactics" : "lineup";
+};
+
 const getStoredLineupState = (): StoredLineupState | null => {
   try {
     const value = window.localStorage.getItem(lineupStorageKey);
@@ -498,6 +1064,406 @@ const getBenchNames = (player: Player) =>
   [player.substituteName, ...player.extraNames].map((name) => name.trim()).filter(Boolean);
 
 const getBenchCount = (players: Player[]) => players.reduce((total, player) => total + getBenchNames(player).length, 0);
+
+const positionTranslations: Record<string, string> = {
+  "Left Forward": "Tiền đạo trái",
+  Striker: "Tiền đạo",
+  "Right Forward": "Tiền đạo phải",
+  "Left Attacking Midfielder": "Tiền vệ tấn công trái",
+  "Attacking Midfielder": "Tiền vệ tấn công",
+  "Right Attacking Midfielder": "Tiền vệ tấn công phải",
+  "Left Midfielder": "Tiền vệ trái",
+  "Center Midfielder": "Tiền vệ trung tâm",
+  "Right Midfielder": "Tiền vệ phải",
+  "Left Back": "Hậu vệ cánh trái",
+  "Left Center Back": "Trung vệ lệch trái",
+  "Right Center Back": "Trung vệ lệch phải",
+  "Right Back": "Hậu vệ cánh phải",
+  "Left Defender": "Hậu vệ trái",
+  "Center Defender": "Hậu vệ trung tâm",
+  "Right Defender": "Hậu vệ phải",
+  Goalkeeper: "Thủ môn",
+  "Center Back": "Trung vệ",
+  "Left Wing": "Cánh trái",
+  "Right Wing": "Cánh phải",
+  "Free Role": "Tự do",
+  Custom: "Tự tạo",
+};
+
+const getDisplayPosition = (position: string, language: Language) =>
+  language === "vi" ? (positionTranslations[position] ?? position) : position;
+
+const getDisplayTacticName = (name: string, index: number, copy: AppCopy) => {
+  const tacticNumber = name.match(/^(?:Chiến thuật|Tactic)\s+(\d+)$/i)?.[1] ?? `${index + 1}`;
+  return `${copy.tacticName} ${tacticNumber}`;
+};
+
+function TacticalBoard({ copy }: { copy: AppCopy }) {
+  const {
+    frames,
+    draftFrame,
+    playbackFrames,
+    tactics,
+    activeTacticId,
+    currentFrameIndex,
+    isPlaying,
+    isLooping,
+    selectFrame,
+    addFrame,
+    removeFrame,
+    clearFrames,
+    updateMarker,
+    toggleLoop,
+    saveTactic,
+    createTactic,
+    loadTactic,
+    deleteTactic,
+    play,
+    pause,
+    stop,
+    nextFrame,
+  } = useTacticalStore();
+  const [draggingMarkerId, setDraggingMarkerId] = useState<string | null>(null);
+  const [recentlyDroppedMarkerId, setRecentlyDroppedMarkerId] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<TacticalMarker | null>(null);
+  const [dragPreviewPosition, setDragPreviewPosition] = useState<{ x: number; y: number } | null>(null);
+  const [tacticStatus, setTacticStatus] = useState<"idle" | "saved" | "copied">("idle");
+  const [snapPlaybackStart, setSnapPlaybackStart] = useState(false);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const dropTimerRef = useRef<number | null>(null);
+  const activeFrame = playbackFrames ? (playbackFrames[currentFrameIndex] ?? playbackFrames[0]) : (frames[currentFrameIndex] ?? frames[0] ?? draftFrame);
+  const activeTacticalMarkers = activeFrame.filter((marker) => marker.onPitch);
+  const trayPlayers = activeFrame.filter((marker) => marker.type === "player" && !marker.onPitch);
+  const trayOpponents = activeFrame.filter((marker) => marker.type === "opponent" && !marker.onPitch);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const timer = window.setTimeout(nextFrame, 900);
+    return () => window.clearTimeout(timer);
+  }, [currentFrameIndex, isPlaying, nextFrame]);
+
+  useEffect(() => {
+    return () => {
+      if (dropTimerRef.current) {
+        window.clearTimeout(dropTimerRef.current);
+      }
+    };
+  }, []);
+
+  const getBoardPointerPosition = (event: ReactPointerEvent<HTMLElement>) => {
+    const board = boardRef.current;
+    if (!board) return null;
+
+    const rect = board.getBoundingClientRect();
+    const rawX = ((event.clientX - rect.left) / rect.width) * 100;
+    const rawY = ((event.clientY - rect.top) / rect.height) * 100;
+    return {
+      isInside: rawX >= 0 && rawX <= 100 && rawY >= 0 && rawY <= 100,
+      x: Math.min(96, Math.max(4, rawX)),
+      y: Math.min(96, Math.max(4, rawY)),
+    };
+  };
+
+  const moveMarker = (event: ReactPointerEvent<HTMLElement>, id: string) => {
+    if (draggingMarkerId !== id || isPlaying) return;
+
+    const position = getBoardPointerPosition(event);
+    if (!position) return;
+
+    const marker = activeFrame.find((item) => item.id === id);
+    if (marker) {
+      setDragPreview(marker);
+      setDragPreviewPosition({ x: event.clientX, y: event.clientY });
+    }
+    updateMarker(id, position.x, position.y);
+  };
+
+  const startMarkerDrag = (event: ReactPointerEvent<HTMLElement>, id: string) => {
+    if (isPlaying) return;
+    const marker = activeFrame.find((item) => item.id === id);
+    if (!marker) return;
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingMarkerId(id);
+    setDragPreview(marker);
+    setDragPreviewPosition({ x: event.clientX, y: event.clientY });
+  };
+
+  const stopMarkerDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const id = draggingMarkerId;
+    if (id) {
+      const position = getBoardPointerPosition(event);
+      if (position) {
+        setRecentlyDroppedMarkerId(id);
+        if (dropTimerRef.current) {
+          window.clearTimeout(dropTimerRef.current);
+        }
+        dropTimerRef.current = window.setTimeout(() => {
+          setRecentlyDroppedMarkerId((currentId) => (currentId === id ? null : currentId));
+          dropTimerRef.current = null;
+        }, 120);
+        updateMarker(id, position.x, position.y, position.isInside);
+      }
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDraggingMarkerId(null);
+    setDragPreview(null);
+    setDragPreviewPosition(null);
+  };
+
+  const saveActiveTactic = () => {
+    saveTactic();
+    setTacticStatus("saved");
+    window.setTimeout(() => setTacticStatus("idle"), 1600);
+  };
+
+  const playFromFirstStep = () => {
+    setSnapPlaybackStart(true);
+    play();
+    window.setTimeout(() => setSnapPlaybackStart(false), 120);
+  };
+
+  const shareTactics = async () => {
+    const nextTactics = tactics.map((tactic) =>
+      tactic.id === activeTacticId ? { ...tactic, frames: cloneTacticalFrames(frames) } : tactic,
+    );
+    saveStoredTactics(nextTactics);
+    useTacticalStore.setState({ tactics: nextTactics });
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("tactics", encodeTacticalPayload(nextTactics));
+    url.searchParams.set("tab", "tactics");
+    url.searchParams.delete("lineup");
+
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setTacticStatus("copied");
+      window.setTimeout(() => setTacticStatus("idle"), 1800);
+    } catch {
+    window.prompt(`${copy.shareAll}`, url.toString());
+    }
+  };
+
+  return (
+    <section className="tactical-shell">
+      <aside className="tactical-panel">
+        <div className="panel-heading">
+          <span>{copy.tacticalTitle}</span>
+          <strong>{frames.length} {copy.framesUnit}</strong>
+        </div>
+        <div className="tactical-controls">
+          <button type="button" onClick={playFromFirstStep} disabled={frames.length < 1 || isPlaying}>
+            {copy.play}
+          </button>
+          <button type="button" onClick={pause} disabled={!isPlaying}>
+            {copy.pause}
+          </button>
+          <button type="button" onClick={stop}>
+            {copy.stop}
+          </button>
+          <button type="button" onClick={toggleLoop} className={isLooping ? "active" : ""} aria-pressed={isLooping}>
+            {copy.loop}
+          </button>
+        </div>
+        <div className="tactical-timeline" aria-label={copy.tacticalTimeline}>
+          {frames.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => selectFrame(index)}
+              className={currentFrameIndex === index ? "active" : ""}
+            >
+              {copy.frame} {index + 1}
+              {frames.length > 0 ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeFrame(index);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      removeFrame(index);
+                    }
+                  }}
+                  aria-label={`${copy.delete} ${copy.frame} ${index + 1}`}
+                >
+                  x
+                </span>
+              ) : null}
+            </button>
+          ))}
+          <button type="button" className="add-frame-button" onClick={addFrame}>
+            <Plus size={14} />
+            {copy.addFrame}
+          </button>
+          <button type="button" className="clear-frames-button" onClick={clearFrames} disabled={frames.length === 0}>
+            <Trash2 size={14} />
+            {copy.clearAll}
+          </button>
+        </div>
+        <p className="tactical-help">
+          {copy.tacticalHelp}
+        </p>
+      </aside>
+
+      <div className="tactical-stage">
+        <div className="tactical-side-tray">
+          <div className="tactical-tray">
+            <span>{copy.players}</span>
+            <div className="tactical-tray-list">
+              {trayPlayers.map((marker) => (
+                <button
+                  key={marker.id}
+                  type="button"
+                  className="tactical-tray-dot"
+                  onPointerDown={(event) => startMarkerDrag(event, marker.id)}
+                  onPointerMove={(event) => {
+                    if (event.currentTarget.hasPointerCapture(event.pointerId)) moveMarker(event, marker.id);
+                  }}
+                  onPointerUp={stopMarkerDrag}
+                  onPointerCancel={stopMarkerDrag}
+                >
+                  {marker.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="tactical-tray">
+            <span>{copy.opponent}</span>
+            <div className="tactical-tray-list">
+              {trayOpponents.map((marker) => (
+                <button
+                  key={marker.id}
+                  type="button"
+                  className="tactical-tray-dot opponent"
+                  onPointerDown={(event) => startMarkerDrag(event, marker.id)}
+                  onPointerMove={(event) => {
+                    if (event.currentTarget.hasPointerCapture(event.pointerId)) moveMarker(event, marker.id);
+                  }}
+                  onPointerUp={stopMarkerDrag}
+                  onPointerCancel={stopMarkerDrag}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div ref={boardRef} className="tactical-pitch">
+          <div className="absolute inset-[4%] border-[3px] border-white/90" />
+          <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
+          <div className="absolute left-1/2 top-1/2 h-[22%] w-[31%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white/90" />
+          <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
+          <div className="absolute left-1/2 top-[4%] h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+          <div className="absolute left-1/2 top-[4%] h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+          <div className="absolute bottom-[4%] left-1/2 h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+          <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+
+          {activeTacticalMarkers.map((marker) => (
+            <motion.div
+              key={marker.id}
+              className={`tactical-marker-shell ${draggingMarkerId === marker.id ? "is-dragging" : ""}`}
+              initial={false}
+              animate={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+              transition={
+                draggingMarkerId === marker.id || recentlyDroppedMarkerId === marker.id || snapPlaybackStart
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 95, damping: 18, mass: 0.7 }
+              }
+              onPointerDown={(event) => startMarkerDrag(event, marker.id)}
+              onPointerMove={(event) => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) moveMarker(event, marker.id);
+              }}
+              onPointerUp={stopMarkerDrag}
+              onPointerCancel={stopMarkerDrag}
+              role="button"
+              tabIndex={0}
+              aria-label={marker.type === "ball" ? copy.dragBall : `${copy.dragPlayer} ${marker.label}`}
+            >
+              <span
+                className={`tactical-marker ${marker.type === "ball" ? "ball-marker" : ""} ${
+                  marker.type === "opponent" ? "opponent-marker" : ""
+                }`}
+              >
+                {marker.type === "ball" || marker.type === "opponent" ? null : marker.label}
+              </span>
+            </motion.div>
+          ))}
+        </div>
+        {dragPreview && dragPreviewPosition ? (
+          <div
+            className={`tactical-drag-preview ${dragPreview.type === "opponent" ? "opponent" : ""} ${
+              dragPreview.type === "ball" ? "ball" : ""
+            }`}
+            style={{ left: dragPreviewPosition.x, top: dragPreviewPosition.y }}
+            aria-hidden="true"
+          >
+            {dragPreview.type === "player" ? dragPreview.label : null}
+          </div>
+        ) : null}
+      </div>
+      <aside className="tactic-library-panel">
+        <div className="panel-heading">
+          <span>{copy.tacticListTitle}</span>
+          <strong>{tactics.length} {copy.tacticUnit}</strong>
+        </div>
+        <div className="tactic-library">
+          <div className="tactic-library-actions">
+            <button type="button" onClick={saveActiveTactic}>
+              {tacticStatus === "saved" ? copy.saved : copy.save}
+            </button>
+            <button type="button" onClick={createTactic}>
+              <Plus size={14} />
+              {copy.newTactic}
+            </button>
+            <button type="button" onClick={shareTactics}>
+              <Clipboard size={14} />
+              {tacticStatus === "copied" ? copy.copied : copy.share}
+            </button>
+          </div>
+          <div className="tactic-list" aria-label={copy.savedTactics}>
+            {tactics.map((tactic, index) => (
+              <button
+                key={tactic.id}
+                type="button"
+                className={tactic.id === activeTacticId ? "active" : ""}
+                onClick={() => loadTactic(tactic.id)}
+              >
+                <span>{getDisplayTacticName(tactic.name, index, copy)}</span>
+                <small>{tactic.id === activeTacticId ? frames.length : tactic.frames.length} {copy.framesUnit}</small>
+                {tactics.length > 1 ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteTactic(tactic.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        deleteTactic(tactic.id);
+                      }
+                    }}
+                    aria-label={`${copy.delete} ${getDisplayTacticName(tactic.name, index, copy)}`}
+                  >
+                    <Trash2 size={13} />
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
+    </section>
+  );
+}
 
 function App() {
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
@@ -552,12 +1518,17 @@ function App() {
   const [activeDrawLineId, setActiveDrawLineId] = useState<number | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [selectedMobilePlayerId, setSelectedMobilePlayerId] = useState(1);
+  const [activeTab, setActiveTab] = useState<"lineup" | "tactics">(() => getInitialAppTab());
+  const [language, setLanguage] = useState<Language>("vi");
   const pitchRef = useRef<HTMLDivElement>(null);
   const drawLayerRef = useRef<SVGSVGElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const activePlayers = pitchSize === "custom" ? players.filter((player) => player.onPitch) : players;
   const benchCount = getBenchCount(activePlayers);
   const formationEntries = getFormationEntries(pitchSize);
+  const copy = copyByLanguage[language];
+  const languageMeta =
+    language === "vi" ? { flag: "🇻🇳", label: "VI", next: "en" as const } : { flag: "🇺🇸", label: "EN", next: "vi" as const };
   const selectedMobilePlayer =
     activePlayers.find((player) => player.id === selectedMobilePlayerId) ?? activePlayers[0] ?? null;
 
@@ -672,7 +1643,7 @@ function App() {
   };
 
   const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number) => {
-    const position = getPitchPointerPosition(event);
+    const position = getPitchPointerPosition(event, { clamp: false });
     if (!position) return;
     setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
 
@@ -682,8 +1653,8 @@ function App() {
           ? {
               ...marker,
               onPitch: position.isInside,
-              x: position.x,
-              y: position.y,
+              x: position.isInside ? Math.min(96, Math.max(4, position.x)) : marker.x,
+              y: position.isInside ? Math.min(96, Math.max(4, position.y)) : marker.y,
             }
           : marker,
       ),
@@ -805,15 +1776,19 @@ function App() {
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingOpponentId(id);
     setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
-    updateOpponentPosition(event, id);
   };
 
   const handleOpponentDragMove = (event: ReactPointerEvent<HTMLElement>, id: number) => {
     if (draggingOpponentId !== id) return;
-    updateOpponentPosition(event, id);
+    setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
   };
 
   const stopOpponentDragging = (event: ReactPointerEvent<HTMLElement>) => {
+    const id = draggingOpponentId;
+    if (id !== null) {
+      updateOpponentPosition(event, id);
+    }
+
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -957,7 +1932,7 @@ function App() {
       setCopyStatus("copied");
       window.setTimeout(() => setCopyStatus("idle"), 1800);
     } catch {
-      window.prompt("Copy share link", url.toString());
+      window.prompt(copy.share, url.toString());
     }
   };
 
@@ -1040,7 +2015,7 @@ function App() {
     activePlayers.forEach((player) => {
       const x = px(player.x);
       const y = py(player.y);
-      const starterName = player.starterName.trim() || `Player ${player.id}`;
+      const starterName = player.starterName.trim() || `${copy.player} ${player.id}`;
       const benchNames = getBenchNames(player);
 
       context.save();
@@ -1142,38 +2117,66 @@ function App() {
   return (
     <main className="match-bg min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10">
       <header className="app-title-bar mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-3 shadow-2xl">
+        <button
+          type="button"
+          className="language-switch"
+          onClick={() => setLanguage(languageMeta.next)}
+          aria-label={copy.switchLanguage}
+        >
+          <span aria-hidden="true">{languageMeta.flag}</span>
+          {languageMeta.label}
+        </button>
         <h1>Line Up Football</h1>
-        <div className="pitch-size-switch header-pitch-size-switch" aria-label="Choose pitch size">
-          {pitchOptions.map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => applyPitchSize(option.value)}
-              className={pitchSize === option.value ? "active" : ""}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="app-tab-switch" aria-label={copy.chooseAppMode}>
+          <button type="button" className={activeTab === "lineup" ? "active" : ""} onClick={() => setActiveTab("lineup")}>
+            {copy.lineupTab}
+          </button>
+          <button type="button" className={activeTab === "tactics" ? "active" : ""} onClick={() => setActiveTab("tactics")}>
+            {copy.tacticsTab}
+          </button>
         </div>
       </header>
-      <div className="dashboard-shell mx-auto grid w-full max-w-5xl overflow-hidden shadow-2xl">
+      {activeTab === "lineup" ? (
+        <div className="pitch-mode-bar mx-auto w-full max-w-5xl shadow-xl">
+          <div className="pitch-size-switch pitch-mode-switch" aria-label={copy.choosePitchSize}>
+            {pitchOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => applyPitchSize(option.value)}
+                className={pitchSize === option.value ? "active" : ""}
+              >
+                {copy.pitchLabels[option.value]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div
+        className={`dashboard-shell mx-auto grid w-full overflow-hidden shadow-2xl ${
+          activeTab === "tactics" ? "tactics-dashboard" : "max-w-5xl"
+        }`}
+      >
+        {activeTab === "tactics" ? (
+          <TacticalBoard copy={copy} />
+        ) : (
         <div className="content-grid">
             <section className="stats-column">
               <div className="panel-heading">
-                <span>Squad editor</span>
-                <strong>{benchCount}/{activePlayers.length} subs</strong>
+                <span>{copy.squadEditor}</span>
+                <strong>{benchCount}/{activePlayers.length} {copy.subs}</strong>
               </div>
               <div className="squad-editor">
                 {activePlayers.map((player) => (
                   <div key={player.id} className="squad-row">
                     <div className="squad-row-header">
                       <span>{player.id}</span>
-                      <strong>{player.position}</strong>
+                      <strong>{getDisplayPosition(player.position, language)}</strong>
                       <button
                         type="button"
                         onClick={() => addPlayerInput(player.id)}
                         disabled={player.extraNames.length >= 1}
-                        aria-label={`Add player ${player.id}`}
+                        aria-label={`${copy.addPlayer} ${player.id}`}
                       >
                         <Plus size={14} />
                       </button>
@@ -1182,24 +2185,24 @@ function App() {
                       <input
                         value={player.starterName}
                         onChange={(event) => renamePlayer(player.id, "starterName", event.target.value)}
-                        placeholder="Đá chính"
+                        placeholder={copy.starterPlaceholder}
                       />
                       <input
                         value={player.substituteName}
                         onChange={(event) => renamePlayer(player.id, "substituteName", event.target.value)}
-                        placeholder="Dự bị"
+                        placeholder={copy.substitutePlaceholder}
                       />
                       {player.extraNames.slice(0, 1).map((extraName, index) => (
                         <div key={index} className="extra-player-input">
                           <input
                             value={extraName}
                             onChange={(event) => renameExtraPlayer(player.id, index, event.target.value)}
-                            placeholder={`Cầu thủ ${index + 3}`}
+                            placeholder={`${copy.extraPlayerPlaceholder} ${index + 3}`}
                           />
                           <button
                             type="button"
                             onClick={() => removeExtraPlayerInput(player.id, index)}
-                            aria-label={`Remove player ${index + 3}`}
+                            aria-label={`${copy.delete} ${copy.player} ${index + 3}`}
                           >
                             <Trash2 size={13} />
                           </button>
@@ -1213,15 +2216,15 @@ function App() {
 
             <section className="lineup-column">
               <div className="lineup-header">
-                <span>{pitchSize === "custom" ? "Cá nhân hóa" : `Sân ${pitchSize}`} line up</span>
+                <span>{pitchSize === "custom" ? copy.custom : copy.pitchLabels[pitchSize]} {copy.lineupSuffix}</span>
                 <div className="lineup-header-actions">
                   <button type="button" className="share-button" onClick={copyShareLink}>
                     {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
-                    {copyStatus === "copied" ? "Copied" : "Share"}
+                    {copyStatus === "copied" ? copy.copied : copy.share}
                   </button>
                   <button type="button" className="download-button" onClick={downloadLineupImage}>
                     <Download size={14} />
-                    Download
+                    {copy.download}
                   </button>
                   {pitchSize === "custom" ? (
                     <>
@@ -1231,13 +2234,13 @@ function App() {
                         onClick={() => setIsDrawMode((current) => !current)}
                       >
                         <Pencil size={14} />
-                        Draw
+                        {copy.draw}
                       </button>
                     </>
                   ) : null}
                   <button type="button" onClick={clearNames}>
                     <Trash2 size={14} />
-                    Clear
+                    {copy.clear}
                   </button>
                 </div>
               </div>
@@ -1249,21 +2252,21 @@ function App() {
                     onClick={() => applyFormation(item)}
                     className={formation === item ? "active" : ""}
                   >
-                    {item === "custom" ? "Tự tạo" : item}
+                    {item === "custom" ? copy.custom : item}
                   </button>
                 ))}
                 {pitchSize === "custom" ? (
                   <div className="draw-history-actions">
                     <button type="button" onClick={undoDrawLine} disabled={drawLines.length === 0}>
                       <Undo2 size={14} />
-                      Undo
+                      {copy.undo}
                     </button>
                     <button type="button" onClick={redoDrawLine} disabled={redoDrawLines.length === 0}>
                       <Redo2 size={14} />
-                      Redo
+                      {copy.redo}
                     </button>
                     <button type="button" onClick={clearDrawLines} disabled={drawLines.length === 0}>
-                      Clear Lines
+                      {copy.clearLines}
                     </button>
                   </div>
                 ) : null}
@@ -1271,7 +2274,7 @@ function App() {
               {selectedMobilePlayer ? (
                 <div className="mobile-player-editor">
                   <div className="mobile-player-editor-top">
-                    <label htmlFor="mobile-player-select">Player</label>
+                    <label htmlFor="mobile-player-select">{copy.player}</label>
                     <select
                       id="mobile-player-select"
                       value={selectedMobilePlayer.id}
@@ -1279,7 +2282,7 @@ function App() {
                     >
                       {activePlayers.map((player) => (
                         <option key={player.id} value={player.id}>
-                          {player.id}. {player.position}
+                          {player.id}. {getDisplayPosition(player.position, language)}
                         </option>
                       ))}
                     </select>
@@ -1288,24 +2291,24 @@ function App() {
                     <input
                       value={selectedMobilePlayer.starterName}
                       onChange={(event) => renamePlayer(selectedMobilePlayer.id, "starterName", event.target.value)}
-                      placeholder="Đá chính"
+                      placeholder={copy.starterPlaceholder}
                     />
                     <input
                       value={selectedMobilePlayer.substituteName}
                       onChange={(event) => renamePlayer(selectedMobilePlayer.id, "substituteName", event.target.value)}
-                      placeholder="Dự bị"
+                      placeholder={copy.substitutePlaceholder}
                     />
                     {selectedMobilePlayer.extraNames.slice(0, 1).map((extraName, index) => (
                       <div key={index} className="mobile-extra-player-input">
                         <input
                           value={extraName}
                           onChange={(event) => renameExtraPlayer(selectedMobilePlayer.id, index, event.target.value)}
-                          placeholder={`Cầu thủ ${index + 3}`}
+                          placeholder={`${copy.extraPlayerPlaceholder} ${index + 3}`}
                         />
                         <button
                           type="button"
                           onClick={() => removeExtraPlayerInput(selectedMobilePlayer.id, index)}
-                          aria-label={`Remove player ${index + 3}`}
+                          aria-label={`${copy.delete} ${copy.player} ${index + 3}`}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1318,15 +2321,15 @@ function App() {
                         onClick={() => addPlayerInput(selectedMobilePlayer.id)}
                       >
                         <Plus size={14} />
-                        Thêm dự bị
+                        {copy.addSubstitute}
                       </button>
                     ) : null}
                   </div>
                 </div>
               ) : null}
               {pitchSize === "custom" ? (
-                <div className="custom-player-tray" aria-label="Custom player tray">
-                  <span>Players</span>
+                <div className="custom-player-tray" aria-label={copy.customPlayerTray}>
+                  <span>{copy.players}</span>
                   <div className="custom-player-dot-list">
                     {players.map((player) => (
                       <button
@@ -1337,7 +2340,7 @@ function App() {
                         onPointerMove={(event) => handleDragMove(event, player.id)}
                         onPointerUp={stopDragging}
                         onPointerCancel={stopDragging}
-                        aria-label={`Drag player ${player.id}`}
+                        aria-label={`${copy.dragPlayer} ${player.id}`}
                       >
                         {player.id}
                       </button>
@@ -1346,8 +2349,8 @@ function App() {
                 </div>
               ) : null}
               {pitchSize === "custom" ? (
-                <div className="opponent-tray" aria-label="Opponent marker tray">
-                  <span>Opponent</span>
+                <div className="opponent-tray" aria-label={copy.opponentTray}>
+                  <span>{copy.opponent}</span>
                   <div className="opponent-dot-list">
                     {opponentMarkers.map((marker) => (
                       <button
@@ -1358,7 +2361,7 @@ function App() {
                         onPointerMove={(event) => handleOpponentDragMove(event, marker.id)}
                         onPointerUp={stopOpponentDragging}
                         onPointerCancel={stopOpponentDragging}
-                        aria-label={`Drag opponent ${marker.id}`}
+                        aria-label={`${copy.dragOpponent} ${marker.id}`}
                       />
                     ))}
                   </div>
@@ -1412,7 +2415,7 @@ function App() {
                 ) : null}
 
                 {activePlayers.map((player) => {
-                  const starterName = player.starterName.trim() || `Player ${player.id}`;
+                  const starterName = player.starterName.trim() || `${copy.player} ${player.id}`;
                   const benchNames = getBenchNames(player);
 
                   return (
@@ -1428,7 +2431,7 @@ function App() {
                       style={{ left: `${player.x}%`, top: `${player.y}%` }}
                       role="button"
                       tabIndex={0}
-                      aria-label={`Drag ${player.position}`}
+                      aria-label={`${copy.dragPlayer} ${getDisplayPosition(player.position, language)}`}
                     >
                       <span
                         className={`kit-disc transition group-active:scale-110 ${
@@ -1461,7 +2464,7 @@ function App() {
                           onPointerMove={(event) => handleOpponentDragMove(event, marker.id)}
                           onPointerUp={stopOpponentDragging}
                           onPointerCancel={stopOpponentDragging}
-                          aria-label={`Drag opponent ${marker.id}`}
+                          aria-label={`${copy.dragOpponent} ${marker.id}`}
                         />
                       ))
                   : null}
@@ -1469,11 +2472,11 @@ function App() {
               <div className="mobile-lineup-actions">
                 <button type="button" className="share-button" onClick={copyShareLink}>
                   {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
-                  {copyStatus === "copied" ? "Copied" : "Share"}
+                  {copyStatus === "copied" ? copy.copied : copy.share}
                 </button>
                 <button type="button" className="download-button" onClick={downloadLineupImage}>
                   <Download size={14} />
-                  Download
+                  {copy.download}
                 </button>
                 {pitchSize === "custom" ? (
                   <button
@@ -1482,18 +2485,19 @@ function App() {
                     onClick={() => setIsDrawMode((current) => !current)}
                   >
                     <Pencil size={14} />
-                    Draw
+                    {copy.draw}
                   </button>
                 ) : null}
                 <button type="button" onClick={clearNames}>
                   <Trash2 size={14} />
-                  Clear
+                  {copy.clear}
                 </button>
               </div>
             </section>
         </div>
+        )}
       </div>
-      {dragPreview ? (
+      {activeTab === "lineup" && dragPreview ? (
         <div
           className={`drag-preview ${dragPreview.type === "opponent" ? "opponent-preview" : "player-preview"}`}
           style={{ left: dragPreview.x, top: dragPreview.y }}
