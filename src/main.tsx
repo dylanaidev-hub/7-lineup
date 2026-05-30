@@ -241,6 +241,13 @@ type AppCopy = {
   checkEmailToConfirm: string;
   signedInSuccessfully: string;
   resetEmailSent: string;
+  setNewPasswordTitle: string;
+  setNewPasswordHint: string;
+  newPassword: string;
+  confirmPassword: string;
+  updatePassword: string;
+  passwordMismatch: string;
+  passwordUpdated: string;
   pitchLabels: Record<PitchSize, string>;
 };
 
@@ -328,6 +335,13 @@ const copyByLanguage = {
     checkEmailToConfirm: "Đăng ký thành công. Hãy kiểm tra email để xác thực tài khoản trước khi đăng nhập.",
     signedInSuccessfully: "Đăng nhập thành công.",
     resetEmailSent: "Nếu email tồn tại, link đặt lại mật khẩu đã được gửi.",
+    setNewPasswordTitle: "Đặt lại mật khẩu",
+    setNewPasswordHint: "Nhập mật khẩu mới cho tài khoản của bạn.",
+    newPassword: "Mật khẩu mới",
+    confirmPassword: "Nhập lại mật khẩu",
+    updatePassword: "Cập nhật mật khẩu",
+    passwordMismatch: "Mật khẩu nhập lại không khớp.",
+    passwordUpdated: "Đổi mật khẩu thành công. Bạn đã được đăng nhập.",
     pitchLabels: {
       5: "Sân 5",
       7: "Sân 7",
@@ -418,6 +432,13 @@ const copyByLanguage = {
     checkEmailToConfirm: "Sign-up succeeded. Check your email to confirm your account before signing in.",
     signedInSuccessfully: "Signed in successfully.",
     resetEmailSent: "If the email exists, a password reset link has been sent.",
+    setNewPasswordTitle: "Reset your password",
+    setNewPasswordHint: "Enter a new password for your account.",
+    newPassword: "New password",
+    confirmPassword: "Confirm password",
+    updatePassword: "Update password",
+    passwordMismatch: "The passwords do not match.",
+    passwordUpdated: "Password updated. You are now signed in.",
     pitchLabels: {
       5: "5-a-side",
       7: "7-a-side",
@@ -1568,7 +1589,7 @@ function TacticalBoard({
 type LockerCategory = "all" | "5" | "7" | "11" | "custom" | "tactics";
 
 function App() {
-  const { user, isAuthLoading, signOut } = useAuth();
+  const { user, isAuthLoading, signOut, isPasswordRecovery, clearPasswordRecovery } = useAuth();
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
   const initialPitchSize = sharedLineup?.pitchSize ?? 7;
   const initialFormation = sharedLineup?.formation ?? "2-3-1";
@@ -1628,6 +1649,11 @@ function App() {
   const [authPassword, setAuthPassword] = useState("");
   const [authUsername, setAuthUsername] = useState("");
   const [authStatus, setAuthStatus] = useState("");
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [recoveryConfirm, setRecoveryConfirm] = useState("");
+  const [recoveryStatus, setRecoveryStatus] = useState("");
+  const [recoveryDone, setRecoveryDone] = useState(false);
+  const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [profileUsername, setProfileUsername] = useState("");
   const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
@@ -1972,6 +1998,50 @@ function App() {
     setIsAuthScreenOpen(false);
     setAuthStatus(copy.signedInSuccessfully);
     setIsAuthSubmitting(false);
+  };
+
+  const handleUpdatePassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabase) {
+      setRecoveryStatus(copy.supabaseMissing);
+      return;
+    }
+
+    setRecoveryStatus("");
+    const password = recoveryPassword.trim();
+    const confirm = recoveryConfirm.trim();
+
+    if (password.length < 6) {
+      setRecoveryStatus(copy.passwordTooShort);
+      return;
+    }
+
+    if (password !== confirm) {
+      setRecoveryStatus(copy.passwordMismatch);
+      return;
+    }
+
+    setIsRecoverySubmitting(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      setRecoveryStatus(error.message);
+      setIsRecoverySubmitting(false);
+      return;
+    }
+
+    setRecoveryStatus(copy.passwordUpdated);
+    setRecoveryPassword("");
+    setRecoveryConfirm("");
+    setRecoveryDone(true);
+    setIsRecoverySubmitting(false);
+  };
+
+  const closeRecoveryScreen = () => {
+    setRecoveryPassword("");
+    setRecoveryConfirm("");
+    setRecoveryStatus("");
+    setRecoveryDone(false);
+    clearPasswordRecovery();
   };
 
   const signInWithGoogle = async () => {
@@ -2833,6 +2903,50 @@ function App() {
           </button>
         </div>
       </header>
+      {isPasswordRecovery ? (
+        <div className="auth-screen">
+          <form className="auth-screen-card" onSubmit={handleUpdatePassword}>
+            <div className="panel-heading">
+              <span>{copy.setNewPasswordTitle}</span>
+              <button type="button" onClick={closeRecoveryScreen}>
+                x
+              </button>
+            </div>
+            {!isSupabaseConfigured ? <p className="locker-message">{copy.supabaseMissing}</p> : null}
+            {recoveryDone ? (
+              <>
+                <p className="locker-message">{copy.passwordUpdated}</p>
+                <button type="button" onClick={closeRecoveryScreen}>
+                  {copy.signIn}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="locker-message">{copy.setNewPasswordHint}</p>
+                <input
+                  type="password"
+                  value={recoveryPassword}
+                  onChange={(event) => setRecoveryPassword(event.target.value)}
+                  placeholder={copy.newPassword}
+                  required
+                />
+                <input
+                  type="password"
+                  value={recoveryConfirm}
+                  onChange={(event) => setRecoveryConfirm(event.target.value)}
+                  placeholder={copy.confirmPassword}
+                  required
+                />
+                <button type="submit" disabled={!isSupabaseConfigured || isRecoverySubmitting}>
+                  {isRecoverySubmitting ? <ButtonSpinner /> : null}
+                  {copy.updatePassword}
+                </button>
+                {recoveryStatus ? <p className="locker-message">{recoveryStatus}</p> : null}
+              </>
+            )}
+          </form>
+        </div>
+      ) : null}
       {isAuthScreenOpen ? (
         <div className="auth-screen">
           <form className="auth-screen-card" onSubmit={handleAuthSubmit}>
