@@ -1662,6 +1662,10 @@ function App() {
   const filteredSavedLineups =
     lockerCategory === "all" ? savedLineups : savedLineups.filter((lineup) => lineup.format === lockerCategory);
 
+  useEffect(() => {
+    document.title = "doihinhsanco";
+  }, []);
+
   const switchAppTab = (nextTab: AppTab) => {
     if (nextTab === "lineup" || nextTab === "tactics") {
       setLastWorkspaceTab(nextTab);
