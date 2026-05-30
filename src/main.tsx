@@ -1650,7 +1650,7 @@ function TacticalBoard({
 
 type LockerCategory = "all" | "5" | "7" | "11" | "custom" | "tactics";
 
-function App() {
+function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const { user, isAuthLoading, signOut, isPasswordRecovery, authHashError, clearPasswordRecovery } = useAuth();
   const isRecoveryExpiryError = Boolean(
     authHashError && /otp|recovery|expired|invalid/i.test(`${authHashError.code} ${authHashError.description}`),
@@ -1704,7 +1704,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<AppTab>(() => getInitialAppTab());
   const [lastWorkspaceTab, setLastWorkspaceTab] = useState<"lineup" | "tactics">("lineup");
   const [isLineupMenuOpen, setIsLineupMenuOpen] = useState(false);
-  const [language, setLanguage] = useState<Language>("vi");
+  const [language, setLanguage] = useState<Language>(initialLanguage);
   const [authMode, setAuthMode] = useState<"sign_in" | "sign_up" | "reset">("sign_in");
   const [isAuthScreenOpen, setIsAuthScreenOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -3609,8 +3609,444 @@ function App() {
   );
 }
 
+const fetchEmailProviders = async (email: string) => {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("email_auth_providers", { p_email: email });
+  if (error) {
+    console.error("email_auth_providers error:", error.message);
+    return null;
+  }
+  return data as { account_exists: boolean; has_password: boolean; has_google: boolean } | null;
+};
+
+function AuthDialog({
+  language,
+  initialMode = "sign_in",
+  onClose,
+  onAuthenticated,
+}: {
+  language: Language;
+  initialMode?: "sign_in" | "sign_up" | "reset";
+  onClose: () => void;
+  onAuthenticated?: () => void;
+}) {
+  const copy = copyByLanguage[language];
+  const [authMode, setAuthMode] = useState<"sign_in" | "sign_up" | "reset">(initialMode);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authStatus, setAuthStatus] = useState("");
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resetCooldown <= 0) return;
+    const intervalId = window.setInterval(() => {
+      setResetCooldown((seconds) => {
+        if (seconds <= 1) {
+          window.clearInterval(intervalId);
+          return 0;
+        }
+        return seconds - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [resetCooldown > 0]);
+
+  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabase) {
+      setAuthStatus(copy.supabaseMissing);
+      return;
+    }
+
+    setAuthStatus("");
+    const email = authEmail.trim().toLowerCase();
+    const password = authPassword.trim();
+
+    if (!isValidEmail(email)) {
+      setAuthStatus(copy.invalidEmail);
+      return;
+    }
+
+    if (authMode !== "reset" && password.length < 6) {
+      setAuthStatus(copy.passwordTooShort);
+      return;
+    }
+
+    setIsAuthSubmitting(true);
+    if (authMode === "reset") {
+      const providers = await fetchEmailProviders(email);
+      if (providers?.account_exists && providers.has_google && !providers.has_password) {
+        setAuthStatus(copy.googleAccountNoPassword);
+        setIsAuthSubmitting(false);
+        return;
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname,
+      });
+      if (error) {
+        const cooldownSeconds = parseRateLimitSeconds(error.message);
+        if (cooldownSeconds) {
+          setResetCooldown(cooldownSeconds);
+          setAuthStatus("");
+        } else {
+          setAuthStatus(localizeError(error.message, copy));
+        }
+      } else {
+        setResetCooldown(0);
+        setAuthStatus(copy.resetEmailSent);
+      }
+      setIsAuthSubmitting(false);
+      return;
+    }
+
+    if (authMode === "sign_up") {
+      const providers = await fetchEmailProviders(email);
+      if (providers?.has_google) {
+        setAuthStatus(copy.emailUsesGoogle);
+        setIsAuthSubmitting(false);
+        return;
+      }
+
+      const result = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { username: authUsername.trim() || email.split("@")[0] } },
+      });
+
+      if (result.error) {
+        setAuthStatus(localizeError(result.error.message, copy));
+        setIsAuthSubmitting(false);
+        return;
+      }
+
+      const identities = result.data.user?.identities;
+      if (Array.isArray(identities) && identities.length === 0) {
+        setAuthStatus(copy.emailAlreadyRegistered);
+        setIsAuthSubmitting(false);
+        return;
+      }
+
+      setAuthStatus(copy.checkEmailToConfirm);
+      setIsAuthSubmitting(false);
+      return;
+    }
+
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    if (result.error) {
+      const providers = await fetchEmailProviders(email);
+      if (providers?.account_exists && providers.has_google && !providers.has_password) {
+        setAuthStatus(copy.emailUsesGoogle);
+      } else {
+        setAuthStatus(localizeError(result.error.message, copy));
+      }
+      setIsAuthSubmitting(false);
+      return;
+    }
+
+    setIsAuthSubmitting(false);
+    setAuthStatus(copy.signedInSuccessfully);
+    onAuthenticated?.();
+    onClose();
+  };
+
+  const signInWithGoogle = async () => {
+    if (!supabase) {
+      setAuthStatus(copy.supabaseMissing);
+      return;
+    }
+    setIsGoogleAuthLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) {
+      setAuthStatus(localizeError(error.message, copy));
+      setIsGoogleAuthLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-screen">
+      <form className="auth-screen-card" onSubmit={handleAuthSubmit}>
+        <div className="panel-heading">
+          <span>{copy.authTitle}</span>
+          <button type="button" onClick={onClose}>
+            x
+          </button>
+        </div>
+        {!isSupabaseConfigured ? <p className="locker-message">{copy.supabaseMissing}</p> : null}
+        <div className="auth-mode-switch">
+          <button
+            type="button"
+            className={authMode === "sign_in" ? "active" : ""}
+            onClick={() => {
+              setAuthMode("sign_in");
+              setAuthStatus("");
+            }}
+          >
+            {copy.signIn}
+          </button>
+          <button
+            type="button"
+            className={authMode === "sign_up" ? "active" : ""}
+            onClick={() => {
+              setAuthMode("sign_up");
+              setAuthStatus("");
+            }}
+          >
+            {copy.signUp}
+          </button>
+          <button
+            type="button"
+            className={authMode === "reset" ? "active" : ""}
+            onClick={() => {
+              setAuthMode("reset");
+              setAuthStatus("");
+            }}
+          >
+            {copy.forgotPassword}
+          </button>
+        </div>
+        {authMode === "sign_up" ? (
+          <input value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} placeholder={copy.username} />
+        ) : null}
+        <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder={copy.email} required />
+        {authMode !== "reset" ? (
+          <input
+            type="password"
+            value={authPassword}
+            onChange={(event) => setAuthPassword(event.target.value)}
+            placeholder={copy.password}
+            required
+          />
+        ) : null}
+        <button
+          type="submit"
+          disabled={!isSupabaseConfigured || isAuthSubmitting || isGoogleAuthLoading || (authMode === "reset" && resetCooldown > 0)}
+        >
+          {isAuthSubmitting ? <ButtonSpinner /> : null}
+          {authMode === "reset" && resetCooldown > 0
+            ? `${copy.resetPassword} (${resetCooldown}s)`
+            : authMode === "sign_up"
+              ? copy.signUp
+              : authMode === "reset"
+                ? copy.resetPassword
+                : copy.signIn}
+        </button>
+        <button
+          type="button"
+          className="google-auth-button"
+          onClick={signInWithGoogle}
+          disabled={!isSupabaseConfigured || isAuthSubmitting || isGoogleAuthLoading}
+        >
+          {isGoogleAuthLoading ? <ButtonSpinner /> : null}
+          {copy.googleSignIn}
+        </button>
+        {authMode === "reset" && resetCooldown > 0 ? (
+          <p className="locker-message">{copy.resetCooldownMessage.replace("{seconds}", String(resetCooldown))}</p>
+        ) : authStatus ? (
+          <p className="locker-message">{authStatus}</p>
+        ) : null}
+      </form>
+    </div>
+  );
+}
+
+type LandingFeature = { icon: string; title: string; desc: string };
+type LandingCopy = {
+  brand: string;
+  eyebrow: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  explore: string;
+  featuresTitle: string;
+  features: LandingFeature[];
+  footer: string;
+};
+
+const landingCopy: Record<Language, LandingCopy> = {
+  vi: {
+    brand: "Đội Hình Sân Cỏ",
+    eyebrow: "Công cụ xếp đội hình & chiến thuật bóng đá",
+    heroTitle: "Dựng đội hình sân cỏ chỉ trong vài giây",
+    heroSubtitle:
+      "Tạo đội hình sân 5, 7, 11 hoặc tuỳ chỉnh, dựng bảng chiến thuật động và chia sẻ với cả đội — tất cả trên một công cụ duy nhất.",
+    explore: "Khám phá",
+    featuresTitle: "Mọi thứ bạn cần cho ngày ra sân",
+    features: [
+      { icon: "⚽", title: "Đội hình linh hoạt", desc: "Sân 5, 7, 11 hoặc tuỳ chỉnh. Kéo thả cầu thủ, đặt tên và đổi sơ đồ tức thì." },
+      { icon: "🎬", title: "Bảng chiến thuật động", desc: "Dựng từng bước di chuyển rồi chạy hoạt ảnh để xem bài phối hợp." },
+      { icon: "🗄️", title: "Phòng thay đồ", desc: "Lưu đội hình & chiến thuật theo tài khoản, mở lại bất cứ lúc nào." },
+      { icon: "🔗", title: "Chia sẻ tức thì", desc: "Tạo link hoặc ảnh đội hình để gửi nhanh cho cả đội." },
+    ],
+    footer: "Đội Hình Sân Cỏ — dựng đội hình, lên chiến thuật, ra sân.",
+  },
+  en: {
+    brand: "Lineup Football",
+    eyebrow: "Football line-up & tactics tool",
+    heroTitle: "Build your match-day line-up in seconds",
+    heroSubtitle:
+      "Create 5, 7, 11-a-side or custom line-ups, design animated tactics boards and share with your whole team — all in one tool.",
+    explore: "Explore",
+    featuresTitle: "Everything you need for match day",
+    features: [
+      { icon: "⚽", title: "Flexible line-ups", desc: "5, 7, 11-a-side or custom. Drag players, name them and switch formations instantly." },
+      { icon: "🎬", title: "Animated tactics board", desc: "Build movement step by step then play the animation to review your plays." },
+      { icon: "🗄️", title: "Locker room", desc: "Save line-ups & tactics to your account and reopen them anytime." },
+      { icon: "🔗", title: "Instant sharing", desc: "Generate a link or image of your line-up to send to the team." },
+    ],
+    footer: "Lineup Football — build the line-up, plan the tactics, hit the pitch.",
+  },
+};
+
+function LandingPage({
+  language,
+  onChangeLanguage,
+  onExplore,
+  onSignIn,
+  onSignUp,
+}: {
+  language: Language;
+  onChangeLanguage: (language: Language) => void;
+  onExplore: () => void;
+  onSignIn: () => void;
+  onSignUp: () => void;
+}) {
+  const c = landingCopy[language];
+  const appCopy = copyByLanguage[language];
+  return (
+    <main className="landing">
+      <header className="landing-nav">
+        <div className="landing-brand">
+          <span className="landing-logo">⚽</span>
+          <span>{c.brand}</span>
+        </div>
+        <div className="landing-nav-actions">
+          <button type="button" className="landing-auth-btn" onClick={onSignIn}>
+            {appCopy.signIn}
+          </button>
+          <button type="button" className="landing-auth-btn landing-auth-btn-primary" onClick={onSignUp}>
+            {appCopy.signUp}
+          </button>
+          <button
+            type="button"
+            className="landing-lang"
+            onClick={() => onChangeLanguage(language === "vi" ? "en" : "vi")}
+          >
+            {language === "vi" ? "🇻🇳 VI" : "🇺🇸 EN"}
+          </button>
+        </div>
+      </header>
+
+      <section className="landing-hero">
+        <div className="landing-hero-content">
+          <p className="landing-eyebrow">{c.eyebrow}</p>
+          <h1 className="landing-title">{c.heroTitle}</h1>
+          <p className="landing-subtitle">{c.heroSubtitle}</p>
+          <button type="button" className="landing-cta" onClick={onExplore}>
+            {c.explore}
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+        <div className="landing-hero-visual" aria-hidden="true">
+          <div className="landing-pitch">
+            <span className="landing-pitch-line landing-pitch-halfway" />
+            <span className="landing-pitch-circle" />
+            <span className="landing-pitch-box landing-pitch-box-top" />
+            <span className="landing-pitch-box landing-pitch-box-bottom" />
+            {[
+              { x: 50, y: 90 },
+              { x: 26, y: 70 },
+              { x: 74, y: 70 },
+              { x: 50, y: 58 },
+              { x: 20, y: 42 },
+              { x: 50, y: 36 },
+              { x: 80, y: 42 },
+              { x: 36, y: 18 },
+              { x: 64, y: 18 },
+            ].map((dot, index) => (
+              <span
+                key={index}
+                className={`landing-pitch-dot${index === 0 ? " landing-pitch-dot-keeper" : ""}`}
+                style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
+              />
+            ))}
+            <span className="landing-pitch-ball" />
+          </div>
+        </div>
+      </section>
+
+      <section className="landing-features">
+        <h2 className="landing-features-title">{c.featuresTitle}</h2>
+        <div className="landing-feature-grid">
+          {c.features.map((feature) => (
+            <article key={feature.title} className="landing-feature-card">
+              <span className="landing-feature-icon" aria-hidden="true">
+                {feature.icon}
+              </span>
+              <h3>{feature.title}</h3>
+              <p>{feature.desc}</p>
+            </article>
+          ))}
+        </div>
+        <button type="button" className="landing-cta landing-cta-secondary" onClick={onExplore}>
+          {c.explore}
+          <span aria-hidden="true">→</span>
+        </button>
+      </section>
+
+      <footer className="landing-footer">{c.footer}</footer>
+    </main>
+  );
+}
+
+function Root() {
+  // Deep links (shared line-up, specific tab) should skip the landing page.
+  const hasDeepLink = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      Boolean(params.get("lineup") || params.get("tab") || params.has("tactics")) ||
+      window.location.hash.includes("type=recovery") ||
+      window.location.hash.includes("error")
+    );
+  }, []);
+  const [entered, setEntered] = useState(hasDeepLink);
+  const [language, setLanguage] = useState<Language>("vi");
+  const [authDialogMode, setAuthDialogMode] = useState<"sign_in" | "sign_up" | null>(null);
+
+  if (!entered) {
+    return (
+      <>
+        <LandingPage
+          language={language}
+          onChangeLanguage={setLanguage}
+          onExplore={() => setEntered(true)}
+          onSignIn={() => setAuthDialogMode("sign_in")}
+          onSignUp={() => setAuthDialogMode("sign_up")}
+        />
+        {authDialogMode ? (
+          <AuthDialog
+            language={language}
+            initialMode={authDialogMode}
+            onClose={() => setAuthDialogMode(null)}
+            onAuthenticated={() => {
+              setAuthDialogMode(null);
+              setEntered(true);
+            }}
+          />
+        ) : null}
+      </>
+    );
+  }
+
+  return <App initialLanguage={language} />;
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <Root />
   </React.StrictMode>,
 );
