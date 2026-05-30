@@ -69,3 +69,70 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
 
+-- Returns which auth providers an email is registered with, so the client can
+-- guide users to the correct sign-in method (e.g. Google accounts have no password).
+-- SECURITY DEFINER lets the anon role read auth.identities indirectly. This does
+-- expose whether an email exists (user enumeration); that is an intentional trade-off
+-- for the "use Google instead" UX.
+create or replace function public.email_auth_providers(p_email text)
+returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_email text := lower(trim(p_email));
+  result jsonb;
+begin
+  select jsonb_build_object(
+    'account_exists', count(*) > 0,
+    'has_password', coalesce(bool_or(i.provider = 'email'), false),
+    'has_google', coalesce(bool_or(i.provider = 'google'), false)
+  )
+  into result
+  from auth.identities i
+  where lower(coalesce(i.email, i.identity_data->>'email')) = v_email;
+
+  return result;
+end;
+$$;
+
+revoke all on function public.email_auth_providers(text) from public;
+grant execute on function public.email_auth_providers(text) to anon, authenticated;
+
+-- Prevent a single account from mixing email/password and Google sign-in.
+-- Fires when Supabase tries to attach a second, different provider to the same
+-- user (e.g. signing in with Google on an email that already has a password).
+create or replace function public.prevent_mixed_identities()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_other text;
+begin
+  if new.provider not in ('email', 'google') then
+    return new;
+  end if;
+
+  select i.provider
+  into v_other
+  from auth.identities i
+  where i.user_id = new.user_id
+    and i.provider <> new.provider
+    and i.provider in ('email', 'google')
+  limit 1;
+
+  if v_other is not null then
+    raise exception 'EMAIL_PROVIDER_CONFLICT: account already uses % sign-in', v_other
+      using errcode = 'P0001';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists prevent_mixed_identities_trigger on auth.identities;
+create trigger prevent_mixed_identities_trigger
+before insert on auth.identities
+for each row execute function public.prevent_mixed_identities();
+

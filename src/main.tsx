@@ -257,6 +257,8 @@ type AppCopy = {
   emailRateLimited: string;
   unexpectedError: string;
   invalidLineupData: string;
+  googleAccountNoPassword: string;
+  emailUsesGoogle: string;
   pitchLabels: Record<PitchSize, string>;
 };
 
@@ -360,6 +362,8 @@ const copyByLanguage = {
     emailRateLimited: "Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.",
     unexpectedError: "Đã có lỗi xảy ra. Vui lòng thử lại.",
     invalidLineupData: "Dữ liệu đội hình không hợp lệ.",
+    googleAccountNoPassword: 'Tài khoản này đăng nhập bằng Google nên không có mật khẩu. Hãy dùng nút "Đăng nhập Google".',
+    emailUsesGoogle: "Email này đã đăng ký bằng Google. Vui lòng đăng nhập bằng Google.",
     pitchLabels: {
       5: "Sân 5",
       7: "Sân 7",
@@ -466,6 +470,8 @@ const copyByLanguage = {
     emailRateLimited: "Too many attempts. Please try again in a few minutes.",
     unexpectedError: "Something went wrong. Please try again.",
     invalidLineupData: "Invalid line-up data.",
+    googleAccountNoPassword: 'This account uses Google sign-in, so it has no password. Please use the "Sign in with Google" button.',
+    emailUsesGoogle: "This email is already registered with Google. Please sign in with Google.",
     pitchLabels: {
       5: "5-a-side",
       7: "7-a-side",
@@ -489,6 +495,10 @@ const localizeError = (message: string | undefined, copy: AppCopy): string => {
   if (lower.includes("unable to validate email") || lower.includes("invalid email") || lower.includes("invalid format")) return copy.invalidEmail;
   if (lower.includes("for security purposes")) return copy.emailRateLimited;
   if (lower.includes("rate limit") || lower.includes("too many requests")) return copy.emailRateLimited;
+  if (lower.includes("email_provider_conflict") || lower.includes("already uses")) return copy.emailUsesGoogle;
+  if (lower.includes("otp_expired") || lower.includes("invalid or has expired") || lower.includes("expired")) {
+    return copy.recoveryLinkExpired;
+  }
   // Unknown error: keep the raw message in the console for debugging but show a localized message.
   console.error("Unlocalized Supabase error:", message);
   return copy.unexpectedError;
@@ -1641,7 +1651,10 @@ function TacticalBoard({
 type LockerCategory = "all" | "5" | "7" | "11" | "custom" | "tactics";
 
 function App() {
-  const { user, isAuthLoading, signOut, isPasswordRecovery, recoveryError, clearPasswordRecovery } = useAuth();
+  const { user, isAuthLoading, signOut, isPasswordRecovery, authHashError, clearPasswordRecovery } = useAuth();
+  const isRecoveryExpiryError = Boolean(
+    authHashError && /otp|recovery|expired|invalid/i.test(`${authHashError.code} ${authHashError.description}`),
+  );
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
   const initialPitchSize = sharedLineup?.pitchSize ?? 7;
   const initialFormation = sharedLineup?.formation ?? "2-3-1";
@@ -1999,6 +2012,17 @@ function App() {
     return () => window.clearInterval(intervalId);
   }, [resetCooldown > 0]);
 
+  const getEmailProviders = async (email: string) => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.rpc("email_auth_providers", { p_email: email });
+    if (error) {
+      // RPC missing or failed: degrade gracefully (don't block the flow).
+      console.error("email_auth_providers error:", error.message);
+      return null;
+    }
+    return data as { account_exists: boolean; has_password: boolean; has_google: boolean } | null;
+  };
+
   const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!supabase) {
@@ -2022,6 +2046,12 @@ function App() {
 
     setIsAuthSubmitting(true);
     if (authMode === "reset") {
+      const providers = await getEmailProviders(email);
+      if (providers?.account_exists && providers.has_google && !providers.has_password) {
+        setAuthStatus(copy.googleAccountNoPassword);
+        setIsAuthSubmitting(false);
+        return;
+      }
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + window.location.pathname,
       });
@@ -2042,6 +2072,13 @@ function App() {
     }
 
     if (authMode === "sign_up") {
+      const providers = await getEmailProviders(email);
+      if (providers?.has_google) {
+        setAuthStatus(copy.emailUsesGoogle);
+        setIsAuthSubmitting(false);
+        return;
+      }
+
       const result = await supabase.auth.signUp({
         email,
         password,
@@ -2068,7 +2105,12 @@ function App() {
 
     const result = await supabase.auth.signInWithPassword({ email, password });
     if (result.error) {
-      setAuthStatus(localizeError(result.error.message, copy));
+      const providers = await getEmailProviders(email);
+      if (providers?.account_exists && providers.has_google && !providers.has_password) {
+        setAuthStatus(copy.emailUsesGoogle);
+      } else {
+        setAuthStatus(localizeError(result.error.message, copy));
+      }
       setIsAuthSubmitting(false);
       return;
     }
@@ -2125,6 +2167,13 @@ function App() {
   const requestNewResetLink = () => {
     closeRecoveryScreen();
     setAuthMode("reset");
+    setAuthStatus("");
+    setIsAuthScreenOpen(true);
+  };
+
+  const openSignInFromRecovery = () => {
+    closeRecoveryScreen();
+    setAuthMode("sign_in");
     setAuthStatus("");
     setIsAuthScreenOpen(true);
   };
@@ -2988,23 +3037,32 @@ function App() {
           </button>
         </div>
       </header>
-      {isPasswordRecovery || recoveryError ? (
+      {isPasswordRecovery || authHashError ? (
         <div className="auth-screen">
           <form className="auth-screen-card" onSubmit={handleUpdatePassword}>
             <div className="panel-heading">
-              <span>{copy.setNewPasswordTitle}</span>
+              <span>{isPasswordRecovery || isRecoveryExpiryError ? copy.setNewPasswordTitle : copy.authTitle}</span>
               <button type="button" onClick={closeRecoveryScreen}>
                 x
               </button>
             </div>
             {!isSupabaseConfigured ? <p className="locker-message">{copy.supabaseMissing}</p> : null}
-            {recoveryError && !isPasswordRecovery ? (
-              <>
-                <p className="locker-message">{copy.recoveryLinkExpired}</p>
-                <button type="button" onClick={requestNewResetLink}>
-                  {copy.requestNewLink}
-                </button>
-              </>
+            {authHashError && !isPasswordRecovery ? (
+              isRecoveryExpiryError ? (
+                <>
+                  <p className="locker-message">{copy.recoveryLinkExpired}</p>
+                  <button type="button" onClick={requestNewResetLink}>
+                    {copy.requestNewLink}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="locker-message">{localizeError(authHashError.description, copy)}</p>
+                  <button type="button" onClick={openSignInFromRecovery}>
+                    {copy.signIn}
+                  </button>
+                </>
+              )
             ) : recoveryDone ? (
               <>
                 <p className="locker-message">{copy.passwordUpdated}</p>

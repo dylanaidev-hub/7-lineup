@@ -7,16 +7,21 @@ import { supabase } from "../lib/supabaseClient";
 const hasRecoveryHash = () =>
   typeof window !== "undefined" && window.location.hash.includes("type=recovery");
 
-// When the recovery link is invalid/expired/already used, Supabase redirects back
-// with an error in the hash (e.g. #error=access_denied&error_code=otp_expired&...).
-const parseRecoveryError = (): string | null => {
+// When an auth link is invalid/expired/blocked, Supabase redirects back with an error
+// in the hash (e.g. #error=access_denied&error_code=otp_expired&error_description=...).
+const parseAuthHashError = (): { code: string; description: string } | null => {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash.replace(/^#/, "");
   if (!hash.includes("error")) return null;
   const params = new URLSearchParams(hash);
-  if (!params.get("error") && !params.get("error_code")) return null;
+  const error = params.get("error");
+  const code = params.get("error_code");
+  if (!error && !code) return null;
   const description = params.get("error_description");
-  return description ? description.replace(/\+/g, " ") : params.get("error_code") || params.get("error") || "error";
+  return {
+    code: code || error || "error",
+    description: description ? description.replace(/\+/g, " ") : code || error || "error",
+  };
 };
 
 export function useAuth() {
@@ -24,7 +29,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(Boolean(supabase));
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(hasRecoveryHash);
-  const [recoveryError, setRecoveryError] = useState<string | null>(parseRecoveryError);
+  const [authHashError, setAuthHashError] = useState(parseAuthHashError);
 
   useEffect(() => {
     if (!supabase) {
@@ -65,7 +70,7 @@ export function useAuth() {
 
   const clearPasswordRecovery = useCallback(() => {
     setIsPasswordRecovery(false);
-    setRecoveryError(null);
+    setAuthHashError(null);
     if (typeof window !== "undefined" && window.location.hash) {
       // Remove the recovery tokens/error from the URL so a refresh doesn't re-trigger the flow.
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -78,7 +83,7 @@ export function useAuth() {
     isAuthLoading,
     signOut,
     isPasswordRecovery,
-    recoveryError,
+    authHashError,
     clearPasswordRecovery,
   };
 }
