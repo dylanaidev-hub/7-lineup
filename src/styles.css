@@ -2314,3 +2314,937 @@ body {
     width: min(280px, 78vw);
   }
 }
+
+/* =====================================================================
+   In-app theme aligned with the landing page
+   Dark green surroundings, gradient-green accents, rounded cards and
+   markers synced with the landing look & feel.
+   ===================================================================== */
+:root {
+  --lf-green: #5ccb84;
+  --lf-green-light: #7fe0a3;
+  --lf-grad: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  --lf-ink-dark: #07100c;
+  --lf-frame: #0f2a1d;
+  --lf-radius: 16px;
+}
+
+/* --- Backgrounds --- */
+.match-bg {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(92, 203, 132, 0.28), transparent 38%),
+    radial-gradient(circle at 86% 82%, rgba(46, 120, 78, 0.32), transparent 42%),
+    linear-gradient(160deg, #0d1b18 0%, #0a1410 60%, #07100c 100%);
+}
+
+.app-title-bar {
+  background: linear-gradient(160deg, #102420, #0a1410);
+  border-bottom: 4px solid var(--lf-green);
+}
+
+.app-title-bar h1 {
+  background: linear-gradient(120deg, #ffffff 0%, #c8f7d8 60%, #5ccb84 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dashboard-shell,
+.pitch-mode-bar {
+  background: transparent;
+}
+
+.pitch-mode-bar {
+  border-bottom: 1px solid rgba(232, 245, 233, 0.08);
+}
+
+/* --- Panels become rounded cards floating on the dark backdrop --- */
+.stats-column,
+.lineup-column,
+.tactical-panel,
+.tactic-library-panel,
+.locker-panel {
+  border-radius: var(--lf-radius);
+  overflow: hidden;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
+}
+
+.lineup-column,
+.tactical-stage,
+.pitch-size-switch,
+.formation-switch,
+.lineup-footer-actions {
+  background: var(--lf-frame);
+}
+
+/* --- Accent headings + active/primary buttons use the green gradient --- */
+.panel-heading,
+.lineup-header {
+  background: var(--lf-grad);
+  color: var(--lf-ink-dark);
+}
+
+.pitch-mode-switch button.active,
+.app-tab-switch > button.active,
+.lineup-tab-trigger.active,
+.lineup-format-menu button.active,
+.auth-mode-switch button.active,
+.locker-category-switch button.active,
+.lineup-save-bar button:not(:disabled),
+.auth-screen-card button[type="submit"]:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled) {
+  background: var(--lf-grad);
+  color: var(--lf-ink-dark);
+}
+
+.lineup-footer-actions .share-button {
+  background: #ffffff;
+  color: #15663a;
+}
+
+/* --- Rounded inputs with a green focus ring --- */
+.squad-input-list input,
+.extra-player-input input,
+.auth-card input,
+.auth-screen-card input,
+.lineup-save-bar input {
+  border-radius: 10px;
+}
+
+/* --- Rounded menus, cards and rows --- */
+.user-dropdown,
+.lineup-format-menu {
+  border-radius: 14px;
+}
+
+.user-dropdown button,
+.lineup-format-menu button {
+  border-radius: 8px;
+}
+
+.saved-lineup-card,
+.squad-row {
+  border-radius: 12px;
+}
+
+.saved-lineup-thumbnail {
+  border-radius: 10px;
+}
+
+.auth-screen-card {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* --- Pitches matched to the landing pitch tone --- */
+.pitch,
+.tactical-pitch {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(255, 255, 255, 0.05) 11.11%,
+      rgba(255, 255, 255, 0.07) 11.11%,
+      rgba(255, 255, 255, 0.07) 22.22%
+    ),
+    linear-gradient(180deg, #1c5236, #134029);
+}
+
+.pitch {
+  border: 2px solid rgba(232, 245, 233, 0.22);
+  border-radius: 12px;
+}
+
+/* --- Tactical markers mirror the landing pitch palette:
+   home players in amber, opponents in red, ball in white. --- */
+.tactical-marker:not(.ball-marker):not(.opponent-marker),
+.tactical-tray-dot:not(.opponent),
+.tactical-drag-preview:not(.opponent):not(.ball) {
+  background: linear-gradient(135deg, #ffd84d, #ff9f1c);
+  color: #2a1700;
+}
+
+.tactical-marker.ball-marker,
+.tactical-drag-preview.ball {
+  border: 2px solid rgba(0, 0, 0, 0.18);
+  background: radial-gradient(circle at 34% 28%, #ffffff, #d3dde2 70%, #aebcc3 100%);
+}
+
+/* =====================================================================
+   Squad editor sidebar · dynamic tactics board · tactic list
+   Re-skinned to the dark landing theme; buttons mirror the
+   login / register (auth) button language.
+   ===================================================================== */
+
+/* ---- Reusable button language synced with the auth buttons ---- */
+.lf-btn-primary,
+.squad-row-header button:not(:disabled),
+.tactical-controls button:first-child:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled),
+.tactical-timeline .add-frame-button:not(:disabled),
+.tactical-timeline button.active {
+  border: none;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+  box-shadow: 0 8px 20px rgba(92, 203, 132, 0.3);
+}
+
+.lf-btn-secondary,
+.extra-player-input button:not(:disabled),
+.tactical-controls button:not(:disabled),
+.tactical-timeline button:not(:disabled),
+.tactic-library-actions button:not(:disabled) {
+  border: 1px solid rgba(232, 245, 233, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 120ms ease;
+}
+
+/* keep the primary accents winning over the generic secondary rule */
+.tactical-controls button:first-child:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled),
+.tactical-timeline .add-frame-button:not(:disabled),
+.tactical-timeline button.active {
+  border: none;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+.extra-player-input button:not(:disabled):hover,
+.tactical-controls button:not(:disabled):hover,
+.tactical-timeline button:not(:disabled):hover,
+.tactic-library-actions button:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.tactical-controls button.active:not(:disabled) {
+  border: 1px solid transparent;
+  background: rgba(92, 203, 132, 0.18);
+  color: #e8f5e9;
+  box-shadow: inset 0 0 0 2px rgba(92, 203, 132, 0.9);
+}
+
+.tactical-timeline .clear-frames-button:not(:disabled) {
+  border: 1px solid rgba(255, 120, 120, 0.4);
+  background: rgba(220, 38, 38, 0.16);
+  color: #ffb4b4;
+}
+
+/* round the dense action buttons into pills like the auth buttons */
+.tactical-controls button,
+.tactical-timeline button,
+.tactic-library-actions button,
+.extra-player-input button {
+  border-radius: 999px;
+}
+
+/* ---- Squad editor sidebar surface ("Chỉnh đội hình") ---- */
+.squad-editor {
+  background: rgba(9, 20, 15, 0.94);
+}
+
+.squad-row {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(232, 245, 233, 0.1);
+}
+
+.squad-row-header strong {
+  color: #e8f5e9;
+}
+
+.squad-row-header span {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e8f5e9;
+}
+
+.squad-input-list input,
+.extra-player-input input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  color: #e8f5e9;
+}
+
+.squad-input-list input::placeholder,
+.extra-player-input input::placeholder {
+  color: rgba(232, 245, 233, 0.42);
+}
+
+.squad-input-list input:focus,
+.extra-player-input input:focus {
+  border-color: #5ccb84;
+  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
+}
+
+/* ---- Dynamic tactics board panel ("bảng chiến thuật động") ---- */
+.tactical-panel {
+  background: rgba(9, 20, 15, 0.94);
+}
+
+.tactical-help {
+  color: rgba(232, 245, 233, 0.55);
+}
+
+.tactical-tray {
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  background: rgba(15, 51, 34, 0.4);
+}
+
+.tactical-timeline button span {
+  background: rgba(232, 245, 233, 0.18);
+}
+
+.tactical-save-status {
+  background: rgba(92, 203, 132, 0.18);
+  color: #d9ffe6;
+}
+
+/* ---- Tactic list panel ("danh sách tactic") ---- */
+.tactic-library-panel {
+  background: rgba(9, 20, 15, 0.94);
+}
+
+.tactic-list > button {
+  border: 1px solid rgba(232, 245, 233, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e8f5e9;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.tactic-list > button:hover {
+  border-color: rgba(92, 203, 132, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tactic-list > button.active {
+  background: rgba(92, 203, 132, 0.16);
+  border-color: rgba(92, 203, 132, 0.7);
+  box-shadow: inset 0 3px 0 #5ccb84;
+}
+
+.tactic-list small {
+  color: rgba(232, 245, 233, 0.55);
+}
+
+.tactic-list span[role="button"] {
+  color: #ff7a7a;
+}
+
+/* =====================================================================
+   Primary button hover — animated gradient sweep (shine) instead of the
+   accidental dark/translucent state.
+   ===================================================================== */
+.squad-row-header button:not(:disabled),
+.tactical-controls button:first-child:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled),
+.tactical-timeline .add-frame-button:not(:disabled),
+.tactical-timeline button.active,
+.lineup-save-bar button:not(:disabled),
+.auth-screen-card button[type="submit"]:not(:disabled) {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease,
+    transform 140ms ease;
+}
+
+/* the moving sheen sits above the green gradient but below the label */
+.squad-row-header button:not(:disabled)::before,
+.tactical-controls button:first-child:not(:disabled)::before,
+.tactic-library-actions .save-button:not(:disabled)::before,
+.tactical-timeline .add-frame-button:not(:disabled)::before,
+.tactical-timeline button.active::before,
+.lineup-save-bar button:not(:disabled)::before,
+.auth-screen-card button[type="submit"]:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10%;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  transition: transform 650ms ease;
+  pointer-events: none;
+}
+
+/* keep the gradient (slightly brighter) on hover + glow, never go dark */
+.squad-row-header button:not(:disabled):hover,
+.tactical-controls button:first-child:not(:disabled):hover,
+.tactic-library-actions .save-button:not(:disabled):hover,
+.tactical-timeline .add-frame-button:not(:disabled):hover,
+.tactical-timeline button.active:hover,
+.lineup-save-bar button:not(:disabled):hover,
+.auth-screen-card button[type="submit"]:not(:disabled):hover {
+  background: linear-gradient(135deg, #9bedbb, #63d68d);
+  box-shadow: 0 12px 28px rgba(92, 203, 132, 0.5);
+  transform: translateY(-1px);
+}
+
+.squad-row-header button:not(:disabled):hover::before,
+.tactical-controls button:first-child:not(:disabled):hover::before,
+.tactic-library-actions .save-button:not(:disabled):hover::before,
+.tactical-timeline .add-frame-button:not(:disabled):hover::before,
+.tactical-timeline button.active:hover::before,
+.lineup-save-bar button:not(:disabled):hover::before,
+.auth-screen-card button[type="submit"]:not(:disabled):hover::before {
+  transform: translateX(130%);
+}
+
+/* landing primary buttons get the same sweep for consistency */
+.landing-auth-btn-primary,
+.landing-cta {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.landing-auth-btn-primary::before,
+.landing-cta::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10%;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  transition: transform 650ms ease;
+  pointer-events: none;
+}
+
+.landing-auth-btn-primary:hover::before,
+.landing-cta:hover::before {
+  transform: translateX(130%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .squad-row-header button:not(:disabled)::before,
+  .tactical-controls button:first-child:not(:disabled)::before,
+  .tactic-library-actions .save-button:not(:disabled)::before,
+  .tactical-timeline .add-frame-button:not(:disabled)::before,
+  .tactical-timeline button.active::before,
+  .lineup-save-bar button:not(:disabled)::before,
+  .auth-screen-card button[type="submit"]:not(:disabled)::before,
+  .landing-auth-btn-primary::before,
+  .landing-cta::before {
+    transition: none;
+  }
+}
+
+/* =====================================================================
+   Active timeline step — a distinct "selected" look, NOT the solid
+   primary-button gradient, so a chosen frame reads differently from
+   action buttons.
+   ===================================================================== */
+.tactical-timeline button.active,
+.tactical-timeline button.active:hover {
+  background: rgba(92, 203, 132, 0.14);
+  color: #eafff1;
+  border: 1px solid rgba(92, 203, 132, 0.85);
+  box-shadow:
+    inset 3px 0 0 #5ccb84,
+    0 0 0 1px rgba(92, 203, 132, 0.22);
+  transform: none;
+}
+
+/* drop the sweep sheen on the active step */
+.tactical-timeline button.active::before {
+  content: none;
+}
+
+/* number badge stays vivid green to mark the active frame */
+.tactical-timeline button.active span {
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+/* =====================================================================
+   Locker room ("phòng thay đồ") — dark landing theme, synced filters,
+   and breathing room so the category filters no longer stick to the top.
+   ===================================================================== */
+.locker-panel {
+  background: rgba(9, 20, 15, 0.94);
+}
+
+.locker-message {
+  color: rgba(232, 245, 233, 0.6);
+}
+
+/* breathing room: filters get top spacing + a divider under the heading */
+.locker-category-switch {
+  padding: 16px 14px 14px;
+  margin-top: 2px;
+  border-bottom: 1px solid rgba(232, 245, 233, 0.08);
+}
+
+/* filter chips synced with the auth / register button language */
+.locker-category-switch button {
+  border: 1px solid rgba(232, 245, 233, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.locker-category-switch button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.locker-category-switch button.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+/* a little extra space above the list */
+.saved-lineup-list {
+  padding-top: 4px;
+}
+
+/* saved lineup cards → dark translucent cards */
+.saved-lineup-card {
+  border: 1px solid rgba(232, 245, 233, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.saved-lineup-card:hover {
+  border-color: rgba(92, 203, 132, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.saved-lineup-card strong {
+  color: #e8f5e9;
+}
+
+.saved-lineup-card span,
+.saved-lineup-card time {
+  color: rgba(232, 245, 233, 0.58);
+}
+
+/* actions: load = secondary pill, delete = danger pill */
+.saved-lineup-actions button {
+  border-radius: 999px;
+}
+
+.saved-lineup-actions button:not(:last-child) {
+  border: 1px solid rgba(232, 245, 233, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+}
+
+.saved-lineup-actions button:not(:last-child):hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.saved-lineup-actions button:last-child {
+  border: 1px solid rgba(255, 120, 120, 0.35);
+  background: rgba(220, 38, 38, 0.16);
+  color: #ffb4b4;
+}
+
+/* profile card inside the locker */
+.auth-card p {
+  color: rgba(232, 245, 233, 0.7);
+}
+
+.auth-card input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  color: #e8f5e9;
+}
+
+.auth-card input::placeholder {
+  color: rgba(232, 245, 233, 0.42);
+}
+
+.auth-card input:focus {
+  border-color: #5ccb84;
+  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
+}
+
+.auth-card > button {
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+/* =====================================================================
+   Authentication popup (sign in / sign up / reset) — dark landing theme
+   and a tidy bottom (no more leftover empty space).
+   ===================================================================== */
+.auth-screen {
+  background: rgba(6, 14, 11, 0.74);
+  backdrop-filter: blur(4px);
+}
+
+.auth-screen-card {
+  gap: 11px;
+  padding-bottom: 16px;
+  background: linear-gradient(165deg, #14302a 0%, #0c1a15 100%);
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+}
+
+/* small, even gap after the heading */
+.auth-screen-card .panel-heading {
+  margin-bottom: 4px;
+}
+
+/* the card padding-bottom now owns the bottom spacing — drop the legacy
+   per-button margin that caused the extra empty space */
+.auth-screen-card > button:last-of-type {
+  margin-bottom: 0;
+}
+
+/* status line hugs the buttons instead of being a tall padded block */
+.auth-screen-card > .locker-message {
+  margin: -1px 16px 0;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* wider, consistent side insets */
+.auth-screen-card > input,
+.auth-screen-card > button {
+  margin-inline: 16px;
+}
+
+/* circular ghost close button on the gradient heading */
+.auth-screen-card .panel-heading button {
+  display: grid;
+  min-height: 28px;
+  height: 28px;
+  width: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(7, 16, 12, 0.22);
+  color: #07100c;
+  font-size: 13px;
+  text-transform: none;
+}
+
+.auth-screen-card .panel-heading button:hover {
+  background: rgba(7, 16, 12, 0.38);
+}
+
+/* dark inputs with a green focus ring */
+.auth-screen-card input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  color: #e8f5e9;
+}
+
+.auth-screen-card input::placeholder {
+  color: rgba(232, 245, 233, 0.42);
+}
+
+.auth-screen-card input:focus {
+  border-color: #5ccb84;
+  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
+}
+
+/* mode switch (Sign in / Sign up / Forgot) synced with auth button language */
+.auth-mode-switch button {
+  border: 1px solid rgba(232, 245, 233, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.auth-mode-switch button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.auth-mode-switch button.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+/* Google button → rounded secondary on dark */
+.auth-screen-card .google-auth-button {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #e8f5e9;
+  border: 1px solid rgba(232, 245, 233, 0.2);
+}
+
+.auth-screen-card .google-auth-button:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+/* submit button: rounded pill (gradient + sweep already applied earlier) */
+.auth-screen-card button[type="submit"] {
+  border-radius: 999px;
+}
+
+/* only two top tabs now (Sign in / Sign up) */
+.auth-mode-switch {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Make the Sign in / Sign up switch read as a SEGMENTED CONTROL (a track
+   with a sliding active tab) so it no longer looks like the inputs or the
+   primary submit button. */
+.auth-screen-card .auth-mode-switch {
+  gap: 4px;
+  margin: 2px 16px;
+  padding: 4px;
+  border: 1px solid rgba(232, 245, 233, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.auth-screen-card .auth-mode-switch button {
+  min-height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(232, 245, 233, 0.6);
+  box-shadow: none;
+  letter-spacing: 0.02em;
+}
+
+.auth-screen-card .auth-mode-switch button:hover {
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e8f5e9;
+}
+
+.auth-screen-card .auth-mode-switch button.active {
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+  box-shadow: 0 2px 8px rgba(92, 203, 132, 0.32);
+}
+
+/* "Forgot password?" / "Back to sign in" as a subtle link at the very
+   bottom of the popup, under the Google button */
+.auth-screen-card .auth-forgot-link {
+  justify-self: center;
+  min-height: auto;
+  margin: 2px 16px 0;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: rgba(232, 245, 233, 0.66);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.auth-screen-card .auth-forgot-link:hover {
+  color: #7fe0a3;
+}
+
+/* =====================================================================
+   Lineup layout — give the pitch diagram the maximum possible size.
+   The pitch is portrait (7:10), so the only real lever is height: make
+   the stage row fill all available height and trim the surrounding
+   overhead so the pitch grows as large as the viewport allows.
+   ===================================================================== */
+
+/* tighter outer padding + a slimmer squad column → more room for the pitch */
+.content-grid {
+  gap: 14px;
+  padding: 16px;
+  grid-template-columns: minmax(240px, 300px) minmax(360px, 1fr);
+}
+
+/* the stage row now fills the column height so height:100% resolves */
+.lineup-stage {
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  justify-items: center;
+  padding: 8px;
+}
+
+.custom-lineup-stage {
+  align-items: center;
+}
+
+/* pitch fills the full available height (no 700px cap) */
+.lineup-stage .pitch {
+  height: 100%;
+  max-height: 100%;
+  width: auto;
+  max-width: 100%;
+  margin-bottom: 0;
+}
+
+.custom-lineup-stage .pitch {
+  height: 100%;
+  max-height: 100%;
+}
+
+/* trim the vertical footprint of the header/formation bars */
+.lineup-column .lineup-header {
+  min-height: 48px;
+  padding: 8px 14px;
+}
+
+.formation-switch {
+  padding: 8px 12px;
+}
+
+.lineup-footer-actions {
+  padding: 8px 12px 10px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* formation templates now live on the left of the footer row */
+.footer-formation-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-formation-switch button {
+  min-height: 32px;
+  border: 1px solid rgba(232, 245, 233, 0.2);
+  border-radius: 999px;
+  padding: 6px 13px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8f5e9;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.footer-formation-switch button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.footer-formation-switch button.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+.footer-formation-switch .draw-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-actions-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* =====================================================================
+   Toast notifications — bottom-right, slide up from below, auto-dismiss
+   after 3s. Unified feedback for saved / deleted / copied / downloaded…
+   ===================================================================== */
+.toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 12000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(360px, 86vw);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  border-left: 3px solid #5ccb84;
+  background: linear-gradient(160deg, #163a30, #0c1a15);
+  color: #e8f5e9;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  animation: toast-life 3000ms ease forwards;
+}
+
+.toast svg {
+  flex: 0 0 auto;
+  color: #5ccb84;
+}
+
+.toast-error {
+  border-left-color: #ff6b6b;
+  color: #ffe1e1;
+}
+
+@keyframes toast-life {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  9% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  86% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: toast-fade 3000ms ease forwards;
+  }
+
+  @keyframes toast-fade {
+    0% { opacity: 0; }
+    9% { opacity: 1; }
+    86% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}

@@ -197,6 +197,8 @@ type AppCopy = {
   tacticalHelp: string;
   save: string;
   saved: string;
+  deleted: string;
+  downloaded: string;
   newTactic: string;
   tacticName: string;
   delete: string;
@@ -218,6 +220,7 @@ type AppCopy = {
   signIn: string;
   signUp: string;
   forgotPassword: string;
+  backToSignIn: string;
   resetPassword: string;
   signOut: string;
   googleSignIn: string;
@@ -302,6 +305,8 @@ const copyByLanguage = {
     tacticalHelp: "Chọn bước, kéo cầu thủ hoặc bóng đến vị trí mới, sau đó thêm bước tiếp theo và bấm Chạy để xem bài phối hợp.",
     save: "Lưu",
     saved: "Đã lưu",
+    deleted: "Đã xoá",
+    downloaded: "Đã tải ảnh",
     newTactic: "Tạo mới",
     tacticName: "Chiến thuật",
     delete: "Xoá",
@@ -322,7 +327,8 @@ const copyByLanguage = {
     username: "Tên người dùng",
     signIn: "Đăng nhập",
     signUp: "Đăng ký",
-    forgotPassword: "Quên mật khẩu",
+    forgotPassword: "Quên mật khẩu?",
+    backToSignIn: "← Quay lại đăng nhập",
     resetPassword: "Gửi link đặt lại mật khẩu",
     signOut: "Đăng xuất",
     googleSignIn: "Đăng nhập Google",
@@ -410,6 +416,8 @@ const copyByLanguage = {
     tacticalHelp: "Select a frame, drag players or the ball to new positions, then add the next frame and press Play to preview the move.",
     save: "Save",
     saved: "Saved",
+    deleted: "Deleted",
+    downloaded: "Image downloaded",
     newTactic: "New",
     tacticName: "Tactic",
     delete: "Delete",
@@ -430,7 +438,8 @@ const copyByLanguage = {
     username: "Username",
     signIn: "Sign in",
     signUp: "Sign up",
-    forgotPassword: "Forgot password",
+    forgotPassword: "Forgot password?",
+    backToSignIn: "← Back to sign in",
     resetPassword: "Send reset link",
     signOut: "Sign out",
     googleSignIn: "Sign in with Google",
@@ -1443,7 +1452,6 @@ function TacticalBoard({
             {copy.loop}
           </button>
         </div>
-        {lockerStatus ? <p className="inline-save-status tactical-save-status">{lockerStatus}</p> : null}
         <div className="tactical-timeline" aria-label={copy.tacticalTimeline}>
           {frames.map((_, index) => (
             <button
@@ -1730,6 +1738,16 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [isLockerLoading, setIsLockerLoading] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [deletingLineupId, setDeletingLineupId] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<{ id: number; message: string; tone: "success" | "error" }[]>([]);
+  const toastIdRef = useRef(0);
+  const showToast = (message: string, tone: "success" | "error" = "success") => {
+    if (!message) return;
+    const id = (toastIdRef.current += 1);
+    setToasts((current) => [...current, { id, message, tone }]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 3000);
+  };
   const userMenuRef = useRef<HTMLDivElement>(null);
   const lineupMenuRef = useRef<HTMLDivElement>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
@@ -2211,19 +2229,23 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       .single();
 
     if (error) {
-      setLockerStatus(getSupabaseErrorMessage(error, copy));
+      const message = getSupabaseErrorMessage(error, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
       setIsProfileLoading(false);
       return;
     }
 
     setProfile(data as ProfileRecord);
     setLockerStatus(copy.saved);
+    showToast(copy.saved);
     setIsProfileLoading(false);
   };
 
   const saveCurrentLineupToSupabase = async () => {
     if (!supabase) {
       setLockerStatus(copy.supabaseMissing);
+      showToast(copy.supabaseMissing, "error");
       return;
     }
     if (!user) {
@@ -2244,7 +2266,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     });
 
     if (profileError) {
-      setLockerStatus(getSupabaseErrorMessage(profileError, copy));
+      const message = getSupabaseErrorMessage(profileError, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
       setIsLockerLoading(false);
       return;
     }
@@ -2257,11 +2281,14 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     });
 
     if (error) {
-      setLockerStatus(getSupabaseErrorMessage(error, copy));
+      const message = getSupabaseErrorMessage(error, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
     } else {
       setLineupName("");
       setLockerCategory(String(pitchSize) as LockerCategory);
       setLockerStatus(copy.saved);
+      showToast(copy.saved);
       await fetchSavedLineups();
     }
     setIsLockerLoading(false);
@@ -2270,6 +2297,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const saveTacticsBoardToSupabase = async () => {
     if (!supabase) {
       setLockerStatus(copy.supabaseMissing);
+      showToast(copy.supabaseMissing, "error");
       return;
     }
     if (!user) {
@@ -2289,7 +2317,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     });
 
     if (profileError) {
-      setLockerStatus(getSupabaseErrorMessage(profileError, copy));
+      const message = getSupabaseErrorMessage(profileError, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
       setIsLockerLoading(false);
       return;
     }
@@ -2309,11 +2339,14 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     });
 
     if (error) {
-      setLockerStatus(getSupabaseErrorMessage(error, copy));
+      const message = getSupabaseErrorMessage(error, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
     } else {
       setLineupName("");
       setLockerCategory("tactics");
       setLockerStatus(copy.saved);
+      showToast(copy.saved);
       await fetchSavedLineups();
     }
     setIsLockerLoading(false);
@@ -2364,6 +2397,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const lineupData = data as StoredLineupState;
     if (!lineupData || !isPitchSize(lineupData.pitchSize) || !isFormationKey(lineupData.formation) || !Array.isArray(lineupData.players)) {
       setLockerStatus(copy.invalidLineupData);
+      showToast(copy.invalidLineupData, "error");
       return;
     }
 
@@ -2389,9 +2423,12 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setDeletingLineupId(id);
     const { error } = await supabase.from("lineups").delete().eq("id", id);
     if (error) {
-      setLockerStatus(getSupabaseErrorMessage(error, copy));
+      const message = getSupabaseErrorMessage(error, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
     } else {
       setSavedLineups((current) => current.filter((lineup) => lineup.id !== id));
+      showToast(copy.deleted);
     }
     setDeletingLineupId(null);
   };
@@ -2771,6 +2808,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     try {
       await navigator.clipboard.writeText(url.toString());
       setCopyStatus("copied");
+      showToast(copy.copied);
       window.setTimeout(() => setCopyStatus("idle"), 1800);
     } catch {
       window.prompt(copy.share, url.toString());
@@ -2937,6 +2975,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
           files: [file],
           title: "Line Up Football",
         });
+        showToast(copy.downloaded);
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -2952,6 +2991,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     document.body.appendChild(link);
     link.click();
     link.remove();
+    showToast(copy.downloaded);
     window.setTimeout(() => URL.revokeObjectURL(pngUrl), 1000);
   };
 
@@ -3128,16 +3168,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
               >
                 {copy.signUp}
               </button>
-              <button
-                type="button"
-                className={authMode === "reset" ? "active" : ""}
-                onClick={() => {
-                  setAuthMode("reset");
-                  setAuthStatus("");
-                }}
-              >
-                {copy.forgotPassword}
-              </button>
             </div>
             {authMode === "sign_up" ? (
               <input value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} placeholder={copy.username} />
@@ -3184,6 +3214,16 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
             ) : authStatus ? (
               <p className="locker-message">{authStatus}</p>
             ) : null}
+            <button
+              type="button"
+              className="auth-forgot-link"
+              onClick={() => {
+                setAuthMode(authMode === "reset" ? "sign_in" : "reset");
+                setAuthStatus("");
+              }}
+            >
+              {authMode === "reset" ? copy.backToSignIn : copy.forgotPassword}
+            </button>
           </form>
         </div>
       ) : null}
@@ -3218,7 +3258,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     {isProfileLoading ? <ButtonSpinner /> : null}
                     {copy.updateProfile}
                   </button>
-                  {lockerStatus ? <p className="locker-message">{lockerStatus}</p> : null}
                 </div>
               )}
             </div>
@@ -3230,7 +3269,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 <span>{copy.savedLineups}</span>
                 <strong>{savedLineups.length}</strong>
               </div>
-              {lockerStatus ? <p className="locker-message">{lockerStatus}</p> : null}
               <div className="locker-category-switch" aria-label={copy.savedLineups}>
                 {lockerCategories.map((category) => (
                   <button
@@ -3344,34 +3382,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     {copy.clear}
                   </button>
                 </div>
-              </div>
-              {lockerStatus ? <p className="inline-save-status">{lockerStatus}</p> : null}
-              <div className={`formation-switch ${pitchSize === "custom" ? "custom-formation-switch" : ""}`}>
-                {formationEntries.map(([item]) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => applyFormation(item)}
-                    className={formation === item ? "active" : ""}
-                  >
-                    {item === "custom" ? copy.custom : item}
-                  </button>
-                ))}
-                {pitchSize === "custom" ? (
-                  <div className="draw-history-actions">
-                    <button type="button" onClick={undoDrawLine} disabled={drawLines.length === 0}>
-                      <Undo2 size={14} />
-                      {copy.undo}
-                    </button>
-                    <button type="button" onClick={redoDrawLine} disabled={redoDrawLines.length === 0}>
-                      <Redo2 size={14} />
-                      {copy.redo}
-                    </button>
-                    <button type="button" onClick={clearDrawLines} disabled={drawLines.length === 0}>
-                      {copy.clearLines}
-                    </button>
-                  </div>
-                ) : null}
               </div>
               {selectedMobilePlayer ? (
                 <div className="mobile-player-editor">
@@ -3573,24 +3583,55 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
               </div>
               </div>
               <div className="lineup-footer-actions">
-                <button type="button" className="share-button" onClick={copyShareLink}>
-                  {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
-                  {copyStatus === "copied" ? copy.copied : copy.share}
-                </button>
-                <button type="button" className="download-button" onClick={downloadLineupImage}>
-                  <Download size={14} />
-                  {copy.download}
-                </button>
-                {pitchSize === "custom" ? (
-                  <button
-                    type="button"
-                    className={`draw-button ${isDrawMode ? "active" : ""}`}
-                    onClick={() => setIsDrawMode((current) => !current)}
-                  >
-                    <Pencil size={14} />
-                    {copy.draw}
+                <div className={`footer-formation-switch ${pitchSize === "custom" ? "custom-formation-switch" : ""}`}>
+                  {pitchSize !== "custom"
+                    ? formationEntries.map(([item]) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => applyFormation(item)}
+                          className={formation === item ? "active" : ""}
+                        >
+                          {item}
+                        </button>
+                      ))
+                    : null}
+                  {pitchSize === "custom" && isDrawMode ? (
+                    <div className="draw-history-actions">
+                      <button type="button" onClick={undoDrawLine} disabled={drawLines.length === 0}>
+                        <Undo2 size={14} />
+                        {copy.undo}
+                      </button>
+                      <button type="button" onClick={redoDrawLine} disabled={redoDrawLines.length === 0}>
+                        <Redo2 size={14} />
+                        {copy.redo}
+                      </button>
+                      <button type="button" onClick={clearDrawLines} disabled={drawLines.length === 0}>
+                        {copy.clearLines}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="footer-actions-right">
+                  <button type="button" className="share-button" onClick={copyShareLink}>
+                    {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
+                    {copyStatus === "copied" ? copy.copied : copy.share}
                   </button>
-                ) : null}
+                  <button type="button" className="download-button" onClick={downloadLineupImage}>
+                    <Download size={14} />
+                    {copy.download}
+                  </button>
+                  {pitchSize === "custom" ? (
+                    <button
+                      type="button"
+                      className={`draw-button ${isDrawMode ? "active" : ""}`}
+                      onClick={() => setIsDrawMode((current) => !current)}
+                    >
+                      <Pencil size={14} />
+                      {copy.draw}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </section>
         </div>
@@ -3605,6 +3646,14 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
           {dragPreview.type === "player" ? dragPreview.id : null}
         </div>
       ) : null}
+      <div className="toast-stack" aria-live="polite" aria-atomic="false">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast toast-${toast.tone}`} role="status">
+            {toast.tone === "success" ? <Check size={16} /> : null}
+            <span>{toast.message}</span>
+          </div>
+        ))}
+      </div>
     </main>
   );
 }
@@ -3799,16 +3848,6 @@ function AuthDialog({
           >
             {copy.signUp}
           </button>
-          <button
-            type="button"
-            className={authMode === "reset" ? "active" : ""}
-            onClick={() => {
-              setAuthMode("reset");
-              setAuthStatus("");
-            }}
-          >
-            {copy.forgotPassword}
-          </button>
         </div>
         {authMode === "sign_up" ? (
           <input value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} placeholder={copy.username} />
@@ -3850,6 +3889,16 @@ function AuthDialog({
         ) : authStatus ? (
           <p className="locker-message">{authStatus}</p>
         ) : null}
+        <button
+          type="button"
+          className="auth-forgot-link"
+          onClick={() => {
+            setAuthMode(authMode === "reset" ? "sign_in" : "reset");
+            setAuthStatus("");
+          }}
+        >
+          {authMode === "reset" ? copy.backToSignIn : copy.forgotPassword}
+        </button>
       </form>
     </div>
   );
