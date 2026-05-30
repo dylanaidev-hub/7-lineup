@@ -253,6 +253,10 @@ type AppCopy = {
   resetCooldownMessage: string;
   invalidCredentials: string;
   emailNotConfirmed: string;
+  passwordSameAsOld: string;
+  emailRateLimited: string;
+  unexpectedError: string;
+  invalidLineupData: string;
   pitchLabels: Record<PitchSize, string>;
 };
 
@@ -352,6 +356,10 @@ const copyByLanguage = {
     resetCooldownMessage: "Vì lý do bảo mật, bạn có thể gửi lại sau {seconds} giây.",
     invalidCredentials: "Email hoặc mật khẩu không đúng.",
     emailNotConfirmed: "Email chưa được xác thực. Hãy kiểm tra hộp thư để xác thực trước khi đăng nhập.",
+    passwordSameAsOld: "Mật khẩu mới phải khác mật khẩu cũ.",
+    emailRateLimited: "Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.",
+    unexpectedError: "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    invalidLineupData: "Dữ liệu đội hình không hợp lệ.",
     pitchLabels: {
       5: "Sân 5",
       7: "Sân 7",
@@ -454,6 +462,10 @@ const copyByLanguage = {
     resetCooldownMessage: "For security purposes, you can request again in {seconds} seconds.",
     invalidCredentials: "Invalid email or password.",
     emailNotConfirmed: "Email not confirmed. Please check your inbox to confirm before signing in.",
+    passwordSameAsOld: "The new password must be different from the old one.",
+    emailRateLimited: "Too many attempts. Please try again in a few minutes.",
+    unexpectedError: "Something went wrong. Please try again.",
+    invalidLineupData: "Invalid line-up data.",
     pitchLabels: {
       5: "5-a-side",
       7: "7-a-side",
@@ -463,11 +475,28 @@ const copyByLanguage = {
   },
 } satisfies Record<Language, AppCopy>;
 
+// Supabase returns errors in English; map every known case to the active language
+// and fall back to a generic localized message so no raw English ever reaches the UI.
+const localizeError = (message: string | undefined, copy: AppCopy): string => {
+  if (!message) return copy.unexpectedError;
+  const lower = message.toLowerCase();
+  if (lower.includes("could not find the table") || message.includes("PGRST205")) return copy.databaseNotReady;
+  if (lower.includes("invalid login credentials")) return copy.invalidCredentials;
+  if (lower.includes("email not confirmed")) return copy.emailNotConfirmed;
+  if (lower.includes("already registered") || lower.includes("already been registered")) return copy.emailAlreadyRegistered;
+  if (lower.includes("new password should be different") || lower.includes("different from the old")) return copy.passwordSameAsOld;
+  if (lower.includes("should be at least") || lower.includes("at least 6") || lower.includes("password is too short")) return copy.passwordTooShort;
+  if (lower.includes("unable to validate email") || lower.includes("invalid email") || lower.includes("invalid format")) return copy.invalidEmail;
+  if (lower.includes("for security purposes")) return copy.emailRateLimited;
+  if (lower.includes("rate limit") || lower.includes("too many requests")) return copy.emailRateLimited;
+  // Unknown error: keep the raw message in the console for debugging but show a localized message.
+  console.error("Unlocalized Supabase error:", message);
+  return copy.unexpectedError;
+};
+
 const getSupabaseErrorMessage = (error: { code?: string; message?: string }, copy: AppCopy) => {
-  if (error.code === "PGRST205" || error.message?.includes("Could not find the table")) {
-    return copy.databaseNotReady;
-  }
-  return error.message ?? copy.databaseNotReady;
+  if (error.code === "PGRST205") return copy.databaseNotReady;
+  return localizeError(error.message, copy);
 };
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -478,16 +507,6 @@ const parseRateLimitSeconds = (message?: string): number | null => {
   if (!message) return null;
   const match = message.match(/after\s+(\d+)\s*seconds?/i);
   return match ? Number(match[1]) : null;
-};
-
-// Supabase returns auth errors in English; map the common ones to the active language.
-const localizeAuthError = (message: string | undefined, copy: AppCopy): string => {
-  if (!message) return copy.invalidCredentials;
-  const lower = message.toLowerCase();
-  if (lower.includes("invalid login credentials")) return copy.invalidCredentials;
-  if (lower.includes("email not confirmed")) return copy.emailNotConfirmed;
-  if (lower.includes("user already registered")) return copy.emailAlreadyRegistered;
-  return message;
 };
 
 function ButtonSpinner() {
@@ -2012,7 +2031,7 @@ function App() {
           setResetCooldown(cooldownSeconds);
           setAuthStatus("");
         } else {
-          setAuthStatus(localizeAuthError(error.message, copy));
+          setAuthStatus(localizeError(error.message, copy));
         }
       } else {
         setResetCooldown(0);
@@ -2030,7 +2049,7 @@ function App() {
       });
 
       if (result.error) {
-        setAuthStatus(localizeAuthError(result.error.message, copy));
+        setAuthStatus(localizeError(result.error.message, copy));
         setIsAuthSubmitting(false);
         return;
       }
@@ -2049,7 +2068,7 @@ function App() {
 
     const result = await supabase.auth.signInWithPassword({ email, password });
     if (result.error) {
-      setAuthStatus(localizeAuthError(result.error.message, copy));
+      setAuthStatus(localizeError(result.error.message, copy));
       setIsAuthSubmitting(false);
       return;
     }
@@ -2083,7 +2102,7 @@ function App() {
     setIsRecoverySubmitting(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      setRecoveryStatus(localizeAuthError(error.message, copy));
+      setRecoveryStatus(localizeError(error.message, copy));
       setIsRecoverySubmitting(false);
       return;
     }
@@ -2122,7 +2141,7 @@ function App() {
       options: { redirectTo: window.location.origin + window.location.pathname },
     });
     if (error) {
-      setAuthStatus(error.message);
+      setAuthStatus(localizeError(error.message, copy));
       setIsGoogleAuthLoading(false);
     }
   };
@@ -2295,7 +2314,7 @@ function App() {
 
     const lineupData = data as StoredLineupState;
     if (!lineupData || !isPitchSize(lineupData.pitchSize) || !isFormationKey(lineupData.formation) || !Array.isArray(lineupData.players)) {
-      setLockerStatus("Invalid line-up data.");
+      setLockerStatus(copy.invalidLineupData);
       return;
     }
 
