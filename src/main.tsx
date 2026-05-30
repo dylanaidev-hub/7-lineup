@@ -2,7 +2,9 @@ import React, { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, u
 import ReactDOM from "react-dom/client";
 import { motion } from "framer-motion";
 import { create } from "zustand";
-import { Check, Clipboard, Download, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
+import { Check, ChevronDown, Clipboard, Download, Pencil, Plus, Redo2, Save, Trash2, Undo2 } from "lucide-react";
+import { useAuth } from "./hooks/useAuth";
+import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import "./styles.css";
 
 type Player = {
@@ -80,6 +82,7 @@ type TacticalStore = {
 
 type PitchSize = 5 | 7 | 11 | "custom";
 type Language = "vi" | "en";
+type AppTab = "lineup" | "tactics" | "profile" | "locker";
 type FormationKey =
   | "1-2-1"
   | "2-1-1"
@@ -121,6 +124,28 @@ type StoredLineupState = {
   savedOpponentMarkersByPitch: Partial<Record<PitchSize, OpponentMarker[]>>;
   drawLines: DrawLine[];
   savedDrawLinesByPitch: Partial<Record<PitchSize, DrawLine[]>>;
+  thumbnailDataUrl?: string;
+  savedAt?: string;
+};
+
+type SavedTacticsState = {
+  kind: "tactics";
+  tactics: TacticalPlaybook[];
+};
+
+type SavedLineupRecord = {
+  id: string;
+  user_id: string;
+  name: string;
+  format: string;
+  players_data: StoredLineupState | SavedTacticsState;
+  created_at: string;
+};
+
+type ProfileRecord = {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
 };
 
 const lineupStorageKey = "lineup-football-default-state-v1";
@@ -136,6 +161,7 @@ const pitchOptions: { value: PitchSize; label: string }[] = [
 type AppCopy = {
   lineupTab: string;
   tacticsTab: string;
+  lockerTab: string;
   squadEditor: string;
   subs: string;
   starterPlaceholder: string;
@@ -184,6 +210,37 @@ type AppCopy = {
   dragOpponent: string;
   customPlayerTray: string;
   opponentTray: string;
+  authTitle: string;
+  profileTitle: string;
+  email: string;
+  password: string;
+  username: string;
+  signIn: string;
+  signUp: string;
+  forgotPassword: string;
+  resetPassword: string;
+  signOut: string;
+  googleSignIn: string;
+  profileMenu: string;
+  lockerMenu: string;
+  lockerTitle: string;
+  saveCurrentLineup: string;
+  saveTacticsBoard: string;
+  savedLineups: string;
+  lineupName: string;
+  avatarUrl: string;
+  updateProfile: string;
+  load: string;
+  noSavedLineups: string;
+  allCategories: string;
+  databaseNotReady: string;
+  supabaseMissing: string;
+  invalidEmail: string;
+  passwordTooShort: string;
+  emailAlreadyRegistered: string;
+  checkEmailToConfirm: string;
+  signedInSuccessfully: string;
+  resetEmailSent: string;
   pitchLabels: Record<PitchSize, string>;
 };
 
@@ -191,6 +248,7 @@ const copyByLanguage = {
   vi: {
     lineupTab: "Đội hình",
     tacticsTab: "Bảng chiến thuật động",
+    lockerTab: "Phòng thay đồ",
     squadEditor: "Chỉnh đội hình",
     subs: "dự bị",
     starterPlaceholder: "Đá chính",
@@ -239,6 +297,37 @@ const copyByLanguage = {
     dragOpponent: "Kéo đối thủ",
     customPlayerTray: "Danh sách cầu thủ tuỳ chỉnh",
     opponentTray: "Danh sách đối thủ",
+    authTitle: "Tài khoản",
+    profileTitle: "Hồ sơ người dùng",
+    email: "Email",
+    password: "Mật khẩu",
+    username: "Tên người dùng",
+    signIn: "Đăng nhập",
+    signUp: "Đăng ký",
+    forgotPassword: "Quên mật khẩu",
+    resetPassword: "Gửi link đặt lại mật khẩu",
+    signOut: "Đăng xuất",
+    googleSignIn: "Đăng nhập Google",
+    profileMenu: "Hồ sơ",
+    lockerMenu: "Phòng thay đồ",
+    lockerTitle: "Phòng thay đồ",
+    saveCurrentLineup: "Lưu đội hình hiện tại",
+    saveTacticsBoard: "Lưu bảng chiến thuật",
+    savedLineups: "Đội hình đã lưu",
+    lineupName: "Tên đội hình",
+    avatarUrl: "URL ảnh đại diện",
+    updateProfile: "Lưu hồ sơ",
+    load: "Tải",
+    noSavedLineups: "Chưa có đội hình nào được lưu.",
+    allCategories: "Tất cả",
+    databaseNotReady: "Chưa tạo bảng Supabase. Hãy chạy file supabase/schema.sql trong SQL Editor trước khi lưu.",
+    supabaseMissing: "Chưa cấu hình Supabase. Hãy tạo .env từ .env.example và điền VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.",
+    invalidEmail: "Email không hợp lệ.",
+    passwordTooShort: "Mật khẩu cần ít nhất 6 ký tự.",
+    emailAlreadyRegistered: "Email này đã được đăng ký. Hãy đăng nhập hoặc dùng quên mật khẩu.",
+    checkEmailToConfirm: "Đăng ký thành công. Hãy kiểm tra email để xác thực tài khoản trước khi đăng nhập.",
+    signedInSuccessfully: "Đăng nhập thành công.",
+    resetEmailSent: "Nếu email tồn tại, link đặt lại mật khẩu đã được gửi.",
     pitchLabels: {
       5: "Sân 5",
       7: "Sân 7",
@@ -249,6 +338,7 @@ const copyByLanguage = {
   en: {
     lineupTab: "Line up",
     tacticsTab: "Tactics board",
+    lockerTab: "Locker Room",
     squadEditor: "Squad editor",
     subs: "subs",
     starterPlaceholder: "Starter",
@@ -297,6 +387,37 @@ const copyByLanguage = {
     dragOpponent: "Drag opponent",
     customPlayerTray: "Custom player tray",
     opponentTray: "Opponent marker tray",
+    authTitle: "Account",
+    profileTitle: "User Profile",
+    email: "Email",
+    password: "Password",
+    username: "Username",
+    signIn: "Sign in",
+    signUp: "Sign up",
+    forgotPassword: "Forgot password",
+    resetPassword: "Send reset link",
+    signOut: "Sign out",
+    googleSignIn: "Sign in with Google",
+    profileMenu: "Profile",
+    lockerMenu: "Locker Room",
+    lockerTitle: "Locker Room",
+    saveCurrentLineup: "Save current line-up",
+    saveTacticsBoard: "Save tactics board",
+    savedLineups: "Saved line-ups",
+    lineupName: "Line-up name",
+    avatarUrl: "Avatar URL",
+    updateProfile: "Save profile",
+    load: "Load",
+    noSavedLineups: "No saved line-ups yet.",
+    allCategories: "All",
+    databaseNotReady: "Supabase tables are not created yet. Run supabase/schema.sql in SQL Editor before saving.",
+    supabaseMissing: "Supabase is not configured. Create .env from .env.example and set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.",
+    invalidEmail: "Invalid email address.",
+    passwordTooShort: "Password must be at least 6 characters.",
+    emailAlreadyRegistered: "This email is already registered. Sign in or use forgot password.",
+    checkEmailToConfirm: "Sign-up succeeded. Check your email to confirm your account before signing in.",
+    signedInSuccessfully: "Signed in successfully.",
+    resetEmailSent: "If the email exists, a password reset link has been sent.",
     pitchLabels: {
       5: "5-a-side",
       7: "7-a-side",
@@ -305,6 +426,19 @@ const copyByLanguage = {
     } satisfies Record<PitchSize, string>,
   },
 } satisfies Record<Language, AppCopy>;
+
+const getSupabaseErrorMessage = (error: { code?: string; message?: string }, copy: AppCopy) => {
+  if (error.code === "PGRST205" || error.message?.includes("Could not find the table")) {
+    return copy.databaseNotReady;
+  }
+  return error.message ?? copy.databaseNotReady;
+};
+
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+function ButtonSpinner() {
+  return <span className="button-spinner" aria-hidden="true" />;
+}
 
 const createInitialTacticalFrame = (): TacticalFrame => [
   { id: "p1", label: "1", type: "player", x: 50, y: 90, onPitch: true },
@@ -430,30 +564,13 @@ const decodeTacticalPayload = (value: string): TacticalPlaybook[] | null => {
 };
 
 const saveStoredTactics = (tactics: TacticalPlaybook[]) => {
-  try {
-    window.localStorage.setItem(tacticalStorageKey, JSON.stringify({ version: 1, tactics }));
-  } catch {
-    // Storage may be unavailable in private browsing or restricted webviews.
-  }
+  void tactics;
 };
 
 const getInitialTacticalPlaybooks = () => {
   const sharedValue = new URLSearchParams(window.location.search).get("tactics");
   const sharedTactics = sharedValue ? decodeTacticalPayload(sharedValue) : null;
-  if (sharedTactics) {
-    saveStoredTactics(sharedTactics);
-    return sharedTactics;
-  }
-
-  try {
-    const storedValue = window.localStorage.getItem(tacticalStorageKey);
-    if (!storedValue) return [createDefaultTacticalPlaybook()];
-
-    const parsed = JSON.parse(storedValue) as { tactics?: unknown };
-    return normalizeTacticalPlaybooks(parsed.tactics);
-  } catch {
-    return [createDefaultTacticalPlaybook()];
-  }
+  return sharedTactics ?? [createDefaultTacticalPlaybook()];
 };
 
 const initialTacticalPlaybooks = getInitialTacticalPlaybooks();
@@ -1015,46 +1132,10 @@ const getSharedLineupFromUrl = () => {
   return value ? decodeSharePayload(value) : null;
 };
 
-const getInitialAppTab = (): "lineup" | "tactics" => {
+const getInitialAppTab = (): AppTab => {
   const params = new URLSearchParams(window.location.search);
+  if (params.get("tab") === "locker") return "locker";
   return params.get("tab") === "tactics" || params.has("tactics") ? "tactics" : "lineup";
-};
-
-const getStoredLineupState = (): StoredLineupState | null => {
-  try {
-    const value = window.localStorage.getItem(lineupStorageKey);
-    if (!value) return null;
-
-    const parsed = JSON.parse(value) as Partial<StoredLineupState>;
-    if (!isPitchSize(parsed.pitchSize) || !isFormationKey(parsed.formation) || !Array.isArray(parsed.players)) {
-      return null;
-    }
-
-    return {
-      version: 1,
-      pitchSize: parsed.pitchSize,
-      formation: parsed.formation,
-      customCount: clampCustomCount(parsed.customCount),
-      players: parsed.players,
-      savedPlayersByPitch: parsed.savedPlayersByPitch ?? {},
-      savedFormationByPitch: parsed.savedFormationByPitch ?? {},
-      savedCustomCountByPitch: parsed.savedCustomCountByPitch ?? {},
-      opponentMarkers: Array.isArray(parsed.opponentMarkers) ? parsed.opponentMarkers : createOpponentMarkers(),
-      savedOpponentMarkersByPitch: parsed.savedOpponentMarkersByPitch ?? {},
-      drawLines: Array.isArray(parsed.drawLines) ? parsed.drawLines : [],
-      savedDrawLinesByPitch: parsed.savedDrawLinesByPitch ?? {},
-    };
-  } catch {
-    return null;
-  }
-};
-
-const saveStoredLineupState = (state: StoredLineupState) => {
-  try {
-    window.localStorage.setItem(lineupStorageKey, JSON.stringify(state));
-  } catch {
-    // Storage may be unavailable in private browsing or restricted webviews.
-  }
 };
 
 const getRegisteredNames = (player: Player) =>
@@ -1098,7 +1179,17 @@ const getDisplayTacticName = (name: string, index: number, copy: AppCopy) => {
   return `${copy.tacticName} ${tacticNumber}`;
 };
 
-function TacticalBoard({ copy }: { copy: AppCopy }) {
+function TacticalBoard({
+  copy,
+  onSaveToLocker,
+  isSavingToLocker,
+  lockerStatus,
+}: {
+  copy: AppCopy;
+  onSaveToLocker: () => void;
+  isSavingToLocker: boolean;
+  lockerStatus: string;
+}) {
   const {
     frames,
     draftFrame,
@@ -1214,10 +1305,11 @@ function TacticalBoard({ copy }: { copy: AppCopy }) {
     setDragPreviewPosition(null);
   };
 
-  const saveActiveTactic = () => {
+  const saveActiveTacticToLocker = () => {
     saveTactic();
     setTacticStatus("saved");
     window.setTimeout(() => setTacticStatus("idle"), 1600);
+    onSaveToLocker();
   };
 
   const playFromFirstStep = () => {
@@ -1268,6 +1360,7 @@ function TacticalBoard({ copy }: { copy: AppCopy }) {
             {copy.loop}
           </button>
         </div>
+        {lockerStatus ? <p className="inline-save-status tactical-save-status">{lockerStatus}</p> : null}
         <div className="tactical-timeline" aria-label={copy.tacticalTimeline}>
           {frames.map((_, index) => (
             <button
@@ -1414,8 +1507,15 @@ function TacticalBoard({ copy }: { copy: AppCopy }) {
         </div>
         <div className="tactic-library">
           <div className="tactic-library-actions">
-            <button type="button" onClick={saveActiveTactic}>
-              {tacticStatus === "saved" ? copy.saved : copy.save}
+            <button type="button" className="save-button" onClick={saveActiveTacticToLocker} disabled={isSavingToLocker}>
+              {isSavingToLocker ? (
+                <ButtonSpinner />
+              ) : lockerStatus === copy.saved || tacticStatus === "saved" ? (
+                <Check size={14} />
+              ) : (
+                <Save size={14} />
+              )}
+              {lockerStatus === copy.saved || tacticStatus === "saved" ? copy.saved : copy.save}
             </button>
             <button type="button" onClick={createTactic}>
               <Plus size={14} />
@@ -1465,42 +1565,40 @@ function TacticalBoard({ copy }: { copy: AppCopy }) {
   );
 }
 
+type LockerCategory = "all" | "5" | "7" | "11" | "custom" | "tactics";
+
 function App() {
+  const { user, isAuthLoading, signOut } = useAuth();
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
-  const storedLineup = useMemo(() => (sharedLineup ? null : getStoredLineupState()), [sharedLineup]);
-  const initialPitchSize = sharedLineup?.pitchSize ?? storedLineup?.pitchSize ?? 7;
-  const initialFormation = sharedLineup?.formation ?? storedLineup?.formation ?? "2-3-1";
-  const initialCustomCount = sharedLineup ? clampCustomCount(sharedLineup.customCount) : (storedLineup?.customCount ?? 0);
+  const initialPitchSize = sharedLineup?.pitchSize ?? 7;
+  const initialFormation = sharedLineup?.formation ?? "2-3-1";
+  const initialCustomCount = sharedLineup ? clampCustomCount(sharedLineup.customCount) : 0;
   const initialPlayers = sharedLineup
     ? createPlayersFromSharedLineup(sharedLineup)
-    : (storedLineup?.players ?? createPlayers(initialPitchSize, initialFormation, initialCustomCount || 5));
+    : createPlayers(initialPitchSize, initialFormation, initialCustomCount || 5);
   const initialOpponentMarkers =
     sharedLineup?.pitchSize === "custom"
       ? createOpponentMarkersFromSharedLineup(sharedLineup)
-      : (storedLineup?.opponentMarkers ?? createOpponentMarkers());
+      : createOpponentMarkers();
   const initialDrawLines =
-    sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : (storedLineup?.drawLines ?? []);
+    sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : [];
   const [pitchSize, setPitchSize] = useState<PitchSize>(() => initialPitchSize);
   const [formation, setFormation] = useState<FormationKey>(() => initialFormation);
   const [customCount, setCustomCount] = useState(() => initialCustomCount);
   const [players, setPlayers] = useState<Player[]>(() => initialPlayers);
   const [savedPlayersByPitch, setSavedPlayersByPitch] = useState<Partial<Record<PitchSize, Player[]>>>(() => ({
-    ...(storedLineup?.savedPlayersByPitch ?? {}),
     [initialPitchSize]: initialPlayers,
   }));
   const [savedFormationByPitch, setSavedFormationByPitch] = useState<Partial<Record<PitchSize, FormationKey>>>(() => ({
-    ...(storedLineup?.savedFormationByPitch ?? {}),
     [initialPitchSize]: initialFormation,
   }));
   const [savedCustomCountByPitch, setSavedCustomCountByPitch] = useState<Partial<Record<PitchSize, number>>>(() => ({
-    ...(storedLineup?.savedCustomCountByPitch ?? {}),
     [initialPitchSize]: initialCustomCount,
   }));
   const [opponentMarkers, setOpponentMarkers] = useState<OpponentMarker[]>(() => initialOpponentMarkers);
   const [savedOpponentMarkersByPitch, setSavedOpponentMarkersByPitch] = useState<
     Partial<Record<PitchSize, OpponentMarker[]>>
   >(() => ({
-    ...(storedLineup?.savedOpponentMarkersByPitch ?? {}),
     [initialPitchSize]: initialOpponentMarkers,
   }));
   const [draggingId, setDraggingId] = useState<number | null>(null);
@@ -1511,15 +1609,37 @@ function App() {
   const [isDrawMode, setIsDrawMode] = useState(false);
   const [drawLines, setDrawLines] = useState<DrawLine[]>(() => initialDrawLines);
   const [savedDrawLinesByPitch, setSavedDrawLinesByPitch] = useState<Partial<Record<PitchSize, DrawLine[]>>>(() => ({
-    ...(storedLineup?.savedDrawLinesByPitch ?? {}),
     [initialPitchSize]: initialDrawLines,
   }));
   const [redoDrawLines, setRedoDrawLines] = useState<DrawLine[]>([]);
   const [activeDrawLineId, setActiveDrawLineId] = useState<number | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [selectedMobilePlayerId, setSelectedMobilePlayerId] = useState(1);
-  const [activeTab, setActiveTab] = useState<"lineup" | "tactics">(() => getInitialAppTab());
+  const [activeTab, setActiveTab] = useState<AppTab>(() => getInitialAppTab());
+  const [lastWorkspaceTab, setLastWorkspaceTab] = useState<"lineup" | "tactics">("lineup");
+  const [isLineupMenuOpen, setIsLineupMenuOpen] = useState(false);
   const [language, setLanguage] = useState<Language>("vi");
+  const [authMode, setAuthMode] = useState<"sign_in" | "sign_up" | "reset">("sign_in");
+  const [isAuthScreenOpen, setIsAuthScreenOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authStatus, setAuthStatus] = useState("");
+  const [profile, setProfile] = useState<ProfileRecord | null>(null);
+  const [profileUsername, setProfileUsername] = useState("");
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
+  const [lineupName, setLineupName] = useState("");
+  const [savedLineups, setSavedLineups] = useState<SavedLineupRecord[]>([]);
+  const [lockerCategory, setLockerCategory] = useState<LockerCategory>("all");
+  const [lockerStatus, setLockerStatus] = useState("");
+  const [isLockerLoading, setIsLockerLoading] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [deletingLineupId, setDeletingLineupId] = useState<string | null>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const lineupMenuRef = useRef<HTMLDivElement>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
   const drawLayerRef = useRef<SVGSVGElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
@@ -1531,50 +1651,563 @@ function App() {
     language === "vi" ? { flag: "🇻🇳", label: "VI", next: "en" as const } : { flag: "🇺🇸", label: "EN", next: "vi" as const };
   const selectedMobilePlayer =
     activePlayers.find((player) => player.id === selectedMobilePlayerId) ?? activePlayers[0] ?? null;
+  const lockerCategories: { value: LockerCategory; label: string }[] = [
+    { value: "all", label: copy.allCategories },
+    { value: "5", label: copy.pitchLabels[5] },
+    { value: "7", label: copy.pitchLabels[7] },
+    { value: "11", label: copy.pitchLabels[11] },
+    { value: "custom", label: copy.pitchLabels.custom },
+    { value: "tactics", label: copy.tacticsTab },
+  ];
+  const filteredSavedLineups =
+    lockerCategory === "all" ? savedLineups : savedLineups.filter((lineup) => lineup.format === lockerCategory);
+
+  const switchAppTab = (nextTab: AppTab) => {
+    if (nextTab === "lineup" || nextTab === "tactics") {
+      setLastWorkspaceTab(nextTab);
+    }
+    setActiveTab(nextTab);
+    setIsLineupMenuOpen(false);
+    setIsUserMenuOpen(false);
+  };
 
   useEffect(() => {
-    saveStoredLineupState({
-      version: 1,
-      pitchSize,
-      formation,
-      customCount,
-      players,
-      savedPlayersByPitch: {
-        ...savedPlayersByPitch,
-        [pitchSize]: players,
-      },
-      savedFormationByPitch: {
-        ...savedFormationByPitch,
-        [pitchSize]: formation,
-      },
-      savedCustomCountByPitch: {
-        ...savedCustomCountByPitch,
-        [pitchSize]: customCount,
-      },
-      opponentMarkers,
-      savedOpponentMarkersByPitch: {
-        ...savedOpponentMarkersByPitch,
-        [pitchSize]: opponentMarkers,
-      },
-      drawLines,
-      savedDrawLinesByPitch: {
-        ...savedDrawLinesByPitch,
-        [pitchSize]: drawLines,
-      },
+    try {
+      window.localStorage.removeItem(lineupStorageKey);
+      window.localStorage.removeItem(tacticalStorageKey);
+    } catch {
+      // Ignore storage access errors in restricted browsing modes.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isUserMenuOpen && !isLineupMenuOpen) return;
+
+    const closeDropdownsOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      if (isUserMenuOpen && userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setIsUserMenuOpen(false);
+      }
+
+      if (isLineupMenuOpen && lineupMenuRef.current && !lineupMenuRef.current.contains(target)) {
+        setIsLineupMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeDropdownsOnOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", closeDropdownsOnOutsidePointerDown);
+  }, [isUserMenuOpen, isLineupMenuOpen]);
+
+  const createLineupThumbnail = () => {
+    const canvas = document.createElement("canvas");
+    const width = 360;
+    const height = 514;
+    const padding = 24;
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) return undefined;
+
+    const fieldGradient = context.createLinearGradient(0, 0, width, height);
+    fieldGradient.addColorStop(0, "#38aa52");
+    fieldGradient.addColorStop(0.55, "#2d9348");
+    fieldGradient.addColorStop(1, "#267d3d");
+    context.fillStyle = fieldGradient;
+    context.fillRect(0, 0, width, height);
+
+    const stripeHeight = 45;
+    for (let y = 0; y < height; y += stripeHeight * 2) {
+      context.fillStyle = "rgba(255,255,255,0.055)";
+      context.fillRect(0, y, width, stripeHeight);
+      context.fillStyle = "rgba(0,0,0,0.04)";
+      context.fillRect(0, y + stripeHeight, width, stripeHeight);
+    }
+
+    const pitchWidth = width - padding * 2;
+    const pitchHeight = height - padding * 2;
+    const px = (value: number) => padding + (value / 100) * pitchWidth;
+    const py = (value: number) => padding + (value / 100) * pitchHeight;
+    const pw = (value: number) => (value / 100) * pitchWidth;
+    const ph = (value: number) => (value / 100) * pitchHeight;
+
+    context.strokeStyle = "rgba(255,255,255,0.88)";
+    context.lineWidth = 2;
+    context.strokeRect(px(4), py(4), pw(92), ph(92));
+    context.beginPath();
+    context.moveTo(px(4), py(50));
+    context.lineTo(px(96), py(50));
+    context.stroke();
+    context.beginPath();
+    context.ellipse(px(50), py(50), pw(15.5), ph(11), 0, 0, Math.PI * 2);
+    context.stroke();
+    context.strokeRect(px(26), py(4), pw(48), ph(15));
+    context.strokeRect(px(37), py(4), pw(26), ph(7));
+    context.strokeRect(px(26), py(81), pw(48), ph(15));
+    context.strokeRect(px(37), py(89), pw(26), ph(7));
+
+    if (pitchSize === "custom") {
+      drawLines.forEach((line) => {
+        if (line.points.length < 2) return;
+        context.save();
+        context.strokeStyle = "#facc15";
+        context.lineWidth = 2;
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.beginPath();
+        context.moveTo(px(line.points[0].x), py(line.points[0].y));
+        line.points.slice(1).forEach((point) => context.lineTo(px(point.x), py(point.y)));
+        context.stroke();
+        context.restore();
+      });
+    }
+
+    activePlayers.forEach((player) => {
+      const x = px(player.x);
+      const y = py(player.y);
+      const starterName = player.starterName.trim() || `${copy.player} ${player.id}`;
+
+      context.save();
+      context.shadowColor = "rgba(0,0,0,0.35)";
+      context.shadowBlur = 4;
+      context.shadowOffsetY = 2;
+      context.fillStyle = "#f8fafc";
+      context.beginPath();
+      context.arc(x, y, 14, 0, Math.PI * 2);
+      context.fill();
+      context.shadowColor = "transparent";
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = 2;
+      context.stroke();
+      context.fillStyle = "#111827";
+      context.font = "950 12px Inter, Arial, sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(String(player.id), x, y + 0.5);
+      context.restore();
+
+      context.save();
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.font = "900 8px Inter, Arial, sans-serif";
+      const nameWidth = Math.min(78, Math.max(46, starterName.length * 4.8));
+      context.fillStyle = "rgba(16, 42, 25, 0.6)";
+      context.beginPath();
+      context.roundRect(x - nameWidth / 2, y + 18, nameWidth, 16, 8);
+      context.fill();
+      context.fillStyle = "#ffffff";
+      context.fillText(starterName.toUpperCase(), x, y + 26, nameWidth - 8);
+      context.restore();
     });
-  }, [
-    customCount,
-    drawLines,
-    formation,
-    opponentMarkers,
+
+    if (pitchSize === "custom") {
+      opponentMarkers
+        .filter((marker) => marker.onPitch)
+        .forEach((marker) => {
+          context.save();
+          context.fillStyle = "#dc2626";
+          context.strokeStyle = "#ffffff";
+          context.lineWidth = 2;
+          context.beginPath();
+          context.arc(px(marker.x), py(marker.y), 8, 0, Math.PI * 2);
+          context.fill();
+          context.stroke();
+          context.restore();
+        });
+    }
+
+    return canvas.toDataURL("image/jpeg", 0.78);
+  };
+
+  const getCurrentLineupState = (metadata: Partial<Pick<StoredLineupState, "thumbnailDataUrl" | "savedAt">> = {}): StoredLineupState => ({
+    version: 1,
     pitchSize,
+    formation,
+    customCount,
     players,
-    savedCustomCountByPitch,
-    savedDrawLinesByPitch,
-    savedFormationByPitch,
-    savedOpponentMarkersByPitch,
-    savedPlayersByPitch,
-  ]);
+    savedPlayersByPitch: {
+      ...savedPlayersByPitch,
+      [pitchSize]: players,
+    },
+    savedFormationByPitch: {
+      ...savedFormationByPitch,
+      [pitchSize]: formation,
+    },
+    savedCustomCountByPitch: {
+      ...savedCustomCountByPitch,
+      [pitchSize]: customCount,
+    },
+    opponentMarkers,
+    savedOpponentMarkersByPitch: {
+      ...savedOpponentMarkersByPitch,
+      [pitchSize]: opponentMarkers,
+    },
+    drawLines,
+    savedDrawLinesByPitch: {
+      ...savedDrawLinesByPitch,
+      [pitchSize]: drawLines,
+    },
+    ...metadata,
+  });
+
+  const fetchSavedLineups = async () => {
+    if (!supabase || !user) {
+      setSavedLineups([]);
+      return;
+    }
+
+    setIsLockerLoading(true);
+    const { data, error } = await supabase
+      .from("lineups")
+      .select("id,user_id,name,format,players_data,created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setLockerStatus(getSupabaseErrorMessage(error, copy));
+    } else {
+      setSavedLineups((data ?? []) as SavedLineupRecord[]);
+    }
+    setIsLockerLoading(false);
+  };
+
+  const fetchProfile = async () => {
+    if (!supabase || !user) {
+      setProfile(null);
+      setProfileUsername("");
+      setProfileAvatarUrl("");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id,username,avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      setLockerStatus(getSupabaseErrorMessage(error, copy));
+      return;
+    }
+
+    const nextProfile = data as ProfileRecord | null;
+    setProfile(nextProfile);
+    setProfileUsername(nextProfile?.username ?? user.user_metadata?.username ?? user.email?.split("@")[0] ?? "");
+    setProfileAvatarUrl(nextProfile?.avatar_url ?? user.user_metadata?.avatar_url ?? "");
+  };
+
+  useEffect(() => {
+    fetchSavedLineups();
+    fetchProfile();
+  }, [user?.id]);
+
+  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabase) {
+      setAuthStatus(copy.supabaseMissing);
+      return;
+    }
+
+    setAuthStatus("");
+    const email = authEmail.trim().toLowerCase();
+    const password = authPassword.trim();
+
+    if (!isValidEmail(email)) {
+      setAuthStatus(copy.invalidEmail);
+      return;
+    }
+
+    if (authMode !== "reset" && password.length < 6) {
+      setAuthStatus(copy.passwordTooShort);
+      return;
+    }
+
+    setIsAuthSubmitting(true);
+    if (authMode === "reset") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname,
+      });
+      setAuthStatus(error ? error.message : copy.resetEmailSent);
+      setIsAuthSubmitting(false);
+      return;
+    }
+
+    if (authMode === "sign_up") {
+      const result = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { username: authUsername.trim() || email.split("@")[0] } },
+      });
+
+      if (result.error) {
+        setAuthStatus(result.error.message);
+        setIsAuthSubmitting(false);
+        return;
+      }
+
+      const identities = result.data.user?.identities;
+      if (Array.isArray(identities) && identities.length === 0) {
+        setAuthStatus(copy.emailAlreadyRegistered);
+        setIsAuthSubmitting(false);
+        return;
+      }
+
+      setAuthStatus(copy.checkEmailToConfirm);
+      setIsAuthSubmitting(false);
+      return;
+    }
+
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    if (result.error) {
+      setAuthStatus(result.error.message);
+      setIsAuthSubmitting(false);
+      return;
+    }
+
+    setIsAuthScreenOpen(false);
+    setAuthStatus(copy.signedInSuccessfully);
+    setIsAuthSubmitting(false);
+  };
+
+  const signInWithGoogle = async () => {
+    if (!supabase) {
+      setAuthStatus(copy.supabaseMissing);
+      return;
+    }
+
+    setIsGoogleAuthLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) {
+      setAuthStatus(error.message);
+      setIsGoogleAuthLoading(false);
+    }
+  };
+
+  const updateProfile = async () => {
+    if (!supabase || !user) return;
+
+    setLockerStatus("");
+    setIsProfileLoading(true);
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert({
+        id: user.id,
+        username: profileUsername.trim() || user.email?.split("@")[0] || "",
+        avatar_url: profileAvatarUrl.trim() || null,
+      })
+      .select("id,username,avatar_url")
+      .single();
+
+    if (error) {
+      setLockerStatus(getSupabaseErrorMessage(error, copy));
+      setIsProfileLoading(false);
+      return;
+    }
+
+    setProfile(data as ProfileRecord);
+    setLockerStatus(copy.saved);
+    setIsProfileLoading(false);
+  };
+
+  const saveCurrentLineupToSupabase = async () => {
+    if (!supabase) {
+      setLockerStatus(copy.supabaseMissing);
+      return;
+    }
+    if (!user) {
+      openAuthForSave();
+      return;
+    }
+
+    setLockerStatus("");
+    setIsLockerLoading(true);
+    const savedAt = new Date().toISOString();
+    const displayName = lineupName.trim() || `${copy.pitchLabels[pitchSize]} ${new Date(savedAt).toLocaleString()}`;
+    const thumbnailDataUrl = createLineupThumbnail();
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      username: user.user_metadata?.username ?? user.email?.split("@")[0] ?? "",
+      avatar_url: user.user_metadata?.avatar_url ?? null,
+    });
+
+    if (profileError) {
+      setLockerStatus(getSupabaseErrorMessage(profileError, copy));
+      setIsLockerLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.from("lineups").insert({
+      user_id: user.id,
+      name: displayName,
+      format: String(pitchSize),
+      players_data: getCurrentLineupState({ thumbnailDataUrl, savedAt }),
+    });
+
+    if (error) {
+      setLockerStatus(getSupabaseErrorMessage(error, copy));
+    } else {
+      setLineupName("");
+      setLockerCategory(String(pitchSize) as LockerCategory);
+      setLockerStatus(copy.saved);
+      await fetchSavedLineups();
+    }
+    setIsLockerLoading(false);
+  };
+
+  const saveTacticsBoardToSupabase = async () => {
+    if (!supabase) {
+      setLockerStatus(copy.supabaseMissing);
+      return;
+    }
+    if (!user) {
+      openAuthForSave();
+      return;
+    }
+
+    setLockerStatus("");
+    setIsLockerLoading(true);
+    const tacticalState = useTacticalStore.getState();
+    const displayName = lineupName.trim() || `${copy.tacticsTab} ${new Date().toLocaleDateString()}`;
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      username: user.user_metadata?.username ?? user.email?.split("@")[0] ?? "",
+      avatar_url: user.user_metadata?.avatar_url ?? null,
+    });
+
+    if (profileError) {
+      setLockerStatus(getSupabaseErrorMessage(profileError, copy));
+      setIsLockerLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.from("lineups").insert({
+      user_id: user.id,
+      name: displayName,
+      format: "tactics",
+      players_data: {
+        kind: "tactics",
+        tactics: tacticalState.tactics.map((tactic) =>
+          tactic.id === tacticalState.activeTacticId
+            ? { ...tactic, frames: cloneTacticalFrames(tacticalState.frames) }
+            : tactic,
+        ),
+      } satisfies SavedTacticsState,
+    });
+
+    if (error) {
+      setLockerStatus(getSupabaseErrorMessage(error, copy));
+    } else {
+      setLineupName("");
+      setLockerCategory("tactics");
+      setLockerStatus(copy.saved);
+      await fetchSavedLineups();
+    }
+    setIsLockerLoading(false);
+  };
+
+  const openAuthForSave = () => {
+    setAuthMode("sign_in");
+    setAuthStatus("");
+    setIsAuthScreenOpen(true);
+  };
+
+  const handleSaveCurrentLineup = () => {
+    if (!user) {
+      openAuthForSave();
+      return;
+    }
+    void saveCurrentLineupToSupabase();
+  };
+
+  const handleSaveTacticsBoard = () => {
+    if (!user) {
+      openAuthForSave();
+      return;
+    }
+    void saveTacticsBoardToSupabase();
+  };
+
+  const loadSavedLineup = (lineup: SavedLineupRecord) => {
+    const data = lineup.players_data;
+    if ("kind" in data && data.kind === "tactics") {
+      const tactics = normalizeTacticalPlaybooks(data.tactics);
+      const activeTactic = tactics[0] ?? createDefaultTacticalPlaybook();
+      useTacticalStore.setState({
+        tactics,
+        activeTacticId: activeTactic.id,
+        frames: cloneTacticalFrames(activeTactic.frames),
+        draftFrame: createInitialTacticalFrame(),
+        playbackFrames: null,
+        currentFrameIndex: 0,
+        isPlaying: false,
+      });
+      setActiveTab("tactics");
+      setLastWorkspaceTab("tactics");
+      setLockerStatus("");
+      return;
+    }
+
+    const lineupData = data as StoredLineupState;
+    if (!lineupData || !isPitchSize(lineupData.pitchSize) || !isFormationKey(lineupData.formation) || !Array.isArray(lineupData.players)) {
+      setLockerStatus("Invalid line-up data.");
+      return;
+    }
+
+    setPitchSize(lineupData.pitchSize);
+    setFormation(lineupData.formation);
+    setCustomCount(clampCustomCount(lineupData.customCount));
+    setPlayers(lineupData.players);
+    setSavedPlayersByPitch(lineupData.savedPlayersByPitch ?? {});
+    setSavedFormationByPitch(lineupData.savedFormationByPitch ?? {});
+    setSavedCustomCountByPitch(lineupData.savedCustomCountByPitch ?? {});
+    setOpponentMarkers(Array.isArray(lineupData.opponentMarkers) ? lineupData.opponentMarkers : createOpponentMarkers());
+    setSavedOpponentMarkersByPitch(lineupData.savedOpponentMarkersByPitch ?? {});
+    setDrawLines(Array.isArray(lineupData.drawLines) ? lineupData.drawLines : []);
+    setSavedDrawLinesByPitch(lineupData.savedDrawLinesByPitch ?? {});
+    setRedoDrawLines([]);
+    setIsDrawMode(false);
+    setActiveTab("lineup");
+    setLockerStatus("");
+  };
+
+  const deleteSavedLineup = async (id: string) => {
+    if (!supabase || !user) return;
+    setDeletingLineupId(id);
+    const { error } = await supabase.from("lineups").delete().eq("id", id);
+    if (error) {
+      setLockerStatus(getSupabaseErrorMessage(error, copy));
+    } else {
+      setSavedLineups((current) => current.filter((lineup) => lineup.id !== id));
+    }
+    setDeletingLineupId(null);
+  };
+
+  const getSavedLineupFormatLabel = (lineup: SavedLineupRecord) => {
+    if (lineup.format === "tactics") return copy.tacticsTab;
+    if (lineup.format === "custom") return copy.pitchLabels.custom;
+    const numericFormat = Number(lineup.format);
+    return isPitchSize(numericFormat) ? copy.pitchLabels[numericFormat] : lineup.format;
+  };
+
+  const getSavedLineupThumbnail = (lineup: SavedLineupRecord) => {
+    const data = lineup.players_data;
+    if (!data || (data as SavedTacticsState).kind === "tactics") return "";
+    const lineupData = data as StoredLineupState;
+    return typeof lineupData.thumbnailDataUrl === "string" ? lineupData.thumbnailDataUrl : "";
+  };
+
+  const getSavedLineupDateTime = (lineup: SavedLineupRecord) => {
+    const data = lineup.players_data;
+    const lineupData = data && (data as SavedTacticsState).kind !== "tactics" ? (data as StoredLineupState) : null;
+    const savedAt = typeof lineupData?.savedAt === "string" ? lineupData.savedAt : lineup.created_at;
+    return new Date(savedAt).toLocaleString();
+  };
 
   const getPitchPointerPosition = (event: ReactPointerEvent<Element>, options: { clamp?: boolean } = {}) => {
     const pitch = pitchRef.current;
@@ -2117,39 +2750,155 @@ function App() {
   return (
     <main className="match-bg min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10">
       <header className="app-title-bar mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-3 shadow-2xl">
-        <button
-          type="button"
-          className="language-switch"
-          onClick={() => setLanguage(languageMeta.next)}
-          aria-label={copy.switchLanguage}
-        >
-          <span aria-hidden="true">{languageMeta.flag}</span>
-          {languageMeta.label}
-        </button>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="language-switch"
+            onClick={() => setLanguage(languageMeta.next)}
+            aria-label={copy.switchLanguage}
+          >
+            <span aria-hidden="true">{languageMeta.flag}</span>
+            {languageMeta.label}
+          </button>
+          {!user ? (
+            <button type="button" className="header-login-button" onClick={() => setIsAuthScreenOpen(true)}>
+              {copy.signIn}
+            </button>
+          ) : (
+            <div ref={userMenuRef} className="header-user-menu">
+              <span>{user.email}</span>
+              <button type="button" className="header-dropdown-button" onClick={() => setIsUserMenuOpen((current) => !current)}>
+                <ChevronDown size={16} />
+              </button>
+              {isUserMenuOpen ? (
+                <div className="user-dropdown">
+                  <button type="button" onClick={() => switchAppTab("profile")}>
+                    {copy.profileMenu}
+                  </button>
+                  <button type="button" onClick={() => switchAppTab("locker")}>
+                    {copy.lockerMenu}
+                  </button>
+                  <button type="button" onClick={signOut}>
+                    {copy.signOut}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
         <h1>Line Up Football</h1>
         <div className="app-tab-switch" aria-label={copy.chooseAppMode}>
-          <button type="button" className={activeTab === "lineup" ? "active" : ""} onClick={() => setActiveTab("lineup")}>
-            {copy.lineupTab}
-          </button>
-          <button type="button" className={activeTab === "tactics" ? "active" : ""} onClick={() => setActiveTab("tactics")}>
+          <div ref={lineupMenuRef} className="lineup-tab-menu">
+            <button
+              type="button"
+              className={`lineup-tab-trigger ${activeTab === "lineup" ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab("lineup");
+                setLastWorkspaceTab("lineup");
+                setIsUserMenuOpen(false);
+                setIsLineupMenuOpen((current) => !current);
+              }}
+              aria-expanded={isLineupMenuOpen}
+              aria-haspopup="menu"
+            >
+              {copy.lineupTab}
+              <span>{copy.pitchLabels[pitchSize]}</span>
+              <ChevronDown size={14} />
+            </button>
+            {isLineupMenuOpen ? (
+              <div className="lineup-format-menu" role="menu" aria-label={copy.choosePitchSize}>
+                {pitchOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={pitchSize === option.value ? "active" : ""}
+                    onClick={() => {
+                      applyPitchSize(option.value);
+                      switchAppTab("lineup");
+                    }}
+                    role="menuitem"
+                  >
+                    {copy.pitchLabels[option.value]}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <button type="button" className={activeTab === "tactics" ? "active" : ""} onClick={() => switchAppTab("tactics")}>
             {copy.tacticsTab}
           </button>
         </div>
       </header>
-      {activeTab === "lineup" ? (
-        <div className="pitch-mode-bar mx-auto w-full max-w-5xl shadow-xl">
-          <div className="pitch-size-switch pitch-mode-switch" aria-label={copy.choosePitchSize}>
-            {pitchOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => applyPitchSize(option.value)}
-                className={pitchSize === option.value ? "active" : ""}
-              >
-                {copy.pitchLabels[option.value]}
+      {isAuthScreenOpen ? (
+        <div className="auth-screen">
+          <form className="auth-screen-card" onSubmit={handleAuthSubmit}>
+            <div className="panel-heading">
+              <span>{copy.authTitle}</span>
+              <button type="button" onClick={() => setIsAuthScreenOpen(false)}>
+                x
               </button>
-            ))}
-          </div>
+            </div>
+            {!isSupabaseConfigured ? <p className="locker-message">{copy.supabaseMissing}</p> : null}
+            <div className="auth-mode-switch">
+              <button
+                type="button"
+                className={authMode === "sign_in" ? "active" : ""}
+                onClick={() => {
+                  setAuthMode("sign_in");
+                  setAuthStatus("");
+                }}
+              >
+                {copy.signIn}
+              </button>
+              <button
+                type="button"
+                className={authMode === "sign_up" ? "active" : ""}
+                onClick={() => {
+                  setAuthMode("sign_up");
+                  setAuthStatus("");
+                }}
+              >
+                {copy.signUp}
+              </button>
+              <button
+                type="button"
+                className={authMode === "reset" ? "active" : ""}
+                onClick={() => {
+                  setAuthMode("reset");
+                  setAuthStatus("");
+                }}
+              >
+                {copy.forgotPassword}
+              </button>
+            </div>
+            {authMode === "sign_up" ? (
+              <input value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} placeholder={copy.username} />
+            ) : null}
+            <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder={copy.email} required />
+            {authMode !== "reset" ? (
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+                placeholder={copy.password}
+                required
+              />
+            ) : null}
+            <button type="submit" disabled={!isSupabaseConfigured || isAuthSubmitting || isGoogleAuthLoading}>
+              {isAuthSubmitting ? <ButtonSpinner /> : null}
+              {authMode === "sign_up" ? copy.signUp : authMode === "reset" ? copy.resetPassword : copy.signIn}
+            </button>
+            <button
+              type="button"
+              className="google-auth-button"
+              onClick={signInWithGoogle}
+              disabled={!isSupabaseConfigured || isAuthSubmitting || isGoogleAuthLoading}
+            >
+              {isGoogleAuthLoading ? <ButtonSpinner /> : null}
+              {copy.googleSignIn}
+            </button>
+            {authStatus ? <p className="locker-message">{authStatus}</p> : null}
+          </form>
         </div>
       ) : null}
       <div
@@ -2158,7 +2907,89 @@ function App() {
         }`}
       >
         {activeTab === "tactics" ? (
-          <TacticalBoard copy={copy} />
+          <TacticalBoard
+            copy={copy}
+            onSaveToLocker={handleSaveTacticsBoard}
+            isSavingToLocker={isLockerLoading}
+            lockerStatus={lockerStatus}
+          />
+        ) : activeTab === "profile" ? (
+          <section className="locker-room profile-room">
+            <div className="locker-panel">
+              <div className="panel-heading">
+                <span>{copy.profileTitle}</span>
+                <strong>{user?.email ?? copy.signIn}</strong>
+              </div>
+              {!isSupabaseConfigured ? (
+                <p className="locker-message">{copy.supabaseMissing}</p>
+              ) : !user ? (
+                <p className="locker-message">{copy.signIn}</p>
+              ) : (
+                <div className="auth-card">
+                  <input value={profileUsername} onChange={(event) => setProfileUsername(event.target.value)} placeholder={copy.username} />
+                  <input value={profileAvatarUrl} onChange={(event) => setProfileAvatarUrl(event.target.value)} placeholder={copy.avatarUrl} />
+                  <button type="button" onClick={updateProfile} disabled={isProfileLoading}>
+                    {isProfileLoading ? <ButtonSpinner /> : null}
+                    {copy.updateProfile}
+                  </button>
+                  {lockerStatus ? <p className="locker-message">{lockerStatus}</p> : null}
+                </div>
+              )}
+            </div>
+          </section>
+        ) : activeTab === "locker" ? (
+          <section className="locker-room">
+            <div className="locker-panel">
+              <div className="panel-heading">
+                <span>{copy.savedLineups}</span>
+                <strong>{savedLineups.length}</strong>
+              </div>
+              {lockerStatus ? <p className="locker-message">{lockerStatus}</p> : null}
+              <div className="locker-category-switch" aria-label={copy.savedLineups}>
+                {lockerCategories.map((category) => (
+                  <button
+                    key={category.value}
+                    type="button"
+                    className={lockerCategory === category.value ? "active" : ""}
+                    onClick={() => setLockerCategory(category.value)}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
+              <div className="saved-lineup-list">
+                {filteredSavedLineups.length === 0 ? <p className="locker-message">{copy.noSavedLineups}</p> : null}
+                {filteredSavedLineups.map((lineup) => (
+                  <article key={lineup.id} className="saved-lineup-card">
+                    {getSavedLineupThumbnail(lineup) ? (
+                      <img src={getSavedLineupThumbnail(lineup)} alt={lineup.name} className="saved-lineup-thumbnail" />
+                    ) : (
+                      <div className="saved-lineup-thumbnail saved-lineup-thumbnail-placeholder">
+                        {getSavedLineupFormatLabel(lineup)}
+                      </div>
+                    )}
+                    <div>
+                      <strong>{lineup.name}</strong>
+                      <span>
+                        {getSavedLineupFormatLabel(lineup)}
+                      </span>
+                      <time dateTime={lineup.created_at}>
+                        {getSavedLineupDateTime(lineup)}
+                      </time>
+                    </div>
+                    <div className="saved-lineup-actions">
+                      <button type="button" onClick={() => loadSavedLineup(lineup)}>
+                        {copy.load}
+                      </button>
+                      <button type="button" onClick={() => deleteSavedLineup(lineup.id)} disabled={deletingLineupId === lineup.id}>
+                        {deletingLineupId === lineup.id ? <ButtonSpinner /> : <Trash2 size={14} />}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
         ) : (
         <div className="content-grid">
             <section className="stats-column">
@@ -2218,32 +3049,17 @@ function App() {
               <div className="lineup-header">
                 <span>{pitchSize === "custom" ? copy.custom : copy.pitchLabels[pitchSize]} {copy.lineupSuffix}</span>
                 <div className="lineup-header-actions">
-                  <button type="button" className="share-button" onClick={copyShareLink}>
-                    {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
-                    {copyStatus === "copied" ? copy.copied : copy.share}
+                  <button type="button" className="save-button" onClick={handleSaveCurrentLineup} disabled={isLockerLoading}>
+                    {isLockerLoading ? <ButtonSpinner /> : lockerStatus === copy.saved ? <Check size={14} /> : <Save size={14} />}
+                    {copy.save}
                   </button>
-                  <button type="button" className="download-button" onClick={downloadLineupImage}>
-                    <Download size={14} />
-                    {copy.download}
-                  </button>
-                  {pitchSize === "custom" ? (
-                    <>
-                      <button
-                        type="button"
-                        className={`draw-button ${isDrawMode ? "active" : ""}`}
-                        onClick={() => setIsDrawMode((current) => !current)}
-                      >
-                        <Pencil size={14} />
-                        {copy.draw}
-                      </button>
-                    </>
-                  ) : null}
                   <button type="button" onClick={clearNames}>
                     <Trash2 size={14} />
                     {copy.clear}
                   </button>
                 </div>
               </div>
+              {lockerStatus ? <p className="inline-save-status">{lockerStatus}</p> : null}
               <div className={`formation-switch ${pitchSize === "custom" ? "custom-formation-switch" : ""}`}>
                 {formationEntries.map(([item]) => (
                   <button
@@ -2327,47 +3143,47 @@ function App() {
                   </div>
                 </div>
               ) : null}
-              {pitchSize === "custom" ? (
-                <div className="custom-player-tray" aria-label={copy.customPlayerTray}>
-                  <span>{copy.players}</span>
-                  <div className="custom-player-dot-list">
-                    {players.map((player) => (
-                      <button
-                        key={player.id}
-                        type="button"
-                        className={`custom-player-dot ${player.onPitch ? "placed" : ""}`}
-                        onPointerDown={(event) => handleDragStart(event, player.id)}
-                        onPointerMove={(event) => handleDragMove(event, player.id)}
-                        onPointerUp={stopDragging}
-                        onPointerCancel={stopDragging}
-                        aria-label={`${copy.dragPlayer} ${player.id}`}
-                      >
-                        {player.id}
-                      </button>
-                    ))}
+              <div className={`lineup-stage ${pitchSize === "custom" ? "custom-lineup-stage" : ""}`}>
+                {pitchSize === "custom" ? (
+                  <div className="custom-side-tray">
+                    <div className="custom-player-tray" aria-label={copy.customPlayerTray}>
+                      <span>{copy.players}</span>
+                      <div className="custom-player-dot-list">
+                        {players.map((player) => (
+                          <button
+                            key={player.id}
+                            type="button"
+                            className={`custom-player-dot ${player.onPitch ? "placed" : ""}`}
+                            onPointerDown={(event) => handleDragStart(event, player.id)}
+                            onPointerMove={(event) => handleDragMove(event, player.id)}
+                            onPointerUp={stopDragging}
+                            onPointerCancel={stopDragging}
+                            aria-label={`${copy.dragPlayer} ${player.id}`}
+                          >
+                            {player.id}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="opponent-tray" aria-label={copy.opponentTray}>
+                      <span>{copy.opponent}</span>
+                      <div className="opponent-dot-list">
+                        {opponentMarkers.map((marker) => (
+                          <button
+                            key={marker.id}
+                            type="button"
+                            className={`opponent-dot ${marker.onPitch ? "placed" : ""}`}
+                            onPointerDown={(event) => handleOpponentDragStart(event, marker.id)}
+                            onPointerMove={(event) => handleOpponentDragMove(event, marker.id)}
+                            onPointerUp={stopOpponentDragging}
+                            onPointerCancel={stopOpponentDragging}
+                            aria-label={`${copy.dragOpponent} ${marker.id}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : null}
-              {pitchSize === "custom" ? (
-                <div className="opponent-tray" aria-label={copy.opponentTray}>
-                  <span>{copy.opponent}</span>
-                  <div className="opponent-dot-list">
-                    {opponentMarkers.map((marker) => (
-                      <button
-                        key={marker.id}
-                        type="button"
-                        className={`opponent-dot ${marker.onPitch ? "placed" : ""}`}
-                        onPointerDown={(event) => handleOpponentDragStart(event, marker.id)}
-                        onPointerMove={(event) => handleOpponentDragMove(event, marker.id)}
-                        onPointerUp={stopOpponentDragging}
-                        onPointerCancel={stopOpponentDragging}
-                        aria-label={`${copy.dragOpponent} ${marker.id}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
+                ) : null}
               <div
                 ref={pitchRef}
                 className={`pitch relative mx-auto aspect-[7/10] border-[4px] border-white/80 touch-none select-none ${
@@ -2469,7 +3285,8 @@ function App() {
                       ))
                   : null}
               </div>
-              <div className="mobile-lineup-actions">
+              </div>
+              <div className="lineup-footer-actions">
                 <button type="button" className="share-button" onClick={copyShareLink}>
                   {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
                   {copyStatus === "copied" ? copy.copied : copy.share}
@@ -2488,10 +3305,6 @@ function App() {
                     {copy.draw}
                   </button>
                 ) : null}
-                <button type="button" onClick={clearNames}>
-                  <Trash2 size={14} />
-                  {copy.clear}
-                </button>
               </div>
             </section>
         </div>
