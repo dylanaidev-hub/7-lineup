@@ -1,8 +1,9 @@
 import React, { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
+import type { User } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { create } from "zustand";
-import { Check, ChevronDown, Clipboard, Download, Pencil, Plus, Redo2, Save, Trash2, Undo2 } from "lucide-react";
+import { Check, ChevronDown, Clipboard, Download, Pencil, Plus, Redo2, Save, Share2, Trash2, Undo2 } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import "./styles.css";
@@ -146,6 +147,11 @@ type ProfileRecord = {
   id: string;
   username: string | null;
   avatar_url: string | null;
+  full_name: string | null;
+  bio: string | null;
+  favorite_team: string | null;
+  favorite_position: string | null;
+  location: string | null;
 };
 
 const lineupStorageKey = "lineup-football-default-state-v1";
@@ -233,7 +239,20 @@ type AppCopy = {
   lineupName: string;
   avatarUrl: string;
   updateProfile: string;
+  profileSubtitle: string;
+  fullName: string;
+  bio: string;
+  favoriteTeam: string;
+  favoritePosition: string;
+  location: string;
+  changeAvatar: string;
+  uploadingAvatar: string;
+  avatarUploaded: string;
+  avatarUploadError: string;
+  avatarTooLarge: string;
+  profileFieldsHint: string;
   load: string;
+  view: string;
   noSavedLineups: string;
   allCategories: string;
   databaseNotReady: string;
@@ -341,7 +360,20 @@ const copyByLanguage = {
     lineupName: "Tên đội hình",
     avatarUrl: "URL ảnh đại diện",
     updateProfile: "Lưu hồ sơ",
+    profileSubtitle: "Cá nhân hoá hồ sơ cầu thủ của bạn",
+    fullName: "Họ và tên",
+    bio: "Giới thiệu bản thân",
+    favoriteTeam: "Đội bóng yêu thích",
+    favoritePosition: "Vị trí sở trường",
+    location: "Khu vực",
+    changeAvatar: "Đổi ảnh đại diện",
+    uploadingAvatar: "Đang tải ảnh lên…",
+    avatarUploaded: "Đã cập nhật ảnh đại diện",
+    avatarUploadError: "Không thể tải ảnh lên. Vui lòng thử lại.",
+    avatarTooLarge: "Ảnh quá lớn (tối đa 2MB).",
+    profileFieldsHint: "Các thông tin này sẽ được lưu vào hồ sơ của bạn.",
     load: "Tải",
+    view: "Xem",
     noSavedLineups: "Chưa có đội hình nào được lưu.",
     allCategories: "Tất cả",
     databaseNotReady: "Chưa tạo bảng Supabase. Hãy chạy file supabase/schema.sql trong SQL Editor trước khi lưu.",
@@ -452,7 +484,20 @@ const copyByLanguage = {
     lineupName: "Line-up name",
     avatarUrl: "Avatar URL",
     updateProfile: "Save profile",
+    profileSubtitle: "Personalize your player profile",
+    fullName: "Full name",
+    bio: "About you",
+    favoriteTeam: "Favorite team",
+    favoritePosition: "Preferred position",
+    location: "Location",
+    changeAvatar: "Change avatar",
+    uploadingAvatar: "Uploading…",
+    avatarUploaded: "Avatar updated",
+    avatarUploadError: "Could not upload the image. Please try again.",
+    avatarTooLarge: "Image is too large (max 2MB).",
+    profileFieldsHint: "This information is saved to your profile.",
     load: "Load",
+    view: "View",
     noSavedLineups: "No saved line-ups yet.",
     allCategories: "All",
     databaseNotReady: "Supabase tables are not created yet. Run supabase/schema.sql in SQL Editor before saving.",
@@ -850,7 +895,9 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
         if (state.isLooping) {
           return { currentFrameIndex: 0, isPlaying: true };
         }
-        return { currentFrameIndex: 0, isPlaying: false, playbackFrames: [cloneTacticalFrame(state.draftFrame)] };
+        // Stop on the last step instead of resetting to the start. Pressing
+        // play again rebuilds the sequence and restarts from the beginning.
+        return { currentFrameIndex: sequenceLength - 1, isPlaying: false };
       }
       return { currentFrameIndex: nextIndex };
     }),
@@ -1731,6 +1778,13 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [profileUsername, setProfileUsername] = useState("");
   const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
+  const [profileFullName, setProfileFullName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileFavoriteTeam, setProfileFavoriteTeam] = useState("");
+  const [profileFavoritePosition, setProfileFavoritePosition] = useState("");
+  const [profileLocation, setProfileLocation] = useState("");
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [lineupName, setLineupName] = useState("");
   const [savedLineups, setSavedLineups] = useState<SavedLineupRecord[]>([]);
   const [lockerCategory, setLockerCategory] = useState<LockerCategory>("all");
@@ -1991,12 +2045,17 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       setProfile(null);
       setProfileUsername("");
       setProfileAvatarUrl("");
+      setProfileFullName("");
+      setProfileBio("");
+      setProfileFavoriteTeam("");
+      setProfileFavoritePosition("");
+      setProfileLocation("");
       return;
     }
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id,username,avatar_url")
+      .select("id,username,avatar_url,full_name,bio,favorite_team,favorite_position,location")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -2009,6 +2068,11 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setProfile(nextProfile);
     setProfileUsername(nextProfile?.username ?? user.user_metadata?.username ?? user.email?.split("@")[0] ?? "");
     setProfileAvatarUrl(nextProfile?.avatar_url ?? user.user_metadata?.avatar_url ?? "");
+    setProfileFullName(nextProfile?.full_name ?? user.user_metadata?.full_name ?? "");
+    setProfileBio(nextProfile?.bio ?? "");
+    setProfileFavoriteTeam(nextProfile?.favorite_team ?? "");
+    setProfileFavoritePosition(nextProfile?.favorite_position ?? "");
+    setProfileLocation(nextProfile?.location ?? "");
   };
 
   useEffect(() => {
@@ -2213,6 +2277,20 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     }
   };
 
+  const profileColumns = "id,username,avatar_url,full_name,bio,favorite_team,favorite_position,location";
+
+  const buildProfilePayload = (overrides?: { avatar_url?: string | null }) => ({
+    id: user!.id,
+    username: profileUsername.trim() || user!.email?.split("@")[0] || "",
+    avatar_url:
+      overrides && "avatar_url" in overrides ? overrides.avatar_url : profileAvatarUrl.trim() || null,
+    full_name: profileFullName.trim() || null,
+    bio: profileBio.trim() || null,
+    favorite_team: profileFavoriteTeam.trim() || null,
+    favorite_position: profileFavoritePosition.trim() || null,
+    location: profileLocation.trim() || null,
+  });
+
   const updateProfile = async () => {
     if (!supabase || !user) return;
 
@@ -2220,12 +2298,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setIsProfileLoading(true);
     const { data, error } = await supabase
       .from("profiles")
-      .upsert({
-        id: user.id,
-        username: profileUsername.trim() || user.email?.split("@")[0] || "",
-        avatar_url: profileAvatarUrl.trim() || null,
-      })
-      .select("id,username,avatar_url")
+      .upsert(buildProfilePayload())
+      .select(profileColumns)
       .single();
 
     if (error) {
@@ -2240,6 +2314,55 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setLockerStatus(copy.saved);
     showToast(copy.saved);
     setIsProfileLoading(false);
+  };
+
+  const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !supabase || !user) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast(copy.avatarTooLarge, "error");
+      return;
+    }
+
+    setIsAvatarUploading(true);
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+      const filePath = `${user.id}/avatar-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true, contentType: file.type || undefined });
+
+      if (uploadError) {
+        showToast(copy.avatarUploadError, "error");
+        setIsAvatarUploading(false);
+        return;
+      }
+
+      const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const publicUrl = `${publicData.publicUrl}?v=${Date.now()}`;
+      setProfileAvatarUrl(publicUrl);
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert(buildProfilePayload({ avatar_url: publicUrl }))
+        .select(profileColumns)
+        .single();
+
+      if (error) {
+        showToast(getSupabaseErrorMessage(error, copy), "error");
+        setIsAvatarUploading(false);
+        return;
+      }
+
+      setProfile(data as ProfileRecord);
+      showToast(copy.avatarUploaded);
+    } catch {
+      showToast(copy.avatarUploadError, "error");
+    } finally {
+      setIsAvatarUploading(false);
+    }
   };
 
   const saveCurrentLineupToSupabase = async () => {
@@ -2431,6 +2554,44 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       showToast(copy.deleted);
     }
     setDeletingLineupId(null);
+  };
+
+  const shareSavedLineup = async (lineup: SavedLineupRecord) => {
+    const data = lineup.players_data;
+    if ("kind" in data && data.kind === "tactics") {
+      showToast(copy.invalidLineupData, "error");
+      return;
+    }
+
+    const lineupData = data as StoredLineupState;
+    if (!lineupData || !isPitchSize(lineupData.pitchSize) || !isFormationKey(lineupData.formation) || !Array.isArray(lineupData.players)) {
+      showToast(copy.invalidLineupData, "error");
+      return;
+    }
+
+    const shareableCount =
+      lineupData.pitchSize === "custom"
+        ? lineupData.players.filter((player) => player.onPitch).length
+        : lineupData.customCount;
+    const url = new URL(window.location.href);
+    url.searchParams.set(
+      "lineup",
+      encodeSharePayload(
+        lineupData.pitchSize,
+        lineupData.formation,
+        shareableCount,
+        lineupData.players,
+        Array.isArray(lineupData.opponentMarkers) ? lineupData.opponentMarkers : [],
+        Array.isArray(lineupData.drawLines) ? lineupData.drawLines : [],
+      ),
+    );
+
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      showToast(copy.copied);
+    } catch {
+      window.prompt(copy.share, url.toString());
+    }
   };
 
   const getSavedLineupFormatLabel = (lineup: SavedLineupRecord) => {
@@ -3251,10 +3412,81 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
               ) : !user ? (
                 <p className="locker-message">{copy.signIn}</p>
               ) : (
-                <div className="auth-card">
-                  <input value={profileUsername} onChange={(event) => setProfileUsername(event.target.value)} placeholder={copy.username} />
-                  <input value={profileAvatarUrl} onChange={(event) => setProfileAvatarUrl(event.target.value)} placeholder={copy.avatarUrl} />
-                  <button type="button" onClick={updateProfile} disabled={isProfileLoading}>
+                <div className="profile-card">
+                  <div className="profile-hero">
+                    <button
+                      type="button"
+                      className="profile-avatar"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={isAvatarUploading}
+                      aria-label={copy.changeAvatar}
+                    >
+                      {profileAvatarUrl ? (
+                        <img src={profileAvatarUrl} alt="" />
+                      ) : (
+                        <span className="profile-avatar-initials">
+                          {(profileUsername || user.email || "?").trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="profile-avatar-overlay">
+                        {isAvatarUploading ? <ButtonSpinner /> : <Pencil size={16} />}
+                      </span>
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={handleAvatarFileChange}
+                    />
+                    <div className="profile-hero-info">
+                      <strong>{profileUsername || user.email}</strong>
+                      <span>{user.email}</span>
+                      <button
+                        type="button"
+                        className="profile-avatar-trigger"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={isAvatarUploading}
+                      >
+                        {isAvatarUploading ? copy.uploadingAvatar : copy.changeAvatar}
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="profile-subtitle">{copy.profileSubtitle}</p>
+
+                  <div className="profile-grid">
+                    <label className="profile-field">
+                      <span>{copy.username}</span>
+                      <input value={profileUsername} onChange={(event) => setProfileUsername(event.target.value)} placeholder={copy.username} />
+                    </label>
+                    <label className="profile-field">
+                      <span>{copy.favoriteTeam}</span>
+                      <input value={profileFavoriteTeam} onChange={(event) => setProfileFavoriteTeam(event.target.value)} placeholder={copy.favoriteTeam} />
+                    </label>
+                    <label className="profile-field">
+                      <span>{copy.favoritePosition}</span>
+                      <input value={profileFavoritePosition} onChange={(event) => setProfileFavoritePosition(event.target.value)} placeholder={copy.favoritePosition} />
+                    </label>
+                    <label className="profile-field">
+                      <span>{copy.location}</span>
+                      <input value={profileLocation} onChange={(event) => setProfileLocation(event.target.value)} placeholder={copy.location} />
+                    </label>
+                    <label className="profile-field profile-field-full">
+                      <span>{copy.bio}</span>
+                      <textarea
+                        value={profileBio}
+                        onChange={(event) => setProfileBio(event.target.value)}
+                        placeholder={copy.bio}
+                        rows={3}
+                        maxLength={280}
+                      />
+                    </label>
+                  </div>
+
+                  <p className="profile-hint">{copy.profileFieldsHint}</p>
+
+                  <button type="button" className="profile-save" onClick={updateProfile} disabled={isProfileLoading}>
                     {isProfileLoading ? <ButtonSpinner /> : null}
                     {copy.updateProfile}
                   </button>
@@ -3303,7 +3535,15 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     </div>
                     <div className="saved-lineup-actions">
                       <button type="button" onClick={() => loadSavedLineup(lineup)}>
-                        {copy.load}
+                        {copy.view}
+                      </button>
+                      <button
+                        type="button"
+                        className="saved-lineup-share"
+                        onClick={() => shareSavedLineup(lineup)}
+                        aria-label={copy.share}
+                      >
+                        <Share2 size={14} />
                       </button>
                       <button type="button" onClick={() => deleteSavedLineup(lineup.id)} disabled={deletingLineupId === lineup.id}>
                         {deletingLineupId === lineup.id ? <ButtonSpinner /> : <Trash2 size={14} />}
@@ -3957,12 +4197,18 @@ function LandingPage({
   onExplore,
   onSignIn,
   onSignUp,
+  user,
+  isAuthLoading,
+  onSignOut,
 }: {
   language: Language;
   onChangeLanguage: (language: Language) => void;
   onExplore: () => void;
   onSignIn: () => void;
   onSignUp: () => void;
+  user: User | null;
+  isAuthLoading: boolean;
+  onSignOut: () => void;
 }) {
   const c = landingCopy[language];
   const appCopy = copyByLanguage[language];
@@ -3974,12 +4220,26 @@ function LandingPage({
           <span>{c.brand}</span>
         </div>
         <div className="landing-nav-actions">
-          <button type="button" className="landing-auth-btn" onClick={onSignIn}>
-            {appCopy.signIn}
-          </button>
-          <button type="button" className="landing-auth-btn landing-auth-btn-primary" onClick={onSignUp}>
-            {appCopy.signUp}
-          </button>
+          {isAuthLoading ? null : user ? (
+            <div className="landing-user">
+              <span className="landing-user-email">{user.email}</span>
+              <button type="button" className="landing-auth-btn landing-auth-btn-primary" onClick={onExplore}>
+                {c.explore}
+              </button>
+              <button type="button" className="landing-auth-btn" onClick={onSignOut}>
+                {appCopy.signOut}
+              </button>
+            </div>
+          ) : (
+            <>
+              <button type="button" className="landing-auth-btn" onClick={onSignIn}>
+                {appCopy.signIn}
+              </button>
+              <button type="button" className="landing-auth-btn landing-auth-btn-primary" onClick={onSignUp}>
+                {appCopy.signUp}
+              </button>
+            </>
+          )}
           <button
             type="button"
             className="landing-lang"
@@ -4065,6 +4325,7 @@ function Root() {
   const [entered, setEntered] = useState(hasDeepLink);
   const [language, setLanguage] = useState<Language>("vi");
   const [authDialogMode, setAuthDialogMode] = useState<"sign_in" | "sign_up" | null>(null);
+  const { user, isAuthLoading, signOut } = useAuth();
 
   if (!entered) {
     return (
@@ -4075,6 +4336,9 @@ function Root() {
           onExplore={() => setEntered(true)}
           onSignIn={() => setAuthDialogMode("sign_in")}
           onSignUp={() => setAuthDialogMode("sign_up")}
+          user={user}
+          isAuthLoading={isAuthLoading}
+          onSignOut={signOut}
         />
         {authDialogMode ? (
           <AuthDialog

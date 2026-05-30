@@ -5,6 +5,14 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+-- Extra profile fields (run these even on existing databases; they are idempotent).
+alter table public.profiles add column if not exists full_name text;
+alter table public.profiles add column if not exists bio text;
+alter table public.profiles add column if not exists favorite_team text;
+alter table public.profiles add column if not exists favorite_position text;
+alter table public.profiles add column if not exists location text;
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.lineups (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -135,4 +143,45 @@ drop trigger if exists prevent_mixed_identities_trigger on auth.identities;
 create trigger prevent_mixed_identities_trigger
 before insert on auth.identities
 for each row execute function public.prevent_mixed_identities();
+
+-- =====================================================================
+-- Avatar storage. A public bucket so avatar URLs can be rendered without
+-- signed URLs; users may only write inside a folder named after their uid.
+-- =====================================================================
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "Avatar images are publicly readable" on storage.objects;
+create policy "Avatar images are publicly readable"
+on storage.objects for select
+using (bucket_id = 'avatars');
+
+drop policy if exists "Users can upload their own avatar" on storage.objects;
+create policy "Users can upload their own avatar"
+on storage.objects for insert
+with check (
+  bucket_id = 'avatars'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
+
+drop policy if exists "Users can update their own avatar" on storage.objects;
+create policy "Users can update their own avatar"
+on storage.objects for update
+using (
+  bucket_id = 'avatars'
+  and auth.uid()::text = (storage.foldername(name))[1]
+)
+with check (
+  bucket_id = 'avatars'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
+
+drop policy if exists "Users can delete their own avatar" on storage.objects;
+create policy "Users can delete their own avatar"
+on storage.objects for delete
+using (
+  bucket_id = 'avatars'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
 
