@@ -248,6 +248,8 @@ type AppCopy = {
   updatePassword: string;
   passwordMismatch: string;
   passwordUpdated: string;
+  recoveryLinkExpired: string;
+  requestNewLink: string;
   pitchLabels: Record<PitchSize, string>;
 };
 
@@ -342,6 +344,8 @@ const copyByLanguage = {
     updatePassword: "Cập nhật mật khẩu",
     passwordMismatch: "Mật khẩu nhập lại không khớp.",
     passwordUpdated: "Đổi mật khẩu thành công. Bạn đã được đăng nhập.",
+    recoveryLinkExpired: "Link đặt lại mật khẩu đã hết hạn hoặc đã được sử dụng. Hãy yêu cầu link mới.",
+    requestNewLink: "Gửi lại link đặt lại mật khẩu",
     pitchLabels: {
       5: "Sân 5",
       7: "Sân 7",
@@ -439,6 +443,8 @@ const copyByLanguage = {
     updatePassword: "Update password",
     passwordMismatch: "The passwords do not match.",
     passwordUpdated: "Password updated. You are now signed in.",
+    recoveryLinkExpired: "The reset link has expired or was already used. Please request a new one.",
+    requestNewLink: "Send a new reset link",
     pitchLabels: {
       5: "5-a-side",
       7: "7-a-side",
@@ -1589,7 +1595,7 @@ function TacticalBoard({
 type LockerCategory = "all" | "5" | "7" | "11" | "custom" | "tactics";
 
 function App() {
-  const { user, isAuthLoading, signOut, isPasswordRecovery, clearPasswordRecovery } = useAuth();
+  const { user, isAuthLoading, signOut, isPasswordRecovery, recoveryError, clearPasswordRecovery } = useAuth();
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
   const initialPitchSize = sharedLineup?.pitchSize ?? 7;
   const initialFormation = sharedLineup?.formation ?? "2-3-1";
@@ -2042,6 +2048,13 @@ function App() {
     setRecoveryStatus("");
     setRecoveryDone(false);
     clearPasswordRecovery();
+  };
+
+  const requestNewResetLink = () => {
+    closeRecoveryScreen();
+    setAuthMode("reset");
+    setAuthStatus("");
+    setIsAuthScreenOpen(true);
   };
 
   const signInWithGoogle = async () => {
@@ -2903,7 +2916,7 @@ function App() {
           </button>
         </div>
       </header>
-      {isPasswordRecovery ? (
+      {isPasswordRecovery || recoveryError ? (
         <div className="auth-screen">
           <form className="auth-screen-card" onSubmit={handleUpdatePassword}>
             <div className="panel-heading">
@@ -2913,7 +2926,14 @@ function App() {
               </button>
             </div>
             {!isSupabaseConfigured ? <p className="locker-message">{copy.supabaseMissing}</p> : null}
-            {recoveryDone ? (
+            {recoveryError && !isPasswordRecovery ? (
+              <>
+                <p className="locker-message">{copy.recoveryLinkExpired}</p>
+                <button type="button" onClick={requestNewResetLink}>
+                  {copy.requestNewLink}
+                </button>
+              </>
+            ) : recoveryDone ? (
               <>
                 <p className="locker-message">{copy.passwordUpdated}</p>
                 <button type="button" onClick={closeRecoveryScreen}>

@@ -7,11 +7,24 @@ import { supabase } from "../lib/supabaseClient";
 const hasRecoveryHash = () =>
   typeof window !== "undefined" && window.location.hash.includes("type=recovery");
 
+// When the recovery link is invalid/expired/already used, Supabase redirects back
+// with an error in the hash (e.g. #error=access_denied&error_code=otp_expired&...).
+const parseRecoveryError = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash.includes("error")) return null;
+  const params = new URLSearchParams(hash);
+  if (!params.get("error") && !params.get("error_code")) return null;
+  const description = params.get("error_description");
+  return description ? description.replace(/\+/g, " ") : params.get("error_code") || params.get("error") || "error";
+};
+
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(Boolean(supabase));
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(hasRecoveryHash);
+  const [recoveryError, setRecoveryError] = useState<string | null>(parseRecoveryError);
 
   useEffect(() => {
     if (!supabase) {
@@ -52,12 +65,21 @@ export function useAuth() {
 
   const clearPasswordRecovery = useCallback(() => {
     setIsPasswordRecovery(false);
-    if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
-      // Remove the recovery tokens from the URL so a refresh doesn't re-trigger the flow.
+    setRecoveryError(null);
+    if (typeof window !== "undefined" && window.location.hash) {
+      // Remove the recovery tokens/error from the URL so a refresh doesn't re-trigger the flow.
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   }, []);
 
-  return { user, session, isAuthLoading, signOut, isPasswordRecovery, clearPasswordRecovery };
+  return {
+    user,
+    session,
+    isAuthLoading,
+    signOut,
+    isPasswordRecovery,
+    recoveryError,
+    clearPasswordRecovery,
+  };
 }
 
