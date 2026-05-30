@@ -250,6 +250,9 @@ type AppCopy = {
   passwordUpdated: string;
   recoveryLinkExpired: string;
   requestNewLink: string;
+  resetCooldownMessage: string;
+  invalidCredentials: string;
+  emailNotConfirmed: string;
   pitchLabels: Record<PitchSize, string>;
 };
 
@@ -346,6 +349,9 @@ const copyByLanguage = {
     passwordUpdated: "Đổi mật khẩu thành công. Bạn đã được đăng nhập.",
     recoveryLinkExpired: "Link đặt lại mật khẩu đã hết hạn hoặc đã được sử dụng. Hãy yêu cầu link mới.",
     requestNewLink: "Gửi lại link đặt lại mật khẩu",
+    resetCooldownMessage: "Vì lý do bảo mật, bạn có thể gửi lại sau {seconds} giây.",
+    invalidCredentials: "Email hoặc mật khẩu không đúng.",
+    emailNotConfirmed: "Email chưa được xác thực. Hãy kiểm tra hộp thư để xác thực trước khi đăng nhập.",
     pitchLabels: {
       5: "Sân 5",
       7: "Sân 7",
@@ -445,6 +451,9 @@ const copyByLanguage = {
     passwordUpdated: "Password updated. You are now signed in.",
     recoveryLinkExpired: "The reset link has expired or was already used. Please request a new one.",
     requestNewLink: "Send a new reset link",
+    resetCooldownMessage: "For security purposes, you can request again in {seconds} seconds.",
+    invalidCredentials: "Invalid email or password.",
+    emailNotConfirmed: "Email not confirmed. Please check your inbox to confirm before signing in.",
     pitchLabels: {
       5: "5-a-side",
       7: "7-a-side",
@@ -462,6 +471,24 @@ const getSupabaseErrorMessage = (error: { code?: string; message?: string }, cop
 };
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+// Supabase rate-limit errors look like:
+// "For security purposes, you can only request this after 16 seconds."
+const parseRateLimitSeconds = (message?: string): number | null => {
+  if (!message) return null;
+  const match = message.match(/after\s+(\d+)\s*seconds?/i);
+  return match ? Number(match[1]) : null;
+};
+
+// Supabase returns auth errors in English; map the common ones to the active language.
+const localizeAuthError = (message: string | undefined, copy: AppCopy): string => {
+  if (!message) return copy.invalidCredentials;
+  const lower = message.toLowerCase();
+  if (lower.includes("invalid login credentials")) return copy.invalidCredentials;
+  if (lower.includes("email not confirmed")) return copy.emailNotConfirmed;
+  if (lower.includes("user already registered")) return copy.emailAlreadyRegistered;
+  return message;
+};
 
 function ButtonSpinner() {
   return <span className="button-spinner" aria-hidden="true" />;
@@ -1660,6 +1687,7 @@ function App() {
   const [recoveryStatus, setRecoveryStatus] = useState("");
   const [recoveryDone, setRecoveryDone] = useState(false);
   const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [profileUsername, setProfileUsername] = useState("");
   const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
@@ -1938,6 +1966,20 @@ function App() {
     fetchProfile();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (resetCooldown <= 0) return;
+    const intervalId = window.setInterval(() => {
+      setResetCooldown((seconds) => {
+        if (seconds <= 1) {
+          window.clearInterval(intervalId);
+          return 0;
+        }
+        return seconds - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [resetCooldown > 0]);
+
   const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!supabase) {
@@ -1964,7 +2006,18 @@ function App() {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + window.location.pathname,
       });
-      setAuthStatus(error ? error.message : copy.resetEmailSent);
+      if (error) {
+        const cooldownSeconds = parseRateLimitSeconds(error.message);
+        if (cooldownSeconds) {
+          setResetCooldown(cooldownSeconds);
+          setAuthStatus("");
+        } else {
+          setAuthStatus(localizeAuthError(error.message, copy));
+        }
+      } else {
+        setResetCooldown(0);
+        setAuthStatus(copy.resetEmailSent);
+      }
       setIsAuthSubmitting(false);
       return;
     }
@@ -1977,7 +2030,7 @@ function App() {
       });
 
       if (result.error) {
-        setAuthStatus(result.error.message);
+        setAuthStatus(localizeAuthError(result.error.message, copy));
         setIsAuthSubmitting(false);
         return;
       }
@@ -1996,7 +2049,7 @@ function App() {
 
     const result = await supabase.auth.signInWithPassword({ email, password });
     if (result.error) {
-      setAuthStatus(result.error.message);
+      setAuthStatus(localizeAuthError(result.error.message, copy));
       setIsAuthSubmitting(false);
       return;
     }
@@ -2030,7 +2083,7 @@ function App() {
     setIsRecoverySubmitting(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      setRecoveryStatus(error.message);
+      setRecoveryStatus(localizeAuthError(error.message, copy));
       setIsRecoverySubmitting(false);
       return;
     }
@@ -3022,9 +3075,23 @@ function App() {
                 required
               />
             ) : null}
-            <button type="submit" disabled={!isSupabaseConfigured || isAuthSubmitting || isGoogleAuthLoading}>
+            <button
+              type="submit"
+              disabled={
+                !isSupabaseConfigured ||
+                isAuthSubmitting ||
+                isGoogleAuthLoading ||
+                (authMode === "reset" && resetCooldown > 0)
+              }
+            >
               {isAuthSubmitting ? <ButtonSpinner /> : null}
-              {authMode === "sign_up" ? copy.signUp : authMode === "reset" ? copy.resetPassword : copy.signIn}
+              {authMode === "reset" && resetCooldown > 0
+                ? `${copy.resetPassword} (${resetCooldown}s)`
+                : authMode === "sign_up"
+                  ? copy.signUp
+                  : authMode === "reset"
+                    ? copy.resetPassword
+                    : copy.signIn}
             </button>
             <button
               type="button"
@@ -3035,7 +3102,11 @@ function App() {
               {isGoogleAuthLoading ? <ButtonSpinner /> : null}
               {copy.googleSignIn}
             </button>
-            {authStatus ? <p className="locker-message">{authStatus}</p> : null}
+            {authMode === "reset" && resetCooldown > 0 ? (
+              <p className="locker-message">{copy.resetCooldownMessage.replace("{seconds}", String(resetCooldown))}</p>
+            ) : authStatus ? (
+              <p className="locker-message">{authStatus}</p>
+            ) : null}
           </form>
         </div>
       ) : null}
