@@ -3527,3 +3527,178 @@ body {
     100% { opacity: 0; }
   }
 }
+
+/* =====================================================================
+   RESPONSIVE — tablet & mobile.
+   These rules are intentionally placed LAST so they override the desktop
+   layout overrides above (which are not wrapped in media queries and were
+   clobbering the older mobile breakpoints — e.g. forcing the content grid
+   back to two columns and the pitch to height:100% on small screens).
+   Desktop (> 1024px) is untouched.
+   ===================================================================== */
+@media (max-width: 1024px) {
+  /* Let the whole app scroll instead of being locked to the viewport. */
+  .match-bg {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .dashboard-shell,
+  .tactics-dashboard {
+    min-height: 0;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  /* ---------- Lineup tab: single column, pitch sized by width ---------- */
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    height: auto;
+    padding: 16px;
+    overflow: visible;
+  }
+
+  .stats-column,
+  .lineup-column {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .lineup-column {
+    order: 1;
+  }
+
+  .stats-column {
+    order: 2;
+  }
+
+  .lineup-stage {
+    grid-template-rows: auto;
+    align-items: center;
+  }
+
+  .lineup-stage .pitch,
+  .custom-lineup-stage .pitch {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    width: min(100%, 460px);
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  /* Footer: stack the formation chips above the share/download row. */
+  .lineup-footer-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .footer-formation-switch,
+  .footer-actions-right {
+    justify-content: center;
+  }
+
+  /* ---------- Tactics tab: stack the three panels (pitch first) -------- */
+  .tactical-shell {
+    grid-template-columns: 1fr;
+    grid-auto-rows: min-content;
+    gap: 14px;
+    height: auto;
+    padding: 14px;
+    overflow: visible;
+  }
+
+  .tactical-stage {
+    order: 1;
+  }
+
+  .tactical-panel {
+    order: 2;
+  }
+
+  .tactic-library-panel {
+    order: 3;
+  }
+
+  .tactical-panel,
+  .tactic-library-panel,
+  .tactical-stage {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .tactical-pitch {
+    height: auto;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  /* The frame timeline can grow tall when stacked; cap it and scroll. */
+  .tactical-timeline {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  /* ---------- Locker & profile: fill width, allow scroll --------------- */
+  .locker-room {
+    grid-template-columns: 1fr;
+    height: auto;
+    padding: 16px;
+    overflow: visible;
+  }
+
+  .locker-panel {
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* Tablet portrait: keep the squad editor compact above the pitch. */
+@media (max-width: 1024px) and (min-width: 641px) {
+  /* Only show the lightweight mobile editor on phones; on tablets the full
+     squad column is shown above the pitch, so avoid duplicating inputs. */
+  .mobile-player-editor {
+    display: none;
+  }
+}
+
+/* Phones: tighten spacing and shrink the tactics side tray. */
+@media (max-width: 640px) {
+  .content-grid {
+    padding: 12px;
+  }
+
+  /* Retheme the legacy bright-green mobile editor to the dark theme. */
+  .mobile-player-editor {
+    background: rgba(9, 20, 15, 0.6);
+    border: 1px solid rgba(232, 245, 233, 0.1);
+    border-radius: 14px;
+  }
+
+  .tactical-shell {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .tactical-stage {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .tactical-side-tray .tactical-tray {
+    padding: 7px;
+  }
+
+  .tactical-pitch {
+    max-width: 100%;
+  }
+}
