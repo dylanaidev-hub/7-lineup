@@ -1404,8 +1404,9 @@ function TacticalBoard({
     if (marker) {
       setDragPreview(marker);
       setDragPreviewPosition({ x: event.clientX, y: event.clientY });
+      updateMarker(id, position.x, position.y);
+      return;
     }
-    updateMarker(id, position.x, position.y);
   };
 
   const startMarkerDrag = (event: ReactPointerEvent<HTMLElement>, id: string) => {
@@ -1413,6 +1414,7 @@ function TacticalBoard({
     const marker = activeFrame.find((item) => item.id === id);
     if (!marker) return;
 
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingMarkerId(id);
     setDragPreview(marker);
@@ -1424,6 +1426,8 @@ function TacticalBoard({
     if (id) {
       const position = getBoardPointerPosition(event);
       if (position) {
+        const marker = activeFrame.find((item) => item.id === id);
+        const nextOnPitch = marker?.type === "ball" ? true : position.isInside;
         setRecentlyDroppedMarkerId(id);
         if (dropTimerRef.current) {
           window.clearTimeout(dropTimerRef.current);
@@ -1432,7 +1436,7 @@ function TacticalBoard({
           setRecentlyDroppedMarkerId((currentId) => (currentId === id ? null : currentId));
           dropTimerRef.current = null;
         }, 120);
-        updateMarker(id, position.x, position.y, position.isInside);
+        updateMarker(id, position.x, position.y, nextOnPitch);
       }
     }
 
