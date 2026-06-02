@@ -83,7 +83,7 @@ type TacticalStore = {
 
 type PitchSize = 5 | 7 | 11 | "custom";
 type Language = "vi" | "en";
-type AppTab = "lineup" | "tactics" | "profile" | "locker";
+type AppTab = "lineup" | "tactics" | "profile" | "locker" | "team";
 type FormationKey =
   | "1-2-1"
   | "2-1-1"
@@ -154,6 +154,43 @@ type ProfileRecord = {
   location: string | null;
 };
 
+type MemberProfileRecord = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+};
+
+type TeamRecord = {
+  id: string;
+  user_id: string;
+  name: string;
+  logo_url: string | null;
+  logo_icon: string | null;
+  shirt_color: string;
+  shorts_color: string;
+  socks_color: string;
+  slogan: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type TeamMemberPosition = "GK" | "DF" | "MF" | "FW";
+
+type TeamMemberRecord = {
+  id: string;
+  team_id: string;
+  user_id: string;
+  jersey_number: number;
+  nickname: string;
+  position: TeamMemberPosition;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type TeamMemberDisplay = TeamMemberRecord & {
+  isOwner?: boolean;
+};
+
 const lineupStorageKey = "lineup-football-default-state-v1";
 
 const pitchSizes: PitchSize[] = [5, 7, 11];
@@ -163,6 +200,47 @@ const pitchOptions: { value: PitchSize; label: string }[] = [
   { value: 11, label: "Sân 11" },
   { value: "custom", label: "Cá nhân hóa" },
 ];
+
+const defaultTeamColors = {
+  shirt: "#f8fafc",
+  shorts: "#111827",
+  socks: "#dc2626",
+};
+
+const teamLogoIcons = ["⚽", "🏆", "⭐", "🔥", "🛡️", "🥅"];
+
+const teamColorPalette = [
+  "#f8fafc",
+  "#111827",
+  "#dc2626",
+  "#f97316",
+  "#facc15",
+  "#22c55e",
+  "#2563eb",
+  "#7c3aed",
+  "#ec4899",
+  "#14b8a6",
+];
+
+const memberPositions: TeamMemberPosition[] = ["GK", "DF", "MF", "FW"];
+
+const memberPositionPoints: Record<TeamMemberPosition, { x: number; y: number }[]> = {
+  GK: [{ x: 50, y: 86 }],
+  DF: [
+    { x: 35, y: 68 },
+    { x: 65, y: 68 },
+    { x: 50, y: 62 },
+  ],
+  MF: [
+    { x: 30, y: 46 },
+    { x: 50, y: 42 },
+    { x: 70, y: 46 },
+  ],
+  FW: [
+    { x: 42, y: 22 },
+    { x: 58, y: 22 },
+  ],
+};
 
 type AppCopy = {
   lineupTab: string;
@@ -232,6 +310,47 @@ type AppCopy = {
   googleSignIn: string;
   profileMenu: string;
   lockerMenu: string;
+  teamMenu: string;
+  teamTitle: string;
+  teamSubtitle: string;
+  teamName: string;
+  teamNamePlaceholder: string;
+  teamLogo: string;
+  uploadTeamLogo: string;
+  uploadingTeamLogo: string;
+  teamLogoUploaded: string;
+  teamLogoUploadError: string;
+  chooseTeamIcon: string;
+  shirtColor: string;
+  teamSlogan: string;
+  teamSloganPlaceholder: string;
+  saveTeam: string;
+  teamSaved: string;
+  teamNameRequired: string;
+  myTeams: string;
+  createTeam: string;
+  editTeam: string;
+  deleteTeam: string;
+  searchTeams: string;
+  noTeams: string;
+  noTeamMatches: string;
+  cancel: string;
+  teamDetails: string;
+  backToTeams: string;
+  totalMembers: string;
+  miniLineup: string;
+  editLineupBoard: string;
+  copyTeamLink: string;
+  viewQrCode: string;
+  downloadQr: string;
+  teamQrTitle: string;
+  members: string;
+  emptyLocker: string;
+  addFirstPlayer: string;
+  addMember: string;
+  jerseyNumber: string;
+  playerNickname: string;
+  teamOwnerTag: string;
   lockerTitle: string;
   saveCurrentLineup: string;
   saveTacticsBoard: string;
@@ -240,6 +359,8 @@ type AppCopy = {
   avatarUrl: string;
   updateProfile: string;
   profileSubtitle: string;
+  userId: string;
+  copyUserId: string;
   fullName: string;
   bio: string;
   favoriteTeam: string;
@@ -353,6 +474,47 @@ const copyByLanguage = {
     googleSignIn: "Đăng nhập Google",
     profileMenu: "Hồ sơ",
     lockerMenu: "Phòng thay đồ",
+    teamMenu: "Đội bóng",
+    teamTitle: "Đội bóng của bạn",
+    teamSubtitle: "Định hình thương hiệu đội bóng phong trào của bạn.",
+    teamName: "Tên đội bóng",
+    teamNamePlaceholder: "FC Bạn Hữu, Văn Phòng FC...",
+    teamLogo: "Logo đội bóng",
+    uploadTeamLogo: "Tải logo lên",
+    uploadingTeamLogo: "Đang tải logo lên…",
+    teamLogoUploaded: "Đã cập nhật logo đội bóng",
+    teamLogoUploadError: "Không thể tải logo lên. Vui lòng thử lại.",
+    chooseTeamIcon: "Chọn icon nhanh",
+    shirtColor: "Màu áo chính",
+    teamSlogan: "Mô tả/Slogan",
+    teamSloganPlaceholder: "Đá giao lưu - Vui là chính",
+    saveTeam: "Lưu đội bóng",
+    teamSaved: "Đã lưu đội bóng",
+    teamNameRequired: "Tên đội bóng là bắt buộc.",
+    myTeams: "Đội bóng của tôi",
+    createTeam: "Tạo đội bóng",
+    editTeam: "Sửa",
+    deleteTeam: "Xoá",
+    searchTeams: "Tìm đội bóng",
+    noTeams: "Bạn chưa có đội bóng nào. Tạo đội đầu tiên để bắt đầu.",
+    noTeamMatches: "Không tìm thấy đội bóng phù hợp.",
+    cancel: "Huỷ",
+    teamDetails: "Chi tiết đội bóng",
+    backToTeams: "Quay lại danh sách",
+    totalMembers: "thành viên",
+    miniLineup: "Đội hình hiện tại",
+    editLineupBoard: "Chỉnh sửa sơ đồ",
+    copyTeamLink: "Copy Link",
+    viewQrCode: "Xem mã QR",
+    downloadQr: "Download QR",
+    teamQrTitle: "Mã QR mời vào đội",
+    members: "Thành viên",
+    emptyLocker: "Phòng thay đồ đang trống! Hãy thêm đồng đội để bắt đầu chiến thuật.",
+    addFirstPlayer: "Thêm cầu thủ đầu tiên",
+    addMember: "Thêm thành viên",
+    jerseyNumber: "Số áo",
+    playerNickname: "Tên/Biệt danh",
+    teamOwnerTag: "Chủ đội bóng",
     lockerTitle: "Phòng thay đồ",
     saveCurrentLineup: "Lưu đội hình hiện tại",
     saveTacticsBoard: "Lưu bảng chiến thuật",
@@ -361,6 +523,8 @@ const copyByLanguage = {
     avatarUrl: "URL ảnh đại diện",
     updateProfile: "Lưu hồ sơ",
     profileSubtitle: "Cá nhân hoá hồ sơ cầu thủ của bạn",
+    userId: "ID user",
+    copyUserId: "Copy ID",
     fullName: "Họ và tên",
     bio: "Giới thiệu bản thân",
     favoriteTeam: "Đội bóng yêu thích",
@@ -477,6 +641,47 @@ const copyByLanguage = {
     googleSignIn: "Sign in with Google",
     profileMenu: "Profile",
     lockerMenu: "Locker Room",
+    teamMenu: "Team",
+    teamTitle: "Your team",
+    teamSubtitle: "Shape the identity of your community football team.",
+    teamName: "Team name",
+    teamNamePlaceholder: "Friends FC, Office FC...",
+    teamLogo: "Team logo",
+    uploadTeamLogo: "Upload logo",
+    uploadingTeamLogo: "Uploading logo…",
+    teamLogoUploaded: "Team logo updated",
+    teamLogoUploadError: "Could not upload the logo. Please try again.",
+    chooseTeamIcon: "Quick icon",
+    shirtColor: "Main shirt color",
+    teamSlogan: "Description/Slogan",
+    teamSloganPlaceholder: "Friendly football, good vibes first",
+    saveTeam: "Save team",
+    teamSaved: "Team saved",
+    teamNameRequired: "Team name is required.",
+    myTeams: "My teams",
+    createTeam: "Create team",
+    editTeam: "Edit",
+    deleteTeam: "Delete",
+    searchTeams: "Search teams",
+    noTeams: "You do not have any teams yet. Create your first team to start.",
+    noTeamMatches: "No teams match your filters.",
+    cancel: "Cancel",
+    teamDetails: "Team details",
+    backToTeams: "Back to teams",
+    totalMembers: "members",
+    miniLineup: "Current line-up",
+    editLineupBoard: "Edit board",
+    copyTeamLink: "Copy Link",
+    viewQrCode: "View QR Code",
+    downloadQr: "Download QR",
+    teamQrTitle: "Team invite QR",
+    members: "Members",
+    emptyLocker: "The locker room is empty! Add teammates to start planning tactics.",
+    addFirstPlayer: "Add First Player",
+    addMember: "Add Member",
+    jerseyNumber: "Number",
+    playerNickname: "Name/Nickname",
+    teamOwnerTag: "Team owner",
     lockerTitle: "Locker Room",
     saveCurrentLineup: "Save current line-up",
     saveTacticsBoard: "Save tactics board",
@@ -485,6 +690,8 @@ const copyByLanguage = {
     avatarUrl: "Avatar URL",
     updateProfile: "Save profile",
     profileSubtitle: "Personalize your player profile",
+    userId: "User ID",
+    copyUserId: "Copy ID",
     fullName: "Full name",
     bio: "About you",
     favoriteTeam: "Favorite team",
@@ -561,6 +768,28 @@ const localizeError = (message: string | undefined, copy: AppCopy): string => {
 const getSupabaseErrorMessage = (error: { code?: string; message?: string }, copy: AppCopy) => {
   if (error.code === "PGRST205") return copy.databaseNotReady;
   return localizeError(error.message, copy);
+};
+
+const getDetailedSupabaseErrorMessage = (
+  error: { code?: string; message?: string; details?: string; hint?: string },
+  copy: AppCopy,
+) => {
+  if (
+    error.code === "23505" &&
+    `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase().includes("teams_user_id_unique")
+  ) {
+    return `${copy.unexpectedError} Database vẫn còn giới hạn 1 đội/tài khoản. Hãy chạy lại supabase/teams_feature.sql để bỏ constraint teams_user_id_unique.`;
+  }
+  if (
+    error.code === "PGRST205" &&
+    `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase().includes("team_members")
+  ) {
+    return "Chưa tạo bảng thành viên đội bóng. Hãy chạy lại supabase/teams_feature.sql trong Supabase SQL Editor.";
+  }
+
+  const friendlyMessage = getSupabaseErrorMessage(error, copy);
+  const rawParts = [error.code, error.message, error.details, error.hint].filter(Boolean);
+  return rawParts.length > 0 ? `${friendlyMessage} (${rawParts.join(" - ")})` : friendlyMessage;
 };
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -1274,6 +1503,7 @@ const getSharedLineupFromUrl = () => {
 const getInitialAppTab = (): AppTab => {
   const params = new URLSearchParams(window.location.search);
   if (params.get("tab") === "locker") return "locker";
+  if (params.get("tab") === "team") return "team";
   return params.get("tab") === "tactics" || params.has("tactics") ? "tactics" : "lineup";
 };
 
@@ -1404,8 +1634,9 @@ function TacticalBoard({
     if (marker) {
       setDragPreview(marker);
       setDragPreviewPosition({ x: event.clientX, y: event.clientY });
+      updateMarker(id, position.x, position.y);
+      return;
     }
-    updateMarker(id, position.x, position.y);
   };
 
   const startMarkerDrag = (event: ReactPointerEvent<HTMLElement>, id: string) => {
@@ -1413,6 +1644,7 @@ function TacticalBoard({
     const marker = activeFrame.find((item) => item.id === id);
     if (!marker) return;
 
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingMarkerId(id);
     setDragPreview(marker);
@@ -1424,6 +1656,8 @@ function TacticalBoard({
     if (id) {
       const position = getBoardPointerPosition(event);
       if (position) {
+        const marker = activeFrame.find((item) => item.id === id);
+        const nextOnPitch = marker?.type === "ball" ? true : position.isInside;
         setRecentlyDroppedMarkerId(id);
         if (dropTimerRef.current) {
           window.clearTimeout(dropTimerRef.current);
@@ -1432,7 +1666,7 @@ function TacticalBoard({
           setRecentlyDroppedMarkerId((currentId) => (currentId === id ? null : currentId));
           dropTimerRef.current = null;
         }, 120);
-        updateMarker(id, position.x, position.y, position.isInside);
+        updateMarker(id, position.x, position.y, nextOnPitch);
       }
     }
 
@@ -1785,6 +2019,27 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [profileLocation, setProfileLocation] = useState("");
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [team, setTeam] = useState<TeamRecord | null>(null);
+  const [teamName, setTeamName] = useState("");
+  const [teamLogoUrl, setTeamLogoUrl] = useState("");
+  const [teamLogoIcon, setTeamLogoIcon] = useState(teamLogoIcons[0]);
+  const [teamShirtColor, setTeamShirtColor] = useState(defaultTeamColors.shirt);
+  const [teamSlogan, setTeamSlogan] = useState("");
+  const [isTeamLoading, setIsTeamLoading] = useState(false);
+  const [isTeamLogoUploading, setIsTeamLogoUploading] = useState(false);
+  const teamLogoInputRef = useRef<HTMLInputElement>(null);
+  const [teams, setTeams] = useState<TeamRecord[]>([]);
+  const [teamSearch, setTeamSearch] = useState("");
+  const [isTeamFormOpen, setIsTeamFormOpen] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [qrTeam, setQrTeam] = useState<TeamRecord | null>(null);
+  const [qrInviteUserId, setQrInviteUserId] = useState("");
+  const [isMemberInviteOpen, setIsMemberInviteOpen] = useState(false);
+  const [memberInviteUserId, setMemberInviteUserId] = useState("");
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
+  const [teamMembersByTeam, setTeamMembersByTeam] = useState<Record<string, TeamMemberRecord[]>>({});
+  const [memberProfilesById, setMemberProfilesById] = useState<Record<string, MemberProfileRecord>>({});
   const [lineupName, setLineupName] = useState("");
   const [savedLineups, setSavedLineups] = useState<SavedLineupRecord[]>([]);
   const [lockerCategory, setLockerCategory] = useState<LockerCategory>("all");
@@ -1825,9 +2080,54 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   ];
   const filteredSavedLineups =
     lockerCategory === "all" ? savedLineups : savedLineups.filter((lineup) => lineup.format === lockerCategory);
+  const normalizedTeamSearch = teamSearch.trim().toLowerCase();
+  const filteredTeams = teams.filter(
+    (item) =>
+      !normalizedTeamSearch ||
+      item.name.toLowerCase().includes(normalizedTeamSearch) ||
+      (item.slogan ?? "").toLowerCase().includes(normalizedTeamSearch),
+  );
+  const selectedTeam = selectedTeamId ? teams.find((item) => item.id === selectedTeamId) ?? null : null;
+  const selectedTeamMembers = selectedTeam ? teamMembersByTeam[selectedTeam.id] ?? [] : [];
+  const selectedTeamIsOwner = Boolean(selectedTeam && user && selectedTeam.user_id === user.id);
+  const getUserDisplayName = (userId: string, fallback = "") => {
+    const memberProfile = memberProfilesById[userId];
+    return memberProfile?.full_name || memberProfile?.username || fallback || `${userId.slice(0, 8).toUpperCase()}`;
+  };
+  const selectedTeamDisplayMembers: TeamMemberDisplay[] = selectedTeam
+    ? [
+        {
+          id: `${selectedTeam.id}-owner`,
+          team_id: selectedTeam.id,
+          user_id: selectedTeam.user_id,
+          jersey_number: 1,
+          nickname: getUserDisplayName(selectedTeam.user_id),
+          position: "MF",
+          isOwner: true,
+        },
+        ...selectedTeamMembers.filter((member) => member.user_id !== selectedTeam.user_id),
+      ]
+    : [];
 
   useEffect(() => {
     document.title = "doihinhsanco";
+  }, []);
+
+  useEffect(() => {
+    const syncTeamRoute = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tab") !== "team") {
+        setSelectedTeamId(null);
+        return;
+      }
+      setSelectedTeamId(params.get("team"));
+      setIsMemberInviteOpen(false);
+      setMemberInviteUserId("");
+    };
+
+    syncTeamRoute();
+    window.addEventListener("popstate", syncTeamRoute);
+    return () => window.removeEventListener("popstate", syncTeamRoute);
   }, []);
 
   const switchAppTab = (nextTab: AppTab) => {
@@ -2075,9 +2375,109 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setProfileLocation(nextProfile?.location ?? "");
   };
 
+  const resetTeamForm = () => {
+    setTeam(null);
+    setTeams([]);
+    setTeamName("");
+    setTeamLogoUrl("");
+    setTeamLogoIcon(teamLogoIcons[0]);
+    setTeamShirtColor(defaultTeamColors.shirt);
+    setTeamSlogan("");
+    setTeamSearch("");
+    setIsTeamFormOpen(false);
+    setSelectedTeamId(null);
+    setQrTeam(null);
+    setTeamMembersByTeam({});
+    setEditingTeamId(null);
+  };
+
+  const fillTeamForm = (nextTeam?: TeamRecord | null) => {
+    setEditingTeamId(nextTeam?.id ?? null);
+    setTeamName(nextTeam?.name ?? "");
+    setTeamLogoUrl(nextTeam?.logo_url ?? "");
+    setTeamLogoIcon(nextTeam?.logo_icon ?? teamLogoIcons[0]);
+    setTeamShirtColor(nextTeam?.shirt_color ?? defaultTeamColors.shirt);
+    setTeamSlogan(nextTeam?.slogan ?? "");
+  };
+
+  const fetchTeams = async () => {
+    if (!supabase || !user) {
+      resetTeamForm();
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("teams")
+      .select("id,user_id,name,logo_url,logo_icon,shirt_color,shorts_color,socks_color,slogan,created_at,updated_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("fetchTeams error:", error);
+      setLockerStatus(getDetailedSupabaseErrorMessage(error, copy));
+      return;
+    }
+
+    const nextTeams = (data ?? []) as TeamRecord[];
+    setTeams(nextTeams);
+    setTeam(nextTeams[0] ?? null);
+    setIsTeamFormOpen(nextTeams.length === 0);
+    if (selectedTeamId && !nextTeams.some((item) => item.id === selectedTeamId)) {
+      setSelectedTeamId(null);
+    }
+    fillTeamForm(null);
+
+    if (nextTeams.length === 0) {
+      setTeamMembersByTeam({});
+      return;
+    }
+
+    const { data: memberData, error: memberError } = await supabase
+      .from("team_members")
+      .select("id,team_id,user_id,jersey_number,nickname,position,created_at,updated_at")
+      .in(
+        "team_id",
+        nextTeams.map((item) => item.id),
+      )
+      .order("jersey_number", { ascending: true });
+
+    if (memberError) {
+      console.error("fetchTeamMembers error:", memberError);
+      setLockerStatus(getDetailedSupabaseErrorMessage(memberError, copy));
+      return;
+    }
+
+    const nextMembers = ((memberData ?? []) as TeamMemberRecord[]).reduce<Record<string, TeamMemberRecord[]>>((acc, member) => {
+      acc[member.team_id] = [...(acc[member.team_id] ?? []), member];
+      return acc;
+    }, {});
+    setTeamMembersByTeam(nextMembers);
+
+    const profileIds = Array.from(
+      new Set([...nextTeams.map((item) => item.user_id), ...(memberData ?? []).map((member) => member.user_id)]),
+    );
+    if (profileIds.length > 0) {
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id,username,full_name")
+        .in("id", profileIds);
+
+      if (profileError) {
+        console.error("fetch member profiles error:", profileError);
+      } else {
+        setMemberProfilesById(
+          ((profileData ?? []) as MemberProfileRecord[]).reduce<Record<string, MemberProfileRecord>>((acc, profileItem) => {
+            acc[profileItem.id] = profileItem;
+            return acc;
+          }, {}),
+        );
+      }
+    }
+  };
+
   useEffect(() => {
     fetchSavedLineups();
     fetchProfile();
+    fetchTeams();
   }, [user?.id]);
 
   useEffect(() => {
@@ -2362,6 +2762,287 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       showToast(copy.avatarUploadError, "error");
     } finally {
       setIsAvatarUploading(false);
+    }
+  };
+
+  const openCreateTeamForm = () => {
+    fillTeamForm(null);
+    setSelectedTeamId(null);
+    setIsTeamFormOpen(true);
+  };
+
+  const openEditTeamForm = (nextTeam: TeamRecord) => {
+    if (!user || nextTeam.user_id !== user.id) return;
+    fillTeamForm(nextTeam);
+    setIsTeamFormOpen(true);
+  };
+
+  const closeTeamForm = () => {
+    fillTeamForm(null);
+    setIsTeamFormOpen(teams.length === 0);
+  };
+
+  const openTeamDetail = (teamId: string) => {
+    setSelectedTeamId(teamId);
+    setIsMemberInviteOpen(false);
+    setMemberInviteUserId("");
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "team");
+    url.searchParams.set("team", teamId);
+    window.history.pushState({ teamId }, "", url.toString());
+  };
+
+  const buildTeamPayload = (overrides?: { logo_url?: string | null }) => ({
+    user_id: user!.id,
+    name: teamName.trim(),
+    logo_url:
+      overrides && "logo_url" in overrides ? overrides.logo_url : teamLogoUrl.trim() || null,
+    logo_icon: teamLogoIcon || teamLogoIcons[0],
+    shirt_color: teamShirtColor,
+    shorts_color: teams.find((item) => item.id === editingTeamId)?.shorts_color ?? defaultTeamColors.shorts,
+    socks_color: teams.find((item) => item.id === editingTeamId)?.socks_color ?? defaultTeamColors.socks,
+    slogan: teamSlogan.trim() || null,
+    updated_at: new Date().toISOString(),
+  });
+
+  const ensureCurrentUserProfile = async () => {
+    if (!supabase || !user) return null;
+
+    const { error } = await supabase.from("profiles").upsert({
+      id: user.id,
+      username: user.user_metadata?.username ?? user.email?.split("@")[0] ?? "",
+      avatar_url: user.user_metadata?.avatar_url ?? null,
+    });
+
+    return error;
+  };
+
+  const updateTeam = async () => {
+    if (!supabase || !user) return;
+    if (!teamName.trim()) {
+      showToast(copy.teamNameRequired, "error");
+      return;
+    }
+
+    setLockerStatus("");
+    setIsTeamLoading(true);
+    const profileError = await ensureCurrentUserProfile();
+    if (profileError) {
+      console.error("ensure profile before team save error:", profileError);
+      const message = getDetailedSupabaseErrorMessage(profileError, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
+      setIsTeamLoading(false);
+      return;
+    }
+
+    const query = editingTeamId
+      ? supabase
+          .from("teams")
+          .update(buildTeamPayload())
+          .eq("id", editingTeamId)
+          .select("id,user_id,name,logo_url,logo_icon,shirt_color,shorts_color,socks_color,slogan,created_at,updated_at")
+          .single()
+      : supabase
+          .from("teams")
+          .insert(buildTeamPayload())
+          .select("id,user_id,name,logo_url,logo_icon,shirt_color,shorts_color,socks_color,slogan,created_at,updated_at")
+          .single();
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("save team error:", error);
+      const message = getDetailedSupabaseErrorMessage(error, copy);
+      setLockerStatus(message);
+      showToast(message, "error");
+      setIsTeamLoading(false);
+      return;
+    }
+
+    const savedTeam = data as TeamRecord;
+    setTeam(savedTeam);
+    setTeams((current) =>
+      editingTeamId ? current.map((item) => (item.id === savedTeam.id ? savedTeam : item)) : [savedTeam, ...current],
+    );
+    fillTeamForm(null);
+    setIsTeamFormOpen(false);
+    setLockerStatus(copy.teamSaved);
+    showToast(copy.teamSaved);
+    setIsTeamLoading(false);
+  };
+
+  const deleteTeam = async (id: string) => {
+    if (!supabase || !user) return;
+    const targetTeam = teams.find((item) => item.id === id);
+    if (!targetTeam || targetTeam.user_id !== user.id) return;
+    setDeletingTeamId(id);
+    const { error } = await supabase.from("teams").delete().eq("id", id);
+
+    if (error) {
+      console.error("delete team error:", error);
+      showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
+      setDeletingTeamId(null);
+      return;
+    }
+
+    setTeams((current) => {
+      const nextTeams = current.filter((item) => item.id !== id);
+      setTeam(nextTeams[0] ?? null);
+      setIsTeamFormOpen(nextTeams.length === 0);
+      return nextTeams;
+    });
+    if (editingTeamId === id) fillTeamForm(null);
+    showToast(copy.deleted);
+    setDeletingTeamId(null);
+  };
+
+  const getTeamInviteLink = (teamId: string, inviteUserId = "") => {
+    const url = new URL(`https://doihinhsanco.pro.vn/team/${teamId}`);
+    if (inviteUserId.trim()) url.searchParams.set("user", inviteUserId.trim());
+    return url.toString();
+  };
+
+  const getTeamQrUrl = (teamId: string, inviteUserId = "") =>
+    `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(getTeamInviteLink(teamId, inviteUserId))}`;
+
+  const copyTeamInviteLink = async (nextTeam: TeamRecord, inviteUserId = "") => {
+    const link = getTeamInviteLink(nextTeam.id, inviteUserId);
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast(copy.copied);
+    } catch {
+      window.prompt(copy.copyTeamLink, link);
+    }
+  };
+
+  const addTeamMemberByUserId = async (nextTeam: TeamRecord, invitedUserId: string) => {
+    if (!supabase || !user) return;
+    if (nextTeam.user_id !== user.id) return;
+    const targetUserId = invitedUserId.trim();
+    if (!targetUserId) return;
+    const existingMembers = teamMembersByTeam[nextTeam.id] ?? [];
+    const nextNumber =
+      existingMembers.length > 0 ? Math.max(...existingMembers.map((member) => member.jersey_number)) + 1 : 1;
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .insert({
+        team_id: nextTeam.id,
+        user_id: targetUserId,
+        jersey_number: nextNumber,
+        nickname: targetUserId.slice(0, 8).toUpperCase(),
+        position: "MF" satisfies TeamMemberPosition,
+      })
+      .select("id,team_id,user_id,jersey_number,nickname,position,created_at,updated_at")
+      .single();
+
+    if (error) {
+      console.error("addTeamMember error:", error);
+      showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
+      return;
+    }
+
+    const savedMember = data as TeamMemberRecord;
+    setTeamMembersByTeam((current) => ({
+      ...current,
+      [nextTeam.id]: [...(current[nextTeam.id] ?? []), savedMember].sort((a, b) => a.jersey_number - b.jersey_number),
+    }));
+    setMemberInviteUserId("");
+    setIsMemberInviteOpen(false);
+  };
+
+  const updateTeamMemberPosition = async (member: TeamMemberRecord, position: TeamMemberPosition) => {
+    if (!supabase || member.position === position) return;
+    const memberTeam = teams.find((item) => item.id === member.team_id);
+    if (!user || !memberTeam || memberTeam.user_id !== user.id) return;
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .update({ position, updated_at: new Date().toISOString() })
+      .eq("id", member.id)
+      .select("id,team_id,user_id,jersey_number,nickname,position,created_at,updated_at")
+      .single();
+
+    if (error) {
+      console.error("updateTeamMemberPosition error:", error);
+      showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
+      return;
+    }
+
+    const savedMember = data as TeamMemberRecord;
+    setTeamMembersByTeam((current) => ({
+      ...current,
+      [savedMember.team_id]: (current[savedMember.team_id] ?? []).map((item) =>
+        item.id === savedMember.id ? savedMember : item,
+      ),
+    }));
+  };
+
+  const getMiniLineupPoint = (member: TeamMemberDisplay, allMembers: TeamMemberDisplay[]) => {
+    const samePositionMembers = allMembers.filter((item) => item.position === member.position);
+    const index = samePositionMembers.findIndex((item) => item.id === member.id);
+    const points = memberPositionPoints[member.position];
+    return points[index % points.length];
+  };
+
+  const handleTeamLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !supabase || !user) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast(copy.avatarTooLarge, "error");
+      return;
+    }
+
+    setIsTeamLogoUploading(true);
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+      const filePath = `${user.id}/team-logo-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("team-logos")
+        .upload(filePath, file, { upsert: true, contentType: file.type || undefined });
+
+      if (uploadError) {
+        showToast(copy.teamLogoUploadError, "error");
+        setIsTeamLogoUploading(false);
+        return;
+      }
+
+      const { data: publicData } = supabase.storage.from("team-logos").getPublicUrl(filePath);
+      const publicUrl = `${publicData.publicUrl}?v=${Date.now()}`;
+      setTeamLogoUrl(publicUrl);
+      showToast(copy.teamLogoUploaded);
+
+      if (editingTeamId && teamName.trim()) {
+        const profileError = await ensureCurrentUserProfile();
+        if (profileError) {
+          console.error("ensure profile before team logo save error:", profileError);
+          showToast(getDetailedSupabaseErrorMessage(profileError, copy), "error");
+          setIsTeamLogoUploading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("teams")
+          .update(buildTeamPayload({ logo_url: publicUrl }))
+          .eq("id", editingTeamId)
+          .select("id,user_id,name,logo_url,logo_icon,shirt_color,shorts_color,socks_color,slogan,created_at,updated_at")
+          .single();
+
+        if (error) {
+          console.error("save team logo error:", error);
+          showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
+        } else {
+          const savedTeam = data as TeamRecord;
+          setTeam(savedTeam);
+          setTeams((current) => current.map((item) => (item.id === savedTeam.id ? savedTeam : item)));
+        }
+      }
+    } catch {
+      showToast(copy.teamLogoUploadError, "error");
+    } finally {
+      setIsTeamLogoUploading(false);
     }
   };
 
@@ -3184,6 +3865,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                   <button type="button" onClick={() => switchAppTab("profile")}>
                     {copy.profileMenu}
                   </button>
+                  <button type="button" onClick={() => switchAppTab("team")}>
+                    {copy.teamMenu}
+                  </button>
                   <button type="button" onClick={() => switchAppTab("locker")}>
                     {copy.lockerMenu}
                   </button>
@@ -3388,6 +4072,31 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
           </form>
         </div>
       ) : null}
+      {qrTeam ? (
+        <div className="auth-screen">
+          <div className="auth-screen-card team-qr-card">
+            <div className="panel-heading">
+              <span>{copy.teamQrTitle}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setQrTeam(null);
+                  setQrInviteUserId("");
+                }}
+              >
+                x
+              </button>
+            </div>
+            <img src={getTeamQrUrl(qrTeam.id, qrInviteUserId)} alt={copy.teamQrTitle} />
+            <strong>{qrTeam.name}</strong>
+            <p className="locker-message">{getTeamInviteLink(qrTeam.id, qrInviteUserId)}</p>
+            <a href={getTeamQrUrl(qrTeam.id, qrInviteUserId)} download={`team-${qrTeam.id}-qr.png`}>
+              <Download size={14} />
+              {copy.downloadQr}
+            </a>
+          </div>
+        </div>
+      ) : null}
       <div
         className={`dashboard-shell mx-auto grid w-full overflow-hidden shadow-2xl ${
           activeTab === "tactics" ? "tactics-dashboard" : "max-w-5xl"
@@ -3455,6 +4164,25 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
                   <p className="profile-subtitle">{copy.profileSubtitle}</p>
 
+                  <div className="profile-user-id">
+                    <span>{copy.userId}</span>
+                    <code>{user.id}</code>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(user.id);
+                          showToast(copy.copied);
+                        } catch {
+                          window.prompt(copy.copyUserId, user.id);
+                        }
+                      }}
+                    >
+                      <Clipboard size={14} />
+                      {copy.copyUserId}
+                    </button>
+                  </div>
+
                   <div className="profile-grid">
                     <label className="profile-field">
                       <span>{copy.username}</span>
@@ -3490,6 +4218,358 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     {isProfileLoading ? <ButtonSpinner /> : null}
                     {copy.updateProfile}
                   </button>
+                </div>
+              )}
+            </div>
+          </section>
+        ) : activeTab === "team" ? (
+          <section className="locker-room profile-room team-room">
+            <div className="locker-panel">
+              <div className="panel-heading">
+                <span>{copy.myTeams}</span>
+                <strong>{teams.length}</strong>
+              </div>
+              {lockerStatus && lockerStatus !== copy.saved && lockerStatus !== copy.teamSaved ? (
+                <p className="locker-message">{lockerStatus}</p>
+              ) : null}
+              {!isSupabaseConfigured ? (
+                <p className="locker-message">{copy.supabaseMissing}</p>
+              ) : !user ? (
+                <p className="locker-message">{copy.signIn}</p>
+              ) : selectedTeam ? (
+                <div className="team-detail-view">
+                  <div className="team-detail-main">
+                    <section className="team-detail-header">
+                      <div className="team-detail-logo">
+                        {selectedTeam.logo_url ? <img src={selectedTeam.logo_url} alt="" /> : <span>{selectedTeam.logo_icon || teamLogoIcons[0]}</span>}
+                      </div>
+                      <div>
+                        <strong>{selectedTeam.name}</strong>
+                        {selectedTeam.slogan ? <span>{selectedTeam.slogan}</span> : null}
+                        <small>
+                          {selectedTeamDisplayMembers.length} {copy.totalMembers}
+                        </small>
+                      </div>
+                      <div className="team-header-actions" aria-label="Team share">
+                        <button type="button" onClick={() => copyTeamInviteLink(selectedTeam)} aria-label={copy.copyTeamLink} title={copy.copyTeamLink}>
+                          <Clipboard size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQrInviteUserId("");
+                            setQrTeam(selectedTeam);
+                          }}
+                          aria-label={copy.viewQrCode}
+                          title={copy.viewQrCode}
+                        >
+                          <Share2 size={16} />
+                        </button>
+                      </div>
+                    </section>
+
+                    <section className="mini-lineup-panel">
+                      <div className="team-section-title">
+                        <span>{copy.miniLineup}</span>
+                      </div>
+                      <div className="mini-lineup-pitch">
+                        <div className="mini-center-circle" />
+                        <div className="mini-half-line" />
+                        <div className="mini-box mini-box-top" />
+                        <div className="mini-box mini-box-bottom" />
+                        {selectedTeamDisplayMembers.slice(0, 11).map((member) => {
+                          const point = getMiniLineupPoint(member, selectedTeamDisplayMembers);
+                          return (
+                            <span
+                              key={member.id}
+                              className={`mini-member-dot position-${member.position.toLowerCase()}`}
+                              style={{ left: `${point.x}%`, top: `${point.y}%`, backgroundColor: selectedTeam.shirt_color }}
+                              title={member.nickname}
+                            >
+                              {member.jersey_number}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                  </div>
+
+                  <section className="member-panel">
+                    <div className="team-section-title">
+                      <span>{copy.members}</span>
+                      {selectedTeamIsOwner && selectedTeamDisplayMembers.length > 0 ? (
+                        <button type="button" onClick={() => setIsMemberInviteOpen((current) => !current)}>
+                          <Plus size={14} />
+                          {copy.addMember}
+                        </button>
+                      ) : null}
+                    </div>
+                    {selectedTeamDisplayMembers.length === 0 ? (
+                      <div className="member-empty-state">
+                        <div className="empty-locker-illustration" aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                        <p>{copy.emptyLocker}</p>
+                        {selectedTeamIsOwner ? (
+                          <button type="button" onClick={() => setIsMemberInviteOpen(true)}>
+                            <Plus size={16} />
+                            {copy.addFirstPlayer}
+                          </button>
+                        ) : null}
+                        {selectedTeamIsOwner && isMemberInviteOpen ? (
+                          <div className="member-invite-panel first-player-invite-panel">
+                            <input
+                              value={memberInviteUserId}
+                              onChange={(event) => setMemberInviteUserId(event.target.value)}
+                              placeholder="Nhập ID user"
+                              aria-label="Nhập ID user"
+                            />
+                            <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam, memberInviteUserId)}>
+                              <Plus size={14} />
+                              {copy.addMember}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="member-list">
+                        {selectedTeamIsOwner && isMemberInviteOpen ? (
+                          <div className="member-invite-panel">
+                            <input
+                              value={memberInviteUserId}
+                              onChange={(event) => setMemberInviteUserId(event.target.value)}
+                              placeholder="Nhập ID user"
+                              aria-label="Nhập ID user"
+                            />
+                            <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam, memberInviteUserId)}>
+                              <Plus size={14} />
+                              {copy.addMember}
+                            </button>
+                            <button type="button" onClick={() => copyTeamInviteLink(selectedTeam, memberInviteUserId)}>
+                              <Clipboard size={14} />
+                              {copy.copyTeamLink}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQrInviteUserId(memberInviteUserId);
+                                setQrTeam(selectedTeam);
+                              }}
+                            >
+                              <Share2 size={14} />
+                              {copy.viewQrCode}
+                            </button>
+                          </div>
+                        ) : null}
+                        {selectedTeamDisplayMembers.map((member) => (
+                          <div key={member.id} className="member-row">
+                            <span className="member-number">{member.jersey_number}</span>
+                            <strong>
+                              {member.nickname}
+                              {member.isOwner ? <small className="owner-tag">{copy.teamOwnerTag}</small> : null}
+                            </strong>
+                            {member.isOwner ? (
+                              <span className="owner-role-pill">{copy.teamOwnerTag}</span>
+                            ) : (
+                              <select
+                                className={`position-tag position-${member.position.toLowerCase()}`}
+                                value={member.position}
+                                disabled={!selectedTeamIsOwner}
+                                onChange={(event) => updateTeamMemberPosition(member, event.target.value as TeamMemberPosition)}
+                              >
+                                {memberPositions.map((position) => (
+                                  <option key={position} value={position}>
+                                    {position}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        ))}
+                        {selectedTeamIsOwner ? (
+                          <button type="button" className="member-add-row" onClick={() => setIsMemberInviteOpen((current) => !current)}>
+                            <Plus size={14} />
+                            {copy.addMember}
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+                  </section>
+                </div>
+              ) : isTeamFormOpen ? (
+                <div className="profile-card team-card">
+                  <div className="team-brand-hero">
+                    <button
+                      type="button"
+                      className="team-logo-preview"
+                      onClick={() => teamLogoInputRef.current?.click()}
+                      disabled={isTeamLogoUploading}
+                      aria-label={copy.uploadTeamLogo}
+                    >
+                      {teamLogoUrl ? (
+                        <img src={teamLogoUrl} alt="" />
+                      ) : (
+                        <span>{teamLogoIcon}</span>
+                      )}
+                      <i>
+                        {isTeamLogoUploading ? <ButtonSpinner /> : <Pencil size={16} />}
+                      </i>
+                    </button>
+                    <input
+                      ref={teamLogoInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={handleTeamLogoFileChange}
+                    />
+                    <div className="team-brand-copy">
+                      <strong>{editingTeamId ? copy.editTeam : copy.createTeam}</strong>
+                      <span>{copy.teamSubtitle}</span>
+                      <button
+                        type="button"
+                        className="profile-avatar-trigger"
+                        onClick={() => teamLogoInputRef.current?.click()}
+                        disabled={isTeamLogoUploading}
+                      >
+                        {isTeamLogoUploading ? copy.uploadingTeamLogo : copy.uploadTeamLogo}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="profile-grid">
+                    <label className="profile-field profile-field-full">
+                      <span>{copy.teamName}</span>
+                      <input
+                        value={teamName}
+                        onChange={(event) => setTeamName(event.target.value)}
+                        placeholder={copy.teamNamePlaceholder}
+                        required
+                      />
+                    </label>
+
+                    <div className="profile-field profile-field-full">
+                      <span>{copy.chooseTeamIcon}</span>
+                      <div className="team-icon-grid">
+                        {teamLogoIcons.map((icon) => (
+                          <button
+                            key={icon}
+                            type="button"
+                            className={!teamLogoUrl && teamLogoIcon === icon ? "active" : ""}
+                            onClick={() => {
+                              setTeamLogoIcon(icon);
+                              setTeamLogoUrl("");
+                            }}
+                            aria-label={`${copy.chooseTeamIcon} ${icon}`}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="profile-field profile-field-full team-color-field">
+                      <span>{copy.shirtColor}</span>
+                      <div className="team-color-row">
+                        <input
+                          type="color"
+                          value={teamShirtColor}
+                          onChange={(event) => setTeamShirtColor(event.target.value)}
+                          aria-label={copy.shirtColor}
+                        />
+                        <div className="team-swatch-list">
+                          {teamColorPalette.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              className={teamShirtColor.toLowerCase() === color.toLowerCase() ? "active" : ""}
+                              style={{ backgroundColor: color }}
+                              onClick={() => setTeamShirtColor(color)}
+                              aria-label={`${copy.shirtColor} ${color}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <label className="profile-field profile-field-full">
+                      <span>{copy.teamSlogan}</span>
+                      <textarea
+                        value={teamSlogan}
+                        onChange={(event) => setTeamSlogan(event.target.value)}
+                        placeholder={copy.teamSloganPlaceholder}
+                        rows={3}
+                        maxLength={220}
+                      />
+                    </label>
+                  </div>
+
+                  <button type="button" className="profile-save" onClick={updateTeam} disabled={isTeamLoading || isTeamLogoUploading}>
+                    {isTeamLoading ? <ButtonSpinner /> : null}
+                    {copy.saveTeam}
+                  </button>
+                  {teams.length > 0 ? (
+                    <button type="button" className="team-cancel-button" onClick={closeTeamForm} disabled={isTeamLoading || isTeamLogoUploading}>
+                      {copy.cancel}
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="team-list-view">
+                  <div className="team-list-toolbar">
+                    <input
+                      value={teamSearch}
+                      onChange={(event) => setTeamSearch(event.target.value)}
+                      placeholder={copy.searchTeams}
+                      aria-label={copy.searchTeams}
+                    />
+                    <button type="button" className="profile-save team-create-button" onClick={openCreateTeamForm}>
+                      <Plus size={14} />
+                      {copy.createTeam}
+                    </button>
+                  </div>
+
+                  {teams.length === 0 ? (
+                    <p className="locker-message">{copy.noTeams}</p>
+                  ) : filteredTeams.length === 0 ? (
+                    <p className="locker-message">{copy.noTeamMatches}</p>
+                  ) : (
+                    <div className="team-card-list">
+                      {filteredTeams.map((item) => (
+                        <article key={item.id} className="team-list-card">
+                          <div className="team-list-logo">
+                            {item.logo_url ? <img src={item.logo_url} alt="" /> : <span>{item.logo_icon || teamLogoIcons[0]}</span>}
+                          </div>
+                          <div className="team-list-info">
+                            <strong>{item.name}</strong>
+                            {item.slogan ? <span>{item.slogan}</span> : null}
+                            <div className="team-list-kit">
+                              <i style={{ backgroundColor: item.shirt_color }} />
+                            </div>
+                          </div>
+                          <div className="team-list-actions">
+                            <button type="button" onClick={() => openTeamDetail(item.id)}>
+                              {copy.view}
+                            </button>
+                            {user?.id === item.user_id ? (
+                              <>
+                                <button type="button" onClick={() => openEditTeamForm(item)}>
+                                  <Pencil size={14} />
+                                  {copy.editTeam}
+                                </button>
+                                <button type="button" onClick={() => deleteTeam(item.id)} disabled={deletingTeamId === item.id}>
+                                  {deletingTeamId === item.id ? <ButtonSpinner /> : <Trash2 size={14} />}
+                                  {copy.deleteTeam}
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -3780,7 +4860,13 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                   className={`player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none ${
                     draggingId === player.id ? "dragging" : ""
                   }`}
-                      style={{ left: `${player.x}%`, top: `${player.y}%` }}
+                      style={
+                        {
+                          left: `${player.x}%`,
+                          top: `${player.y}%`,
+                          "--team-shirt-color": team?.shirt_color ?? teamShirtColor,
+                        } as React.CSSProperties
+                      }
                       role="button"
                       tabIndex={0}
                       aria-label={`${copy.dragPlayer} ${getDisplayPosition(player.position, language)}`}
@@ -4216,7 +5302,7 @@ function LandingPage({
     <main className="landing">
       <header className="landing-nav">
         <div className="landing-brand">
-          <span className="landing-logo">⚽</span>
+          <img className="landing-logo" src="/favicon.svg" alt="" aria-hidden="true" />
           <span>{c.brand}</span>
         </div>
         <div className="landing-nav-actions">
