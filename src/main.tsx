@@ -176,7 +176,7 @@ type TeamRecord = {
   updated_at?: string;
 };
 
-type TeamMemberPosition = "GK" | "DF" | "MF" | "FW";
+type TeamMemberPosition = "GK" | "CB" | "LB" | "RB" | "LWB" | "RWB" | "DM" | "CM" | "AM" | "LW" | "RW" | "ST" | "DF" | "MF" | "FW";
 
 type TeamMemberRecord = {
   id: string;
@@ -243,7 +243,7 @@ const teamColorPalette = [
   "#14b8a6",
 ];
 
-const memberPositions: TeamMemberPosition[] = ["GK", "DF", "MF", "FW"];
+const memberPositions: TeamMemberPosition[] = ["GK", "CB", "LB", "RB", "LWB", "RWB", "DM", "CM", "AM", "LW", "RW", "ST", "DF", "MF", "FW"];
 
 const parseProfilePositions = (value?: string | null): TeamMemberPosition[] =>
   (value ?? "")
@@ -253,16 +253,34 @@ const parseProfilePositions = (value?: string | null): TeamMemberPosition[] =>
 
 const memberPositionPoints: Record<TeamMemberPosition, { x: number; y: number }[]> = {
   GK: [{ x: 50, y: 86 }],
+  CB: [
+    { x: 35, y: 68 },
+    { x: 65, y: 68 },
+    { x: 50, y: 62 },
+  ],
+  LB: [{ x: 24, y: 66 }],
+  RB: [{ x: 76, y: 66 }],
+  LWB: [{ x: 20, y: 56 }],
+  RWB: [{ x: 80, y: 56 }],
   DF: [
     { x: 35, y: 68 },
     { x: 65, y: 68 },
     { x: 50, y: 62 },
   ],
+  DM: [{ x: 50, y: 56 }],
+  CM: [
+    { x: 38, y: 46 },
+    { x: 62, y: 46 },
+  ],
+  AM: [{ x: 50, y: 34 }],
   MF: [
     { x: 30, y: 46 },
     { x: 50, y: 42 },
     { x: 70, y: 46 },
   ],
+  LW: [{ x: 25, y: 24 }],
+  RW: [{ x: 75, y: 24 }],
+  ST: [{ x: 50, y: 20 }],
   FW: [
     { x: 42, y: 22 },
     { x: 58, y: 22 },
@@ -4408,8 +4426,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     window.setTimeout(() => URL.revokeObjectURL(pngUrl), 1000);
   };
 
+  const isWorkspaceTab = activeTab === "lineup" || activeTab === "tactics";
+
   return (
-    <main className="match-bg min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10">
+    <main className={`match-bg ${isWorkspaceTab ? "workspace-page" : "scroll-page"} min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10`}>
       <header className="app-title-bar mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-3 shadow-2xl">
         <div className="header-actions">
           <button
@@ -4438,7 +4458,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 aria-label="Notifications"
                 aria-expanded={isNotificationOpen}
               >
-                <Bell size={16} />
+                <Bell size={20} />
                 {teamInvitations.length > 0 ? <strong>{teamInvitations.length}</strong> : null}
               </button>
               {isNotificationOpen ? (
@@ -4791,7 +4811,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         </div>
       ) : null}
       <div
-        className={`dashboard-shell mx-auto grid w-full overflow-hidden shadow-2xl ${
+        className={`dashboard-shell mx-auto grid w-full shadow-2xl ${
+          isWorkspaceTab ? "overflow-hidden" : ""
+        } ${
           activeTab === "tactics" ? "tactics-dashboard" : "max-w-5xl"
         }`}
       >

@@ -44,7 +44,7 @@ create table if not exists public.team_members (
   user_id uuid not null references public.profiles(id) on delete cascade,
   jersey_number integer not null,
   nickname text not null,
-  position text not null default 'MF' check (position in ('GK', 'DF', 'MF', 'FW')),
+  position text not null default 'MF' check (position in ('GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST', 'DF', 'MF', 'FW')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -57,7 +57,7 @@ create table if not exists public.team_invitations (
   status text not null default 'pending' check (status in ('pending', 'accepted', 'declined')),
   jersey_number integer not null,
   nickname text not null,
-  position text not null default 'MF' check (position in ('GK', 'DF', 'MF', 'FW')),
+  position text not null default 'MF' check (position in ('GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST', 'DF', 'MF', 'FW')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -67,6 +67,10 @@ alter table public.lineups enable row level security;
 alter table public.teams enable row level security;
 alter table public.team_members enable row level security;
 alter table public.team_invitations enable row level security;
+alter table public.team_members drop constraint if exists team_members_position_check;
+alter table public.team_members add constraint team_members_position_check check (position in ('GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST', 'DF', 'MF', 'FW'));
+alter table public.team_invitations drop constraint if exists team_invitations_position_check;
+alter table public.team_invitations add constraint team_invitations_position_check check (position in ('GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST', 'DF', 'MF', 'FW'));
 alter table public.team_members replica identity full;
 alter table public.team_invitations replica identity full;
 

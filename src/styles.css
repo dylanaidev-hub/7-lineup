@@ -55,6 +55,19 @@ textarea {
     #101820;
 }
 
+.match-bg.scroll-page {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.match-bg.scroll-page .dashboard-shell {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
 .app-title-bar {
   position: relative;
   min-height: 142px;
@@ -81,8 +94,8 @@ textarea {
   right: 18px;
   z-index: 20;
   display: inline-flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
 }
 
 .language-switch,
@@ -90,7 +103,7 @@ textarea {
 .header-user-menu > button,
 .header-user-menu > span {
   display: inline-flex;
-  min-height: 34px;
+  min-height: 40px;
   align-items: center;
   gap: 7px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -107,7 +120,7 @@ textarea {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .header-user-menu > span {
@@ -123,47 +136,56 @@ textarea {
 }
 
 .header-dropdown-button {
-  width: 34px;
+  width: 40px;
   justify-content: center;
   padding: 0;
 }
 
 .notification-button {
   position: relative;
-  width: 34px;
+  width: 42px;
+  height: 42px;
   justify-content: center;
   padding: 0;
 }
 
+.notification-button svg {
+  width: 19px;
+  height: 19px;
+}
+
 .notification-button strong {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -5px;
+  right: -5px;
   display: grid;
-  min-width: 18px;
-  height: 18px;
+  min-width: 21px;
+  height: 21px;
   place-items: center;
-  border: 2px solid #171b29;
+  border: 2px solid #07100c;
   border-radius: 999px;
   background: #ef4444;
   color: #ffffff;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 950;
 }
 
 .notification-dropdown {
   position: absolute;
-  top: 42px;
-  right: 42px;
+  top: 52px;
+  right: 48px;
   display: grid;
-  width: min(320px, calc(100vw - 24px));
-  gap: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 12px;
-  color: #273142;
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.22);
+  width: min(390px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 96px));
+  overflow-y: auto;
+  gap: 12px;
+  border: 1px solid rgba(126, 224, 163, 0.28);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(20, 43, 31, 0.98), rgba(6, 16, 12, 0.98));
+  padding: 14px;
+  color: #e8f5e9;
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(10px);
 }
 
 .notification-title {
@@ -171,8 +193,8 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  color: #0f172a;
-  font-size: 11px;
+  color: #f3fbf5;
+  font-size: 13px;
   font-weight: 950;
   text-transform: uppercase;
 }
@@ -189,29 +211,29 @@ textarea {
 
 .notification-dropdown p {
   margin: 0;
-  color: #64748b;
-  font-size: 12px;
+  color: rgba(232, 245, 233, 0.68);
+  font-size: 13px;
   font-weight: 800;
 }
 
 .notification-item {
   display: grid;
-  gap: 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #f8fafc;
-  padding: 10px;
+  gap: 10px;
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 12px;
 }
 
 .notification-item span {
-  color: #64748b;
-  font-size: 11px;
+  color: rgba(232, 245, 233, 0.7);
+  font-size: 12px;
   font-weight: 850;
 }
 
 .notification-item strong {
-  color: #0f172a;
-  font-size: 14px;
+  color: #f3fbf5;
+  font-size: 16px;
   font-weight: 950;
 }
 
@@ -223,22 +245,24 @@ textarea {
 
 .notification-actions button {
   display: inline-flex;
-  min-height: 32px;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border: 0;
   border-radius: 999px;
-  padding: 0 12px;
-  background: #16a34a;
-  color: #ffffff;
-  font-size: 11px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+  font-size: 12px;
   font-weight: 950;
   cursor: pointer;
 }
 
 .notification-actions button:last-child {
-  background: #ef4444;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  background: rgba(248, 113, 113, 0.14);
+  color: #fecaca;
 }
 
 .notification-actions button:disabled {
@@ -3063,6 +3087,8 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  width: min(100%, 760px);
+  margin: 0 auto;
   padding: 20px 22px 24px;
 }
 
@@ -3231,7 +3257,7 @@ textarea {
 }
 
 .profile-position-selector .position-tag {
-  min-width: 54px;
+  min-width: 58px;
   cursor: pointer;
   opacity: 0.5;
 }
@@ -3338,6 +3364,7 @@ textarea {
 
 .team-card {
   gap: 20px;
+  width: min(100%, 760px);
 }
 
 .team-room {
@@ -3887,11 +3914,15 @@ textarea {
 }
 
 .position-tag {
+  display: inline-flex;
   min-height: 34px;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 999px;
   color: #07100c;
   padding: 0 10px;
+  line-height: 1;
   font-weight: 950;
 }
 
@@ -3925,11 +3956,31 @@ textarea {
   background-color: #4ade80 !important;
 }
 
+.position-cb,
+.position-lb,
+.position-rb,
+.position-lwb,
+.position-rwb {
+  background-color: #4ade80 !important;
+}
+
 .position-mf {
   background-color: #60a5fa !important;
 }
 
+.position-dm,
+.position-cm,
+.position-am {
+  background-color: #60a5fa !important;
+}
+
 .position-fw {
+  background-color: #f87171 !important;
+}
+
+.position-lw,
+.position-rw,
+.position-st {
   background-color: #f87171 !important;
 }
 
@@ -3970,12 +4021,25 @@ textarea {
 }
 
 .member-invite-modal {
-  width: min(100%, 420px);
+  width: min(100%, 480px);
+  gap: 18px;
+}
+
+.member-invite-modal .profile-field {
+  gap: 8px;
+}
+
+.member-invite-modal .profile-field input {
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 850;
 }
 
 .member-invite-modal > button[type="submit"] {
   display: inline-flex;
-  min-height: 42px;
+  width: 100%;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -3984,7 +4048,7 @@ textarea {
   background: linear-gradient(135deg, #7fe0a3, #5ccb84);
   color: #07100c;
   padding: 0 18px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 950;
   cursor: pointer;
 }
