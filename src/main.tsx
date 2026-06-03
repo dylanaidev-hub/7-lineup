@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import type { User } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { create } from "zustand";
-import { Check, ChevronDown, Clipboard, Download, Pencil, Plus, Redo2, Save, Share2, Trash2, Undo2 } from "lucide-react";
+import { Bell, Check, ChevronDown, Clipboard, Download, Pencil, Plus, Redo2, Save, Share2, Trash2, Undo2, X } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import "./styles.css";
@@ -152,12 +152,14 @@ type ProfileRecord = {
   favorite_team: string | null;
   favorite_position: string | null;
   location: string | null;
+  jersey_number: number | null;
 };
 
 type MemberProfileRecord = {
   id: string;
   username: string | null;
   full_name: string | null;
+  favorite_position: string | null;
 };
 
 type TeamRecord = {
@@ -189,6 +191,25 @@ type TeamMemberRecord = {
 
 type TeamMemberDisplay = TeamMemberRecord & {
   isOwner?: boolean;
+};
+
+type TeamInvitationStatus = "pending" | "accepted" | "declined";
+
+type TeamInvitationRecord = {
+  id: string;
+  team_id: string;
+  invited_user_id: string;
+  invited_by: string;
+  status: TeamInvitationStatus;
+  jersey_number: number;
+  nickname: string;
+  position: TeamMemberPosition;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type TeamInvitationDisplay = TeamInvitationRecord & {
+  teamName: string;
 };
 
 const lineupStorageKey = "lineup-football-default-state-v1";
@@ -223,6 +244,12 @@ const teamColorPalette = [
 ];
 
 const memberPositions: TeamMemberPosition[] = ["GK", "DF", "MF", "FW"];
+
+const parseProfilePositions = (value?: string | null): TeamMemberPosition[] =>
+  (value ?? "")
+    .split(",")
+    .map((position) => position.trim().toUpperCase())
+    .filter((position): position is TeamMemberPosition => memberPositions.includes(position as TeamMemberPosition));
 
 const memberPositionPoints: Record<TeamMemberPosition, { x: number; y: number }[]> = {
   GK: [{ x: 50, y: 86 }],
@@ -348,9 +375,23 @@ type AppCopy = {
   emptyLocker: string;
   addFirstPlayer: string;
   addMember: string;
+  inviteMember: string;
+  invitationSent: string;
+  invitedToTeam: string;
+  acceptInvite: string;
+  declineInvite: string;
+  noNotifications: string;
+  inviteAccepted: string;
+  inviteDeclined: string;
+  invalidUserId: string;
+  joinTeamTitle: string;
+  joinTeamPrompt: string;
+  confirmJoinTeam: string;
+  joinedTeam: string;
   jerseyNumber: string;
   playerNickname: string;
   teamOwnerTag: string;
+  removedFromTeam: string;
   lockerTitle: string;
   saveCurrentLineup: string;
   saveTacticsBoard: string;
@@ -366,6 +407,7 @@ type AppCopy = {
   favoriteTeam: string;
   favoritePosition: string;
   location: string;
+  profileJerseyNumber: string;
   changeAvatar: string;
   uploadingAvatar: string;
   avatarUploaded: string;
@@ -512,9 +554,23 @@ const copyByLanguage = {
     emptyLocker: "Phòng thay đồ đang trống! Hãy thêm đồng đội để bắt đầu chiến thuật.",
     addFirstPlayer: "Thêm cầu thủ đầu tiên",
     addMember: "Thêm thành viên",
+    inviteMember: "Gửi lời mời",
+    invitationSent: "Đã gửi lời mời vào đội bóng.",
+    invitedToTeam: "Bạn được mời vào đội bóng",
+    acceptInvite: "Đồng ý",
+    declineInvite: "Từ chối",
+    noNotifications: "Chưa có thông báo mới.",
+    inviteAccepted: "Bạn đã tham gia đội bóng.",
+    inviteDeclined: "Bạn đã từ chối lời mời.",
+    invalidUserId: "ID user không hợp lệ. Vui lòng copy đúng ID trong hồ sơ người dùng.",
+    joinTeamTitle: "Tham gia đội bóng",
+    joinTeamPrompt: "Bạn có muốn xác nhận tham gia đội bóng này không?",
+    confirmJoinTeam: "Xác nhận tham gia",
+    joinedTeam: "Bạn đã tham gia đội bóng.",
     jerseyNumber: "Số áo",
     playerNickname: "Tên/Biệt danh",
     teamOwnerTag: "Chủ đội bóng",
+    removedFromTeam: "Bạn đã bị chủ đội mời ra khỏi đội bóng.",
     lockerTitle: "Phòng thay đồ",
     saveCurrentLineup: "Lưu đội hình hiện tại",
     saveTacticsBoard: "Lưu bảng chiến thuật",
@@ -530,6 +586,7 @@ const copyByLanguage = {
     favoriteTeam: "Đội bóng yêu thích",
     favoritePosition: "Vị trí sở trường",
     location: "Khu vực",
+    profileJerseyNumber: "Số áo thi đấu",
     changeAvatar: "Đổi ảnh đại diện",
     uploadingAvatar: "Đang tải ảnh lên…",
     avatarUploaded: "Đã cập nhật ảnh đại diện",
@@ -679,9 +736,23 @@ const copyByLanguage = {
     emptyLocker: "The locker room is empty! Add teammates to start planning tactics.",
     addFirstPlayer: "Add First Player",
     addMember: "Add Member",
+    inviteMember: "Send invite",
+    invitationSent: "Team invitation sent.",
+    invitedToTeam: "You were invited to join",
+    acceptInvite: "Accept",
+    declineInvite: "Decline",
+    noNotifications: "No new notifications.",
+    inviteAccepted: "You joined the team.",
+    inviteDeclined: "You declined the invite.",
+    invalidUserId: "Invalid user ID. Please copy the exact ID from the user's profile.",
+    joinTeamTitle: "Join team",
+    joinTeamPrompt: "Do you want to confirm joining this team?",
+    confirmJoinTeam: "Confirm join",
+    joinedTeam: "You joined the team.",
     jerseyNumber: "Number",
     playerNickname: "Name/Nickname",
     teamOwnerTag: "Team owner",
+    removedFromTeam: "The team owner has removed you from this team.",
     lockerTitle: "Locker Room",
     saveCurrentLineup: "Save current line-up",
     saveTacticsBoard: "Save tactics board",
@@ -697,6 +768,7 @@ const copyByLanguage = {
     favoriteTeam: "Favorite team",
     favoritePosition: "Preferred position",
     location: "Location",
+    profileJerseyNumber: "Jersey number",
     changeAvatar: "Change avatar",
     uploadingAvatar: "Uploading…",
     avatarUploaded: "Avatar updated",
@@ -793,6 +865,8 @@ const getDetailedSupabaseErrorMessage = (
 };
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const isValidUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 // Supabase rate-limit errors look like:
 // "For security purposes, you can only request this after 16 seconds."
@@ -1503,8 +1577,13 @@ const getSharedLineupFromUrl = () => {
 const getInitialAppTab = (): AppTab => {
   const params = new URLSearchParams(window.location.search);
   if (params.get("tab") === "locker") return "locker";
-  if (params.get("tab") === "team") return "team";
+  if (params.get("tab") === "team" || getTeamIdFromPath()) return "team";
   return params.get("tab") === "tactics" || params.has("tactics") ? "tactics" : "lineup";
+};
+
+const getTeamIdFromPath = () => {
+  const match = window.location.pathname.match(/^\/team\/([^/?#]+)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
 };
 
 const getRegisteredNames = (player: Player) =>
@@ -1997,6 +2076,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [authMode, setAuthMode] = useState<"sign_in" | "sign_up" | "reset">("sign_in");
   const [isAuthScreenOpen, setIsAuthScreenOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
@@ -2017,6 +2097,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [profileFavoriteTeam, setProfileFavoriteTeam] = useState("");
   const [profileFavoritePosition, setProfileFavoritePosition] = useState("");
   const [profileLocation, setProfileLocation] = useState("");
+  const [profileJerseyNumber, setProfileJerseyNumber] = useState("");
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [team, setTeam] = useState<TeamRecord | null>(null);
@@ -2036,10 +2117,16 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [qrInviteUserId, setQrInviteUserId] = useState("");
   const [isMemberInviteOpen, setIsMemberInviteOpen] = useState(false);
   const [memberInviteUserId, setMemberInviteUserId] = useState("");
+  const [isJoinTeamPromptOpen, setIsJoinTeamPromptOpen] = useState(false);
+  const [isJoiningTeam, setIsJoiningTeam] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
   const [teamMembersByTeam, setTeamMembersByTeam] = useState<Record<string, TeamMemberRecord[]>>({});
   const [memberProfilesById, setMemberProfilesById] = useState<Record<string, MemberProfileRecord>>({});
+  const [teamInvitations, setTeamInvitations] = useState<TeamInvitationDisplay[]>([]);
+  const [updatingInvitationId, setUpdatingInvitationId] = useState<string | null>(null);
+  const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
   const [lineupName, setLineupName] = useState("");
   const [savedLineups, setSavedLineups] = useState<SavedLineupRecord[]>([]);
   const [lockerCategory, setLockerCategory] = useState<LockerCategory>("all");
@@ -2049,6 +2136,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [deletingLineupId, setDeletingLineupId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<{ id: number; message: string; tone: "success" | "error" }[]>([]);
   const toastIdRef = useRef(0);
+  const removedTeamNoticeRef = useRef<Set<string>>(new Set());
   const showToast = (message: string, tone: "success" | "error" = "success") => {
     if (!message) return;
     const id = (toastIdRef.current += 1);
@@ -2090,10 +2178,50 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const selectedTeam = selectedTeamId ? teams.find((item) => item.id === selectedTeamId) ?? null : null;
   const selectedTeamMembers = selectedTeam ? teamMembersByTeam[selectedTeam.id] ?? [] : [];
   const selectedTeamIsOwner = Boolean(selectedTeam && user && selectedTeam.user_id === user.id);
+  const selectedTeamHasCurrentUser = Boolean(
+    selectedTeam && user && (selectedTeam.user_id === user.id || selectedTeamMembers.some((member) => member.user_id === user.id)),
+  );
   const getUserDisplayName = (userId: string, fallback = "") => {
     const memberProfile = memberProfilesById[userId];
     return memberProfile?.full_name || memberProfile?.username || fallback || `${userId.slice(0, 8).toUpperCase()}`;
   };
+  const getCurrentUserDisplayName = () =>
+    profileFullName.trim() ||
+    profileUsername.trim() ||
+    profile?.full_name ||
+    profile?.username ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.username ||
+    user?.email?.split("@")[0] ||
+    user?.id.slice(0, 8).toUpperCase() ||
+    "PLAYER";
+  const profileSelectedPositions = parseProfilePositions(profileFavoritePosition);
+  const toggleProfilePosition = (position: TeamMemberPosition) => {
+    const selected = new Set(profileSelectedPositions);
+    if (selected.has(position)) {
+      selected.delete(position);
+    } else {
+      selected.add(position);
+    }
+    setProfileFavoritePosition(memberPositions.filter((item) => selected.has(item)).join(","));
+  };
+  const getJoinJerseyNumber = (members: TeamMemberRecord[]) => {
+    const preferredNumber = Number(profileJerseyNumber || profile?.jersey_number || "");
+    if (Number.isFinite(preferredNumber) && preferredNumber > 0) {
+      return Math.max(1, Math.min(999, Math.round(preferredNumber)));
+    }
+
+    const usedNumbers = new Set(members.map((member) => member.jersey_number));
+    const availableNumbers = Array.from({ length: 99 }, (_, index) => index + 1).filter((number) => !usedNumbers.has(number));
+    if (availableNumbers.length > 0) {
+      return availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+    }
+
+    let fallbackNumber = 100;
+    while (usedNumbers.has(fallbackNumber) && fallbackNumber < 999) fallbackNumber += 1;
+    return fallbackNumber;
+  };
+  const getJoinPosition = (fallback: TeamMemberPosition = "MF") => profileSelectedPositions[0] ?? fallback;
   const selectedTeamDisplayMembers: TeamMemberDisplay[] = selectedTeam
     ? [
         {
@@ -2116,11 +2244,16 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   useEffect(() => {
     const syncTeamRoute = () => {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("tab") !== "team") {
+      const pathTeamId = getTeamIdFromPath();
+      const routeTeamId = pathTeamId ?? (params.get("tab") === "team" ? params.get("team") : null);
+      if (!routeTeamId && params.get("tab") !== "team") {
         setSelectedTeamId(null);
+        setIsJoinTeamPromptOpen(false);
         return;
       }
-      setSelectedTeamId(params.get("team"));
+      setActiveTab("team");
+      setSelectedTeamId(routeTeamId);
+      setIsJoinTeamPromptOpen(Boolean(pathTeamId));
       setIsMemberInviteOpen(false);
       setMemberInviteUserId("");
     };
@@ -2129,6 +2262,12 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     window.addEventListener("popstate", syncTeamRoute);
     return () => window.removeEventListener("popstate", syncTeamRoute);
   }, []);
+
+  useEffect(() => {
+    if (selectedTeamHasCurrentUser) {
+      setIsJoinTeamPromptOpen(false);
+    }
+  }, [selectedTeamHasCurrentUser]);
 
   const switchAppTab = (nextTab: AppTab) => {
     if (nextTab === "lineup" || nextTab === "tactics") {
@@ -2350,12 +2489,13 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       setProfileFavoriteTeam("");
       setProfileFavoritePosition("");
       setProfileLocation("");
+      setProfileJerseyNumber("");
       return;
     }
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id,username,avatar_url,full_name,bio,favorite_team,favorite_position,location")
+      .select("id,username,avatar_url,full_name,bio,favorite_team,favorite_position,location,jersey_number")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -2373,6 +2513,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setProfileFavoriteTeam(nextProfile?.favorite_team ?? "");
     setProfileFavoritePosition(nextProfile?.favorite_position ?? "");
     setProfileLocation(nextProfile?.location ?? "");
+    setProfileJerseyNumber(nextProfile?.jersey_number ? String(nextProfile.jersey_number) : "");
   };
 
   const resetTeamForm = () => {
@@ -2400,29 +2541,203 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setTeamSlogan(nextTeam?.slogan ?? "");
   };
 
+  const mergeMemberProfiles = async (profileIds: string[]) => {
+    if (!supabase) return;
+    const uniqueProfileIds = Array.from(new Set(profileIds.filter(Boolean)));
+    if (uniqueProfileIds.length === 0) return;
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("id,username,full_name,favorite_position")
+      .in("id", uniqueProfileIds);
+
+    if (profileError) {
+      console.error("fetch member profiles error:", profileError);
+      return;
+    }
+
+    setMemberProfilesById((current) => ({
+      ...current,
+      ...((profileData ?? []) as MemberProfileRecord[]).reduce<Record<string, MemberProfileRecord>>((acc, profileItem) => {
+        acc[profileItem.id] = profileItem;
+        return acc;
+      }, {}),
+    }));
+  };
+
+  const refreshTeamMembers = async (teamIds: string[]) => {
+    if (!supabase || !user) return;
+    const uniqueTeamIds = Array.from(new Set(teamIds.filter(Boolean)));
+    if (uniqueTeamIds.length === 0) return;
+
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("id,team_id,user_id,jersey_number,nickname,position,created_at,updated_at")
+      .in("team_id", uniqueTeamIds)
+      .order("jersey_number", { ascending: true });
+
+    if (error) {
+      console.error("refreshTeamMembers error:", error);
+      return;
+    }
+
+    const refreshedMembers = ((data ?? []) as TeamMemberRecord[]).reduce<Record<string, TeamMemberRecord[]>>((acc, member) => {
+      acc[member.team_id] = [...(acc[member.team_id] ?? []), member];
+      return acc;
+    }, {});
+
+    setTeamMembersByTeam((current) => ({
+      ...current,
+      ...Object.fromEntries(uniqueTeamIds.map((teamId) => [teamId, refreshedMembers[teamId] ?? []])),
+    }));
+    await mergeMemberProfiles((data ?? []).map((member) => member.user_id));
+  };
+
+  const notifyTeamMembersChanged = async (teamId: string) => {
+    if (!supabase) return;
+    const realtimeClient = supabase;
+    const channel = realtimeClient.channel(`team-members-sync-${teamId}`);
+    await channel.subscribe(async (status) => {
+      if (status !== "SUBSCRIBED") return;
+      await channel.send({
+        type: "broadcast",
+        event: "team_members_changed",
+        payload: { teamId, at: Date.now() },
+      });
+      await realtimeClient.removeChannel(channel);
+    });
+  };
+
+  const notifyTeamInvitationChanged = async (userId: string) => {
+    if (!supabase) return;
+    const realtimeClient = supabase;
+    const channel = realtimeClient.channel(`team-invitations-sync-${userId}`);
+    await channel.subscribe(async (status) => {
+      if (status !== "SUBSCRIBED") return;
+      await channel.send({
+        type: "broadcast",
+        event: "team_invitation_changed",
+        payload: { userId, at: Date.now() },
+      });
+      await realtimeClient.removeChannel(channel);
+    });
+  };
+
+  const fetchTeamInvitations = async () => {
+    if (!supabase || !user) {
+      setTeamInvitations([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("team_invitations")
+      .select("id,team_id,invited_user_id,invited_by,status,jersey_number,nickname,position,created_at,updated_at")
+      .eq("invited_user_id", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("fetchTeamInvitations error:", error);
+      return;
+    }
+
+    const invitations = (data ?? []) as TeamInvitationRecord[];
+    const teamIds = Array.from(new Set(invitations.map((invite) => invite.team_id)));
+    let teamsById: Record<string, TeamRecord> = {};
+    if (teamIds.length > 0) {
+      const { data: teamData, error: teamError } = await supabase
+        .from("teams")
+        .select("id,user_id,name,logo_url,logo_icon,shirt_color,shorts_color,socks_color,slogan,created_at,updated_at")
+        .in("id", teamIds);
+
+      if (teamError) {
+        console.error("fetch invitation teams error:", teamError);
+      } else {
+        teamsById = ((teamData ?? []) as TeamRecord[]).reduce<Record<string, TeamRecord>>((acc, item) => {
+          acc[item.id] = item;
+          return acc;
+        }, {});
+      }
+    }
+
+    setTeamInvitations(
+      invitations.map((invite) => ({
+        ...invite,
+        teamName: teamsById[invite.team_id]?.name ?? invite.team_id.slice(0, 8).toUpperCase(),
+      })),
+    );
+  };
+
   const fetchTeams = async () => {
     if (!supabase || !user) {
       resetTeamForm();
       return;
     }
 
-    const { data, error } = await supabase
+    const { data: ownedTeamData, error: ownedTeamError } = await supabase
       .from("teams")
       .select("id,user_id,name,logo_url,logo_icon,shirt_color,shorts_color,socks_color,slogan,created_at,updated_at")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("fetchTeams error:", error);
-      setLockerStatus(getDetailedSupabaseErrorMessage(error, copy));
+    if (ownedTeamError) {
+      console.error("fetchTeams owned error:", ownedTeamError);
+      setLockerStatus(getDetailedSupabaseErrorMessage(ownedTeamError, copy));
       return;
     }
 
-    const nextTeams = (data ?? []) as TeamRecord[];
+    const { data: ownMembershipData, error: ownMembershipError } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id);
+
+    if (ownMembershipError) {
+      console.error("fetchTeams membership error:", ownMembershipError);
+      setLockerStatus(getDetailedSupabaseErrorMessage(ownMembershipError, copy));
+      return;
+    }
+
+    const pathTeamId = getTeamIdFromPath();
+    const teamIds = Array.from(
+      new Set([
+        ...(ownedTeamData ?? []).map((item) => item.id),
+        ...(ownMembershipData ?? []).map((member) => member.team_id as string),
+        ...(pathTeamId ? [pathTeamId] : []),
+      ]),
+    );
+
+    let nextTeams: TeamRecord[] = [];
+    if (teamIds.length > 0) {
+      const { data, error } = await supabase
+        .from("teams")
+        .select("id,user_id,name,logo_url,logo_icon,shirt_color,shorts_color,socks_color,slogan,created_at,updated_at")
+        .in("id", teamIds)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("fetchTeams detail error:", error);
+        setLockerStatus(getDetailedSupabaseErrorMessage(error, copy));
+        return;
+      }
+      nextTeams = (data ?? []) as TeamRecord[];
+    }
+
+    const isTeamLinkRoute = Boolean(getTeamIdFromPath());
+    const wasViewingRemovedTeam = Boolean(
+      selectedTeamId && !isTeamLinkRoute && !nextTeams.some((item) => item.id === selectedTeamId),
+    );
     setTeams(nextTeams);
     setTeam(nextTeams[0] ?? null);
-    setIsTeamFormOpen(nextTeams.length === 0);
-    if (selectedTeamId && !nextTeams.some((item) => item.id === selectedTeamId)) {
+    setIsTeamFormOpen(wasViewingRemovedTeam ? false : nextTeams.length === 0);
+    if (wasViewingRemovedTeam && selectedTeamId) {
       setSelectedTeamId(null);
+      setIsMemberInviteOpen(false);
+      setMemberInviteUserId("");
+      window.history.replaceState({}, "", `${window.location.origin}${window.location.pathname.replace(/^\/team\/[^/?#]+/, "/")}?tab=team`);
+      if (!removedTeamNoticeRef.current.has(selectedTeamId)) {
+        removedTeamNoticeRef.current.add(selectedTeamId);
+        showToast(copy.removedFromTeam, "error");
+      }
     }
     fillTeamForm(null);
 
@@ -2455,30 +2770,121 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const profileIds = Array.from(
       new Set([...nextTeams.map((item) => item.user_id), ...(memberData ?? []).map((member) => member.user_id)]),
     );
-    if (profileIds.length > 0) {
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("id,username,full_name")
-        .in("id", profileIds);
-
-      if (profileError) {
-        console.error("fetch member profiles error:", profileError);
-      } else {
-        setMemberProfilesById(
-          ((profileData ?? []) as MemberProfileRecord[]).reduce<Record<string, MemberProfileRecord>>((acc, profileItem) => {
-            acc[profileItem.id] = profileItem;
-            return acc;
-          }, {}),
-        );
-      }
-    }
+    await mergeMemberProfiles(profileIds);
   };
 
   useEffect(() => {
     fetchSavedLineups();
     fetchProfile();
     fetchTeams();
+    fetchTeamInvitations();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !user) return;
+    const realtimeClient = supabase;
+
+    const channel = realtimeClient
+      .channel(`team-members-realtime-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, (payload) => {
+        const eventType = payload.eventType;
+        const nextMember = payload.new as TeamMemberRecord | null;
+        const previousMember = payload.old as Partial<TeamMemberRecord> | null;
+        const changedMember = eventType === "DELETE" ? previousMember : nextMember;
+        if (!changedMember?.id) return;
+
+        if (nextMember?.user_id) {
+          void mergeMemberProfiles([nextMember.user_id]);
+        }
+
+        if (eventType === "DELETE") {
+          setTeamMembersByTeam((current) =>
+            Object.fromEntries(
+              Object.entries(current).map(([teamId, members]) => [
+                teamId,
+                members.filter((member) => member.id !== changedMember.id),
+              ]),
+            ),
+          );
+          void fetchTeams();
+          return;
+        }
+
+        if (!nextMember?.team_id) return;
+
+        setTeamMembersByTeam((current) => {
+          const teamMembers = current[nextMember.team_id] ?? [];
+          const hasMember = teamMembers.some((member) => member.id === nextMember.id);
+          const nextMembers = hasMember
+            ? teamMembers.map((member) => (member.id === nextMember.id ? nextMember : member))
+            : [...teamMembers, nextMember];
+
+          return {
+            ...current,
+            [nextMember.team_id]: nextMembers.sort((a, b) => a.jersey_number - b.jersey_number),
+          };
+        });
+
+        if (nextMember.user_id === user.id) {
+          void fetchTeams();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      realtimeClient.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !user) return;
+    const realtimeClient = supabase;
+    const channel = realtimeClient
+      .channel(`team-invitations-sync-${user.id}`)
+      .on("broadcast", { event: "team_invitation_changed" }, () => {
+        void fetchTeamInvitations();
+      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "team_invitations", filter: `invited_user_id=eq.${user.id}` },
+        () => {
+          void fetchTeamInvitations();
+        },
+      )
+      .subscribe();
+
+    const intervalId = window.setInterval(() => {
+      void fetchTeamInvitations();
+    }, 4000);
+
+    return () => {
+      window.clearInterval(intervalId);
+      realtimeClient.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !user || !selectedTeam?.id) return;
+    const syncTeamId = selectedTeam.id;
+    const realtimeClient = supabase;
+    const channel = realtimeClient
+      .channel(`team-members-sync-${syncTeamId}`)
+      .on("broadcast", { event: "team_members_changed" }, () => {
+        void refreshTeamMembers([syncTeamId]);
+        void fetchTeams();
+      })
+      .subscribe();
+
+    const intervalId = window.setInterval(() => {
+      void refreshTeamMembers([syncTeamId]);
+      void fetchTeams();
+    }, 2500);
+
+    return () => {
+      window.clearInterval(intervalId);
+      realtimeClient.removeChannel(channel);
+    };
+  }, [user?.id, selectedTeam?.id]);
 
   useEffect(() => {
     if (resetCooldown <= 0) return;
@@ -2677,19 +3083,31 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     }
   };
 
-  const profileColumns = "id,username,avatar_url,full_name,bio,favorite_team,favorite_position,location";
+  const profileColumnsBase = "id,username,avatar_url,full_name,bio,favorite_team,favorite_position,location";
+  const profileColumns = `${profileColumnsBase},jersey_number`;
 
-  const buildProfilePayload = (overrides?: { avatar_url?: string | null }) => ({
-    id: user!.id,
-    username: profileUsername.trim() || user!.email?.split("@")[0] || "",
-    avatar_url:
-      overrides && "avatar_url" in overrides ? overrides.avatar_url : profileAvatarUrl.trim() || null,
-    full_name: profileFullName.trim() || null,
-    bio: profileBio.trim() || null,
-    favorite_team: profileFavoriteTeam.trim() || null,
-    favorite_position: profileFavoritePosition.trim() || null,
-    location: profileLocation.trim() || null,
-  });
+  const buildProfilePayload = (overrides?: { avatar_url?: string | null }, includeJerseyNumber = true) => {
+    const jerseyNumber = Number(profileJerseyNumber);
+    const payload: Record<string, string | number | null> = {
+      id: user!.id,
+      username: profileUsername.trim() || user!.email?.split("@")[0] || "",
+      avatar_url:
+        overrides && "avatar_url" in overrides ? overrides.avatar_url ?? null : profileAvatarUrl.trim() || null,
+      full_name: profileFullName.trim() || null,
+      bio: profileBio.trim() || null,
+      favorite_team: profileFavoriteTeam.trim() || null,
+      favorite_position: profileFavoritePosition.trim() || null,
+      location: profileLocation.trim() || null,
+    };
+
+    if (includeJerseyNumber) {
+      payload.jersey_number = profileJerseyNumber.trim() && Number.isFinite(jerseyNumber)
+        ? Math.max(1, Math.min(999, Math.round(jerseyNumber)))
+        : null;
+    }
+
+    return payload;
+  };
 
   const updateProfile = async () => {
     if (!supabase || !user) return;
@@ -2703,7 +3121,25 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       .single();
 
     if (error) {
-      const message = getSupabaseErrorMessage(error, copy);
+      const errorText = `${error.code ?? ""} ${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+      if (errorText.includes("jersey_number") || errorText.includes("schema cache")) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("profiles")
+          .upsert(buildProfilePayload(undefined, false))
+          .select(profileColumnsBase)
+          .single();
+
+        if (!fallbackError) {
+          setProfile({ ...(fallbackData as ProfileRecord), jersey_number: null });
+          const message = "Đã lưu hồ sơ, nhưng DB chưa có cột jersey_number. Hãy chạy SQL add column rồi lưu lại số áo.";
+          setLockerStatus(message);
+          showToast(message, "error");
+          setIsProfileLoading(false);
+          return;
+        }
+      }
+
+      const message = getDetailedSupabaseErrorMessage(error, copy);
       setLockerStatus(message);
       showToast(message, "error");
       setIsProfileLoading(false);
@@ -2897,7 +3333,15 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const getTeamInviteLink = (teamId: string, inviteUserId = "") => {
-    const url = new URL(`https://doihinhsanco.pro.vn/team/${teamId}`);
+    const currentOrigin = window.location.origin;
+    const isLocalOrigin =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.startsWith("192.168.") ||
+      window.location.hostname.startsWith("10.") ||
+      window.location.hostname.endsWith(".local");
+    const baseOrigin = isLocalOrigin ? currentOrigin : "https://doihinhsanco.pro.vn";
+    const url = new URL(`/team/${teamId}`, baseOrigin);
     if (inviteUserId.trim()) url.searchParams.set("user", inviteUserId.trim());
     return url.toString();
   };
@@ -2920,51 +3364,151 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     if (nextTeam.user_id !== user.id) return;
     const targetUserId = invitedUserId.trim();
     if (!targetUserId) return;
+    if (!isValidUuid(targetUserId)) {
+      showToast(copy.invalidUserId, "error");
+      return;
+    }
     const existingMembers = teamMembersByTeam[nextTeam.id] ?? [];
     const nextNumber =
       existingMembers.length > 0 ? Math.max(...existingMembers.map((member) => member.jersey_number)) + 1 : 1;
 
-    const { data, error } = await supabase
-      .from("team_members")
+    const { error } = await supabase
+      .from("team_invitations")
       .insert({
         team_id: nextTeam.id,
-        user_id: targetUserId,
+        invited_user_id: targetUserId,
+        invited_by: user.id,
         jersey_number: nextNumber,
         nickname: targetUserId.slice(0, 8).toUpperCase(),
         position: "MF" satisfies TeamMemberPosition,
-      })
-      .select("id,team_id,user_id,jersey_number,nickname,position,created_at,updated_at")
-      .single();
+        status: "pending" satisfies TeamInvitationStatus,
+      });
 
     if (error) {
-      console.error("addTeamMember error:", error);
+      console.error("sendTeamInvitation error:", error);
       showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
       return;
     }
 
-    const savedMember = data as TeamMemberRecord;
-    setTeamMembersByTeam((current) => ({
-      ...current,
-      [nextTeam.id]: [...(current[nextTeam.id] ?? []), savedMember].sort((a, b) => a.jersey_number - b.jersey_number),
-    }));
+    showToast(copy.invitationSent);
+    void notifyTeamInvitationChanged(targetUserId);
     setMemberInviteUserId("");
     setIsMemberInviteOpen(false);
   };
 
-  const updateTeamMemberPosition = async (member: TeamMemberRecord, position: TeamMemberPosition) => {
-    if (!supabase || member.position === position) return;
+  const respondToTeamInvitation = async (invitation: TeamInvitationDisplay, status: Exclude<TeamInvitationStatus, "pending">) => {
+    if (!supabase || !user || invitation.invited_user_id !== user.id) return;
+    setUpdatingInvitationId(invitation.id);
+
+    if (status === "accepted") {
+      const invitationTeamMembers = teamMembersByTeam[invitation.team_id] ?? [];
+      const { error: memberError } = await supabase.from("team_members").insert({
+        team_id: invitation.team_id,
+        user_id: user.id,
+        jersey_number: getJoinJerseyNumber(invitationTeamMembers),
+        nickname: getCurrentUserDisplayName(),
+        position: getJoinPosition(invitation.position),
+      });
+
+      if (memberError) {
+        console.error("respondToTeamInvitation member error:", memberError);
+        showToast(getDetailedSupabaseErrorMessage(memberError, copy), "error");
+        setUpdatingInvitationId(null);
+        return;
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from("team_invitations")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", invitation.id);
+
+    if (updateError) {
+      console.error("respondToTeamInvitation update error:", updateError);
+      showToast(getDetailedSupabaseErrorMessage(updateError, copy), "error");
+      setUpdatingInvitationId(null);
+      return;
+    }
+
+    if (status === "accepted") {
+      showToast(copy.inviteAccepted);
+      void notifyTeamMembersChanged(invitation.team_id);
+      void fetchTeams();
+    } else {
+      showToast(copy.inviteDeclined);
+    }
+
+    setTeamInvitations((current) => current.filter((item) => item.id !== invitation.id));
+    setUpdatingInvitationId(null);
+  };
+
+  const joinSelectedTeamFromLink = async () => {
+    if (!supabase || !user || !selectedTeam || selectedTeamHasCurrentUser) return;
+    setIsJoiningTeam(true);
+    const { error } = await supabase.from("team_members").insert({
+      team_id: selectedTeam.id,
+      user_id: user.id,
+      jersey_number: getJoinJerseyNumber(selectedTeamMembers),
+      nickname: getCurrentUserDisplayName(),
+      position: getJoinPosition(),
+    });
+    setIsJoiningTeam(false);
+
+    if (error) {
+      console.error("joinSelectedTeamFromLink error:", error);
+      showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
+      return;
+    }
+
+    showToast(copy.joinedTeam);
+    setIsJoinTeamPromptOpen(false);
+    void notifyTeamMembersChanged(selectedTeam.id);
+    await fetchTeams();
+
+    const url = new URL(window.location.href);
+    url.pathname = "/";
+    url.search = "";
+    url.searchParams.set("tab", "team");
+    url.searchParams.set("team", selectedTeam.id);
+    window.history.replaceState({ teamId: selectedTeam.id }, "", url.toString());
+  };
+
+  const updateTeamMember = async (member: TeamMemberRecord, updates: Partial<Pick<TeamMemberRecord, "jersey_number" | "nickname" | "position">>) => {
+    if (!supabase) return;
     const memberTeam = teams.find((item) => item.id === member.team_id);
     if (!user || !memberTeam || memberTeam.user_id !== user.id) return;
 
+    const payload: Partial<Pick<TeamMemberRecord, "jersey_number" | "nickname" | "position">> & { updated_at: string } = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (typeof updates.jersey_number === "number" && updates.jersey_number !== member.jersey_number) {
+      const normalizedNumber = Math.max(0, Math.min(999, Math.round(updates.jersey_number)));
+      payload.jersey_number = normalizedNumber;
+    }
+    if (typeof updates.nickname === "string") {
+      const normalizedNickname = updates.nickname.trim();
+      if (normalizedNickname && normalizedNickname !== member.nickname) {
+        payload.nickname = normalizedNickname;
+      }
+    }
+    if (updates.position && updates.position !== member.position) {
+      payload.position = updates.position;
+    }
+
+    if (!("jersey_number" in payload) && !("nickname" in payload) && !("position" in payload)) return;
+
+    setUpdatingMemberId(member.id);
     const { data, error } = await supabase
       .from("team_members")
-      .update({ position, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq("id", member.id)
       .select("id,team_id,user_id,jersey_number,nickname,position,created_at,updated_at")
       .single();
+    setUpdatingMemberId(null);
 
     if (error) {
-      console.error("updateTeamMemberPosition error:", error);
+      console.error("updateTeamMember error:", error);
       showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
       return;
     }
@@ -2974,8 +3518,35 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       ...current,
       [savedMember.team_id]: (current[savedMember.team_id] ?? []).map((item) =>
         item.id === savedMember.id ? savedMember : item,
-      ),
+      ).sort((a, b) => a.jersey_number - b.jersey_number),
     }));
+    void notifyTeamMembersChanged(savedMember.team_id);
+  };
+
+  const updateTeamMemberPosition = async (member: TeamMemberRecord, position: TeamMemberPosition) => {
+    await updateTeamMember(member, { position });
+  };
+
+  const deleteTeamMember = async (member: TeamMemberRecord) => {
+    if (!supabase) return;
+    const memberTeam = teams.find((item) => item.id === member.team_id);
+    if (!user || !memberTeam || memberTeam.user_id !== user.id) return;
+
+    setDeletingMemberId(member.id);
+    const { error } = await supabase.from("team_members").delete().eq("id", member.id);
+    setDeletingMemberId(null);
+
+    if (error) {
+      console.error("deleteTeamMember error:", error);
+      showToast(getDetailedSupabaseErrorMessage(error, copy), "error");
+      return;
+    }
+
+    setTeamMembersByTeam((current) => ({
+      ...current,
+      [member.team_id]: (current[member.team_id] ?? []).filter((item) => item.id !== member.id),
+    }));
+    void notifyTeamMembersChanged(member.team_id);
   };
 
   const getMiniLineupPoint = (member: TeamMemberDisplay, allMembers: TeamMemberDisplay[]) => {
@@ -3857,7 +4428,63 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
           ) : (
             <div ref={userMenuRef} className="header-user-menu">
               <span>{user.email}</span>
-              <button type="button" className="header-dropdown-button" onClick={() => setIsUserMenuOpen((current) => !current)}>
+              <button
+                type="button"
+                className="notification-button"
+                onClick={() => {
+                  setIsNotificationOpen((current) => !current);
+                  setIsUserMenuOpen(false);
+                }}
+                aria-label="Notifications"
+                aria-expanded={isNotificationOpen}
+              >
+                <Bell size={16} />
+                {teamInvitations.length > 0 ? <strong>{teamInvitations.length}</strong> : null}
+              </button>
+              {isNotificationOpen ? (
+                <div className="notification-dropdown">
+                  <div className="notification-title">
+                    <span>Notifications</span>
+                    <strong>{teamInvitations.length}</strong>
+                  </div>
+                  {teamInvitations.length === 0 ? (
+                    <p>{copy.noNotifications}</p>
+                  ) : (
+                    teamInvitations.map((invitation) => (
+                      <div key={invitation.id} className="notification-item">
+                        <span>{copy.invitedToTeam}</span>
+                        <strong>{invitation.teamName}</strong>
+                        <div className="notification-actions">
+                          <button
+                            type="button"
+                            onClick={() => respondToTeamInvitation(invitation, "accepted")}
+                            disabled={updatingInvitationId === invitation.id}
+                          >
+                            <Check size={13} />
+                            {copy.acceptInvite}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => respondToTeamInvitation(invitation, "declined")}
+                            disabled={updatingInvitationId === invitation.id}
+                          >
+                            <X size={13} />
+                            {copy.declineInvite}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="header-dropdown-button"
+                onClick={() => {
+                  setIsUserMenuOpen((current) => !current);
+                  setIsNotificationOpen(false);
+                }}
+              >
                 <ChevronDown size={16} />
               </button>
               {isUserMenuOpen ? (
@@ -4097,6 +4724,72 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
           </div>
         </div>
       ) : null}
+      {selectedTeam && selectedTeamIsOwner && isMemberInviteOpen ? (
+        <div className="auth-screen">
+          <form
+            className="auth-screen-card member-invite-modal"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addTeamMemberByUserId(selectedTeam, memberInviteUserId);
+            }}
+          >
+            <div className="panel-heading">
+              <span>{copy.inviteMember}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMemberInviteOpen(false);
+                  setMemberInviteUserId("");
+                }}
+              >
+                x
+              </button>
+            </div>
+            <label className="profile-field">
+              <span>{copy.userId}</span>
+              <input
+                type="text"
+                name="team-member-user-id"
+                value={memberInviteUserId}
+                onChange={(event) => setMemberInviteUserId(event.target.value)}
+                placeholder="Nhap ID user"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                autoFocus
+              />
+            </label>
+            <button type="submit" disabled={!memberInviteUserId.trim()}>
+              <Plus size={14} />
+              {copy.inviteMember}
+            </button>
+          </form>
+        </div>
+      ) : null}
+      {selectedTeam && user && !selectedTeamHasCurrentUser && isJoinTeamPromptOpen ? (
+        <div className="auth-screen">
+          <div className="auth-screen-card member-invite-modal">
+            <div className="panel-heading">
+              <span>{copy.joinTeamTitle}</span>
+              <button type="button" onClick={() => setIsJoinTeamPromptOpen(false)}>
+                x
+              </button>
+            </div>
+            <div className="team-invite-confirm">
+              <div className="team-detail-logo">
+                {selectedTeam.logo_url ? <img src={selectedTeam.logo_url} alt="" /> : <span>{selectedTeam.logo_icon || teamLogoIcons[0]}</span>}
+              </div>
+              <strong>{selectedTeam.name}</strong>
+              {selectedTeam.slogan ? <span>{selectedTeam.slogan}</span> : null}
+              <p>{copy.joinTeamPrompt}</p>
+            </div>
+            <button type="button" onClick={joinSelectedTeamFromLink} disabled={isJoiningTeam}>
+              {isJoiningTeam ? <ButtonSpinner /> : <Check size={14} />}
+              {copy.confirmJoinTeam}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div
         className={`dashboard-shell mx-auto grid w-full overflow-hidden shadow-2xl ${
           activeTab === "tactics" ? "tactics-dashboard" : "max-w-5xl"
@@ -4194,11 +4887,35 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     </label>
                     <label className="profile-field">
                       <span>{copy.favoritePosition}</span>
-                      <input value={profileFavoritePosition} onChange={(event) => setProfileFavoritePosition(event.target.value)} placeholder={copy.favoritePosition} />
+                      <div className="profile-position-selector">
+                        {memberPositions.map((position) => (
+                          <button
+                            key={position}
+                            type="button"
+                            className={`position-tag position-${position.toLowerCase()} ${
+                              profileSelectedPositions.includes(position) ? "selected" : ""
+                            }`}
+                            onClick={() => toggleProfilePosition(position)}
+                          >
+                            {position}
+                          </button>
+                        ))}
+                      </div>
                     </label>
                     <label className="profile-field">
                       <span>{copy.location}</span>
                       <input value={profileLocation} onChange={(event) => setProfileLocation(event.target.value)} placeholder={copy.location} />
+                    </label>
+                    <label className="profile-field">
+                      <span>{copy.profileJerseyNumber}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={999}
+                        value={profileJerseyNumber}
+                        onChange={(event) => setProfileJerseyNumber(event.target.value)}
+                        placeholder={copy.profileJerseyNumber}
+                      />
                     </label>
                     <label className="profile-field profile-field-full">
                       <span>{copy.bio}</span>
@@ -4299,7 +5016,13 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     <div className="team-section-title">
                       <span>{copy.members}</span>
                       {selectedTeamIsOwner && selectedTeamDisplayMembers.length > 0 ? (
-                        <button type="button" onClick={() => setIsMemberInviteOpen((current) => !current)}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMemberInviteUserId("");
+                            setIsMemberInviteOpen(true);
+                          }}
+                        >
                           <Plus size={14} />
                           {copy.addMember}
                         </button>
@@ -4314,12 +5037,18 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                         </div>
                         <p>{copy.emptyLocker}</p>
                         {selectedTeamIsOwner ? (
-                          <button type="button" onClick={() => setIsMemberInviteOpen(true)}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMemberInviteUserId("");
+                              setIsMemberInviteOpen(true);
+                            }}
+                          >
                             <Plus size={16} />
                             {copy.addFirstPlayer}
                           </button>
                         ) : null}
-                        {selectedTeamIsOwner && isMemberInviteOpen ? (
+                        {false ? (
                           <div className="member-invite-panel first-player-invite-panel">
                             <input
                               value={memberInviteUserId}
@@ -4327,16 +5056,16 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                               placeholder="Nhập ID user"
                               aria-label="Nhập ID user"
                             />
-                            <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam, memberInviteUserId)}>
+                            <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam!, memberInviteUserId)}>
                               <Plus size={14} />
-                              {copy.addMember}
+                              {copy.inviteMember}
                             </button>
                           </div>
                         ) : null}
                       </div>
                     ) : (
                       <div className="member-list">
-                        {selectedTeamIsOwner && isMemberInviteOpen ? (
+                        {false ? (
                           <div className="member-invite-panel">
                             <input
                               value={memberInviteUserId}
@@ -4344,57 +5073,108 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                               placeholder="Nhập ID user"
                               aria-label="Nhập ID user"
                             />
-                            <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam, memberInviteUserId)}>
+                            <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam!, memberInviteUserId)}>
                               <Plus size={14} />
-                              {copy.addMember}
-                            </button>
-                            <button type="button" onClick={() => copyTeamInviteLink(selectedTeam, memberInviteUserId)}>
-                              <Clipboard size={14} />
-                              {copy.copyTeamLink}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setQrInviteUserId(memberInviteUserId);
-                                setQrTeam(selectedTeam);
-                              }}
-                            >
-                              <Share2 size={14} />
-                              {copy.viewQrCode}
+                              {copy.inviteMember}
                             </button>
                           </div>
                         ) : null}
-                        {selectedTeamDisplayMembers.map((member) => (
+                        {selectedTeamDisplayMembers.map((member) => {
+                          const profilePositions = parseProfilePositions(memberProfilesById[member.user_id]?.favorite_position);
+                          return (
                           <div key={member.id} className="member-row">
-                            <span className="member-number">{member.jersey_number}</span>
-                            <strong>
-                              {member.nickname}
-                              {member.isOwner ? <small className="owner-tag">{copy.teamOwnerTag}</small> : null}
-                            </strong>
+                            {selectedTeamIsOwner && !member.isOwner ? (
+                              <input
+                                key={`${member.id}-${member.jersey_number}`}
+                                className="member-number member-number-input"
+                                type="number"
+                                min={0}
+                                max={999}
+                                defaultValue={member.jersey_number}
+                                aria-label={copy.jerseyNumber}
+                                disabled={updatingMemberId === member.id || deletingMemberId === member.id}
+                                onBlur={(event) => {
+                                  if (!event.currentTarget.value.trim()) {
+                                    event.currentTarget.value = String(member.jersey_number);
+                                    return;
+                                  }
+                                  const nextNumber = Number(event.currentTarget.value);
+                                  if (Number.isFinite(nextNumber)) {
+                                    updateTeamMember(member, { jersey_number: nextNumber });
+                                  }
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") event.currentTarget.blur();
+                                }}
+                              />
+                            ) : (
+                              <span className="member-number">{member.jersey_number}</span>
+                            )}
+                            {selectedTeamIsOwner && !member.isOwner ? (
+                              <input
+                                key={`${member.id}-${member.nickname}`}
+                                className="member-name-input"
+                                defaultValue={member.nickname}
+                                aria-label={copy.playerNickname}
+                                disabled={updatingMemberId === member.id || deletingMemberId === member.id}
+                                onBlur={(event) => {
+                                  if (!event.currentTarget.value.trim()) {
+                                    event.currentTarget.value = member.nickname;
+                                    return;
+                                  }
+                                  updateTeamMember(member, { nickname: event.currentTarget.value });
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") event.currentTarget.blur();
+                                }}
+                              />
+                            ) : (
+                              <strong>
+                                {member.nickname}
+                                {member.isOwner ? <small className="owner-tag">{copy.teamOwnerTag}</small> : null}
+                              </strong>
+                            )}
                             {member.isOwner ? (
                               <span className="owner-role-pill">{copy.teamOwnerTag}</span>
-                            ) : (
-                              <select
-                                className={`position-tag position-${member.position.toLowerCase()}`}
-                                value={member.position}
-                                disabled={!selectedTeamIsOwner}
-                                onChange={(event) => updateTeamMemberPosition(member, event.target.value as TeamMemberPosition)}
-                              >
-                                {memberPositions.map((position) => (
-                                  <option key={position} value={position}>
+                            ) : profilePositions.length > 0 ? (
+                              <div className="member-row-actions">
+                                {profilePositions.map((position) => (
+                                  <span key={position} className={`position-tag position-${position.toLowerCase()}`}>
                                     {position}
-                                  </option>
+                                  </span>
                                 ))}
-                              </select>
+                              </div>
+                            ) : (
+                              <div className="member-row-actions">
+                                <select
+                                  className={`position-tag position-${member.position.toLowerCase()}`}
+                                  value={member.position}
+                                  disabled={!selectedTeamIsOwner || updatingMemberId === member.id || deletingMemberId === member.id}
+                                  onChange={(event) => updateTeamMemberPosition(member, event.target.value as TeamMemberPosition)}
+                                >
+                                  {memberPositions.map((position) => (
+                                    <option key={position} value={position}>
+                                      {position}
+                                    </option>
+                                  ))}
+                                </select>
+                                {selectedTeamIsOwner ? (
+                                  <button
+                                    type="button"
+                                    className="member-delete-button"
+                                    onClick={() => deleteTeamMember(member)}
+                                    disabled={deletingMemberId === member.id}
+                                    aria-label={`${copy.delete} ${member.nickname}`}
+                                    title={copy.delete}
+                                  >
+                                    {deletingMemberId === member.id ? <ButtonSpinner /> : <Trash2 size={14} />}
+                                  </button>
+                                ) : null}
+                              </div>
                             )}
                           </div>
-                        ))}
-                        {selectedTeamIsOwner ? (
-                          <button type="button" className="member-add-row" onClick={() => setIsMemberInviteOpen((current) => !current)}>
-                            <Plus size={14} />
-                            {copy.addMember}
-                          </button>
-                        ) : null}
+                        );
+                        })}
                       </div>
                     )}
                   </section>
@@ -5404,6 +6184,7 @@ function Root() {
     const params = new URLSearchParams(window.location.search);
     return (
       Boolean(params.get("lineup") || params.get("tab") || params.has("tactics")) ||
+      Boolean(getTeamIdFromPath()) ||
       window.location.hash.includes("type=recovery") ||
       window.location.hash.includes("error")
     );
