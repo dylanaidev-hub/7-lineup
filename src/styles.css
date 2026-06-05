@@ -101,7 +101,8 @@ textarea {
 .language-switch,
 .header-login-button,
 .header-user-menu > button,
-.header-user-menu > span {
+.header-user-menu > span,
+.header-user-identity {
   display: inline-flex;
   min-height: 40px;
   align-items: center;
@@ -128,6 +129,37 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.header-user-identity {
+  display: grid;
+  min-height: 46px;
+  align-content: center;
+  gap: 3px;
+  padding-block: 6px;
+}
+
+.header-user-identity span {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-user-identity button {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  padding: 0;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.header-user-identity button:hover {
+  color: #7fe0a3;
 }
 
 .header-user-menu > button,
@@ -3514,8 +3546,8 @@ textarea {
 
 .team-detail-view {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
   padding: 16px;
 }
@@ -3543,6 +3575,7 @@ textarea {
 
 .team-detail-header,
 .mini-lineup-panel,
+.team-lineups-panel,
 .member-panel {
   border: 1px solid rgba(232, 245, 233, 0.12);
   border-radius: 18px;
@@ -3550,8 +3583,80 @@ textarea {
   padding: 14px;
 }
 
+.team-detail-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  border: 1px solid rgba(232, 245, 233, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 8px;
+}
+
+.team-detail-tabs button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(232, 245, 233, 0.76);
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.team-detail-tabs button:hover {
+  border-color: rgba(92, 203, 132, 0.42);
+  background: rgba(92, 203, 132, 0.1);
+}
+
+.team-detail-tabs button.active {
+  border-color: rgba(92, 203, 132, 0.76);
+  background: #5ccb84;
+  color: #07100c;
+}
+
+.team-detail-tabs button strong {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(7, 16, 12, 0.16);
+  font-size: 11px;
+}
+
 .member-panel {
   min-height: 0;
+}
+
+.team-lineups-panel {
+  min-width: 0;
+}
+
+.team-saved-lineup-list {
+  max-height: 420px;
+  padding: 0;
+}
+
+.team-saved-lineup-list .saved-lineup-card {
+  border: 1px solid rgba(232, 245, 233, 0.1);
+  border-radius: 14px;
+  background: rgba(10, 24, 18, 0.38);
+}
+
+.team-saved-lineup-list .saved-lineup-card strong {
+  color: #f3fbf5;
+}
+
+.team-saved-lineup-list .saved-lineup-card span,
+.team-saved-lineup-list .saved-lineup-card time {
+  color: rgba(232, 245, 233, 0.68);
 }
 
 .member-panel .team-section-title {
@@ -4021,17 +4126,23 @@ textarea {
 }
 
 .member-invite-modal {
-  width: min(100%, 480px);
+  width: min(480px, calc(100vw - 28px));
   gap: 18px;
+  padding-inline: 16px;
 }
 
 .member-invite-modal .profile-field {
+  display: grid;
   gap: 8px;
+  margin: 0;
 }
 
 .member-invite-modal .profile-field input {
+  width: 100%;
+  box-sizing: border-box;
   min-height: 48px;
   border-radius: 14px;
+  padding: 0 14px;
   font-size: 14px;
   font-weight: 850;
 }
@@ -4039,6 +4150,7 @@ textarea {
 .member-invite-modal > button[type="submit"] {
   display: inline-flex;
   width: 100%;
+  box-sizing: border-box;
   min-height: 48px;
   align-items: center;
   justify-content: center;
@@ -4400,6 +4512,342 @@ textarea {
 .auth-screen-card input:focus {
   border-color: #5ccb84;
   box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
+}
+
+.save-destination-modal {
+  width: min(520px, calc(100vw - 28px));
+}
+
+.save-destination-modal > .locker-message {
+  margin: 0 16px;
+  color: rgba(232, 245, 233, 0.74);
+}
+
+.save-destination-personal {
+  min-height: 46px;
+}
+
+.save-destination-team-list {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  margin: 0 16px;
+  overflow-y: auto;
+}
+
+.save-destination-team-list button {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  min-height: 62px;
+  justify-content: start;
+  padding: 8px;
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.065);
+  text-align: left;
+  text-transform: none;
+}
+
+.save-destination-team-list button:hover:not(:disabled) {
+  border-color: rgba(92, 203, 132, 0.58);
+  background: rgba(92, 203, 132, 0.16);
+}
+
+.save-destination-team-list button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.save-destination-team-logo {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(92, 203, 132, 0.18);
+  font-size: 22px;
+}
+
+.save-destination-team-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.save-destination-team-list strong,
+.save-destination-team-list small {
+  display: block;
+}
+
+.save-destination-team-list strong {
+  color: #f3fbf5;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.save-destination-team-list small {
+  margin-top: 3px;
+  color: rgba(232, 245, 233, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.team-lineup-preview-modal {
+  width: min(680px, calc(100vw - 28px));
+  max-height: min(880px, calc(100vh - 28px));
+  overflow: hidden;
+}
+
+.team-lineup-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 16px;
+  color: rgba(232, 245, 233, 0.72);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.team-lineup-preview-content {
+  display: grid;
+  gap: 14px;
+  min-height: 0;
+  margin: 0 16px 16px;
+  overflow-y: auto;
+}
+
+.team-preview-pitch {
+  position: relative;
+  width: min(420px, 100%);
+  aspect-ratio: 7 / 10;
+  justify-self: center;
+  overflow: hidden;
+  border: 4px solid rgba(255, 255, 255, 0.82);
+  border-radius: 18px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.055) 0 9%,
+      rgba(0, 0, 0, 0.045) 9% 18%
+    ),
+    linear-gradient(150deg, #42b65e 0%, #278a42 100%);
+  box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.22);
+}
+
+.team-preview-line,
+.team-preview-circle,
+.team-preview-box {
+  position: absolute;
+  pointer-events: none;
+}
+
+.team-preview-half {
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.team-preview-circle {
+  left: 50%;
+  top: 50%;
+  width: 30%;
+  height: 22%;
+  border: 3px solid rgba(255, 255, 255, 0.84);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.team-preview-box {
+  left: 50%;
+  width: 48%;
+  height: 15%;
+  transform: translateX(-50%);
+}
+
+.team-preview-box-top {
+  top: 4%;
+  border-inline: 3px solid rgba(255, 255, 255, 0.84);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.84);
+}
+
+.team-preview-box-bottom {
+  bottom: 4%;
+  border-inline: 3px solid rgba(255, 255, 255, 0.84);
+  border-top: 3px solid rgba(255, 255, 255, 0.84);
+}
+
+.team-preview-draw-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.team-preview-player,
+.team-preview-marker {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}
+
+.team-preview-player {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 74px;
+}
+
+.team-preview-player i {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #111827;
+  font-style: normal;
+  font-size: 15px;
+  font-weight: 950;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.28);
+}
+
+.team-preview-player strong {
+  max-width: 90px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: rgba(16, 42, 25, 0.68);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 950;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.team-preview-marker {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #111827;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 950;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.28);
+}
+
+.team-preview-marker.opponent {
+  background: #dc2626;
+}
+
+.team-preview-marker.ball {
+  width: 24px;
+  height: 24px;
+  background: #facc15;
+  border-color: #102a19;
+}
+
+.team-preview-playback,
+.team-preview-frame-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.team-preview-playback button,
+.team-preview-frame-list button,
+.team-preview-tactic-list button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e8f5e9;
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.team-preview-playback button:hover:not(:disabled),
+.team-preview-frame-list button:hover:not(:disabled),
+.team-preview-tactic-list button:hover:not(:disabled) {
+  border-color: rgba(92, 203, 132, 0.58);
+  background: rgba(92, 203, 132, 0.14);
+}
+
+.team-preview-playback button:active:not(:disabled),
+.team-preview-frame-list button:active:not(:disabled),
+.team-preview-tactic-list button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.team-preview-playback button:disabled,
+.team-preview-frame-list button:disabled,
+.team-preview-tactic-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.team-preview-playback button.active,
+.team-preview-frame-list button.active,
+.team-preview-tactic-list button.active {
+  border-color: rgba(92, 203, 132, 0.82);
+  background: #5ccb84;
+  color: #07100c;
+}
+
+.team-preview-frame-list {
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.team-preview-tactic-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.team-preview-tactic-list button {
+  display: block;
+  min-height: auto;
+  border: 1px solid rgba(232, 245, 233, 0.12);
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  text-align: left;
+  text-transform: none;
+}
+
+.team-preview-tactic-list strong,
+.team-preview-tactic-list span {
+  display: block;
+}
+
+.team-preview-tactic-list strong {
+  color: #f3fbf5;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.team-preview-tactic-list span {
+  margin-top: 4px;
+  color: rgba(232, 245, 233, 0.64);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 /* mode switch (Sign in / Sign up / Forgot) synced with auth button language */
@@ -4855,4 +5303,130 @@ textarea {
   .tactical-pitch {
     max-width: 100%;
   }
+}
+
+/* Invite member modal: compact, balanced, and readable. */
+.auth-screen-card.member-invite-modal {
+  width: min(420px, calc(100vw - 32px));
+  gap: 16px;
+  padding: 0 18px 18px;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+.member-invite-modal .panel-heading {
+  margin: 0 -18px 2px;
+  padding: 14px 18px;
+}
+
+.member-invite-modal .panel-heading span {
+  color: #07100c;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+
+.member-invite-modal .panel-heading button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  background: rgba(7, 16, 12, 0.18);
+  color: #07100c;
+}
+
+.member-invite-modal .profile-field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.member-invite-modal .profile-field > span {
+  color: rgba(232, 245, 233, 0.74);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.member-invite-modal .profile-field input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 46px;
+  border: 1px solid rgba(92, 203, 132, 0.42);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f3fbf5;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 850;
+  outline: none;
+}
+
+.member-invite-modal .profile-field input::placeholder {
+  color: rgba(232, 245, 233, 0.42);
+}
+
+.member-invite-modal .profile-field input:focus {
+  border-color: #7fe0a3;
+  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.2);
+}
+
+.member-invite-modal > button[type="submit"] {
+  width: 100%;
+  margin-inline: 0;
+  min-height: 46px;
+  border-radius: 16px;
+  background: #5ccb84;
+  color: #07100c;
+  font-size: 13px;
+}
+
+.member-delete-confirm-modal {
+  width: min(420px, calc(100vw - 32px));
+  gap: 14px;
+  padding: 0 18px 18px;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+.member-delete-confirm-modal .panel-heading {
+  margin: 0 -18px 2px;
+  padding: 14px 18px;
+}
+
+.member-delete-confirm-modal > strong {
+  display: block;
+  border: 1px solid rgba(232, 245, 233, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f3fbf5;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.confirm-actions button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e8f5e9;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.confirm-actions button.danger {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
 }

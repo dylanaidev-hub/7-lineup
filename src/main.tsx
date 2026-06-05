@@ -84,6 +84,7 @@ type TacticalStore = {
 type PitchSize = 5 | 7 | 11 | "custom";
 type Language = "vi" | "en";
 type AppTab = "lineup" | "tactics" | "profile" | "locker" | "team";
+type TeamDetailTab = "members" | "tactics";
 type FormationKey =
   | "1-2-1"
   | "2-1-1"
@@ -137,11 +138,14 @@ type SavedTacticsState = {
 type SavedLineupRecord = {
   id: string;
   user_id: string;
+  team_id: string | null;
   name: string;
   format: string;
   players_data: StoredLineupState | SavedTacticsState;
   created_at: string;
 };
+
+type SaveRequestKind = "lineup" | "tactics";
 
 type ProfileRecord = {
   id: string;
@@ -212,6 +216,12 @@ type TeamInvitationDisplay = TeamInvitationRecord & {
   teamName: string;
 };
 
+type MemberRemovalNotice = {
+  id: string;
+  teamName: string;
+  createdAt: number;
+};
+
 const lineupStorageKey = "lineup-football-default-state-v1";
 
 const pitchSizes: PitchSize[] = [5, 7, 11];
@@ -244,6 +254,8 @@ const teamColorPalette = [
 ];
 
 const memberPositions: TeamMemberPosition[] = ["GK", "CB", "LB", "RB", "LWB", "RWB", "DM", "CM", "AM", "LW", "RW", "ST", "DF", "MF", "FW"];
+
+const getShortMemberId = (userId?: string | null) => (userId ? userId.replaceAll("-", "").slice(0, 10).toUpperCase() : "");
 
 const parseProfilePositions = (value?: string | null): TeamMemberPosition[] =>
   (value ?? "")
@@ -390,6 +402,7 @@ type AppCopy = {
   downloadQr: string;
   teamQrTitle: string;
   members: string;
+  teamTacticsTab: string;
   emptyLocker: string;
   addFirstPlayer: string;
   addMember: string;
@@ -410,10 +423,19 @@ type AppCopy = {
   playerNickname: string;
   teamOwnerTag: string;
   removedFromTeam: string;
+  confirmRemoveMemberTitle: string;
+  confirmRemoveMemberMessage: string;
+  confirmRemoveMemberAction: string;
+  memberRemovedNotification: string;
   lockerTitle: string;
   saveCurrentLineup: string;
   saveTacticsBoard: string;
   savedLineups: string;
+  teamSavedLineups: string;
+  saveDestinationTitle: string;
+  saveToPersonalLocker: string;
+  saveToTeamQuestion: string;
+  saveToThisTeam: string;
   lineupName: string;
   avatarUrl: string;
   updateProfile: string;
@@ -469,7 +491,7 @@ const copyByLanguage = {
   vi: {
     lineupTab: "Đội hình",
     tacticsTab: "Bảng chiến thuật động",
-    lockerTab: "Phòng thay đồ",
+    lockerTab: "Chiến thuật của tôi",
     squadEditor: "Chỉnh đội hình",
     subs: "dự bị",
     starterPlaceholder: "Đá chính",
@@ -533,7 +555,7 @@ const copyByLanguage = {
     signOut: "Đăng xuất",
     googleSignIn: "Đăng nhập Google",
     profileMenu: "Hồ sơ",
-    lockerMenu: "Phòng thay đồ",
+    lockerMenu: "Chiến thuật của tôi",
     teamMenu: "Đội bóng",
     teamTitle: "Đội bóng của bạn",
     teamSubtitle: "Định hình thương hiệu đội bóng phong trào của bạn.",
@@ -569,6 +591,7 @@ const copyByLanguage = {
     downloadQr: "Download QR",
     teamQrTitle: "Mã QR mời vào đội",
     members: "Thành viên",
+    teamTacticsTab: "Chiến thuật đội",
     emptyLocker: "Phòng thay đồ đang trống! Hãy thêm đồng đội để bắt đầu chiến thuật.",
     addFirstPlayer: "Thêm cầu thủ đầu tiên",
     addMember: "Thêm thành viên",
@@ -589,10 +612,19 @@ const copyByLanguage = {
     playerNickname: "Tên/Biệt danh",
     teamOwnerTag: "Chủ đội bóng",
     removedFromTeam: "Bạn đã bị chủ đội mời ra khỏi đội bóng.",
-    lockerTitle: "Phòng thay đồ",
+    confirmRemoveMemberTitle: "Xác nhận xoá thành viên",
+    confirmRemoveMemberMessage: "Bạn có chắc muốn xoá thành viên này khỏi đội bóng không?",
+    confirmRemoveMemberAction: "Xoá thành viên",
+    memberRemovedNotification: "Bạn đã bị xoá khỏi đội bóng",
+    lockerTitle: "Chiến thuật của tôi",
     saveCurrentLineup: "Lưu đội hình hiện tại",
     saveTacticsBoard: "Lưu bảng chiến thuật",
     savedLineups: "Đội hình đã lưu",
+    teamSavedLineups: "Đội hình/chiến thuật của đội",
+    saveDestinationTitle: "Lưu vào đâu?",
+    saveToPersonalLocker: "Phòng thay đồ cá nhân",
+    saveToTeamQuestion: "Bạn có muốn lưu về đội bóng đang sở hữu không?",
+    saveToThisTeam: "Lưu vào đội này",
     lineupName: "Tên đội hình",
     avatarUrl: "URL ảnh đại diện",
     updateProfile: "Lưu hồ sơ",
@@ -751,6 +783,7 @@ const copyByLanguage = {
     downloadQr: "Download QR",
     teamQrTitle: "Team invite QR",
     members: "Members",
+    teamTacticsTab: "Team tactics",
     emptyLocker: "The locker room is empty! Add teammates to start planning tactics.",
     addFirstPlayer: "Add First Player",
     addMember: "Add Member",
@@ -771,10 +804,19 @@ const copyByLanguage = {
     playerNickname: "Name/Nickname",
     teamOwnerTag: "Team owner",
     removedFromTeam: "The team owner has removed you from this team.",
+    confirmRemoveMemberTitle: "Remove member?",
+    confirmRemoveMemberMessage: "Are you sure you want to remove this member from the team?",
+    confirmRemoveMemberAction: "Remove member",
+    memberRemovedNotification: "You were removed from the team",
     lockerTitle: "Locker Room",
     saveCurrentLineup: "Save current line-up",
     saveTacticsBoard: "Save tactics board",
     savedLineups: "Saved line-ups",
+    teamSavedLineups: "Team line-ups & tactics",
+    saveDestinationTitle: "Where do you want to save?",
+    saveToPersonalLocker: "Personal locker room",
+    saveToTeamQuestion: "Do you want to save this to a team you own?",
+    saveToThisTeam: "Save to this team",
     lineupName: "Line-up name",
     avatarUrl: "Avatar URL",
     updateProfile: "Save profile",
@@ -838,6 +880,7 @@ const localizeError = (message: string | undefined, copy: AppCopy): string => {
   if (!message) return copy.unexpectedError;
   const lower = message.toLowerCase();
   if (lower.includes("could not find the table") || message.includes("PGRST205")) return copy.databaseNotReady;
+  if (lower.includes("team_id") && (lower.includes("column") || lower.includes("schema cache"))) return copy.databaseNotReady;
   if (lower.includes("invalid login credentials")) return copy.invalidCredentials;
   if (lower.includes("email not confirmed")) return copy.emailNotConfirmed;
   if (lower.includes("already registered") || lower.includes("already been registered")) return copy.emailAlreadyRegistered;
@@ -1594,9 +1637,27 @@ const getSharedLineupFromUrl = () => {
 
 const getInitialAppTab = (): AppTab => {
   const params = new URLSearchParams(window.location.search);
+  if (params.get("tab") === "profile") return "profile";
   if (params.get("tab") === "locker") return "locker";
   if (params.get("tab") === "team" || getTeamIdFromPath()) return "team";
   return params.get("tab") === "tactics" || params.has("tactics") ? "tactics" : "lineup";
+};
+
+const getPitchSizeFromUrl = (): PitchSize | null => {
+  const value = new URLSearchParams(window.location.search).get("pitch");
+  if (value === "custom") return "custom";
+  const numericValue = Number(value);
+  return isPitchSize(numericValue) ? numericValue : null;
+};
+
+const hasAppRoute = () => {
+  const params = new URLSearchParams(window.location.search);
+  return (
+    Boolean(params.get("lineup") || params.get("tab") || params.has("tactics")) ||
+    Boolean(getTeamIdFromPath()) ||
+    window.location.hash.includes("type=recovery") ||
+    window.location.hash.includes("error")
+  );
 };
 
 const getTeamIdFromPath = () => {
@@ -2038,11 +2099,12 @@ type LockerCategory = "all" | "5" | "7" | "11" | "custom" | "tactics";
 
 function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const { user, isAuthLoading, signOut, isPasswordRecovery, authHashError, clearPasswordRecovery } = useAuth();
+  const shortMemberId = getShortMemberId(user?.id);
   const isRecoveryExpiryError = Boolean(
     authHashError && /otp|recovery|expired|invalid/i.test(`${authHashError.code} ${authHashError.description}`),
   );
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
-  const initialPitchSize = sharedLineup?.pitchSize ?? 7;
+  const initialPitchSize = sharedLineup?.pitchSize ?? getPitchSizeFromUrl() ?? 7;
   const initialFormation = sharedLineup?.formation ?? "2-3-1";
   const initialCustomCount = sharedLineup ? clampCustomCount(sharedLineup.customCount) : 0;
   const initialPlayers = sharedLineup
@@ -2131,6 +2193,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [teamSearch, setTeamSearch] = useState("");
   const [isTeamFormOpen, setIsTeamFormOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [teamDetailTab, setTeamDetailTab] = useState<TeamDetailTab>("members");
   const [qrTeam, setQrTeam] = useState<TeamRecord | null>(null);
   const [qrInviteUserId, setQrInviteUserId] = useState("");
   const [isMemberInviteOpen, setIsMemberInviteOpen] = useState(false);
@@ -2142,11 +2205,19 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [teamMembersByTeam, setTeamMembersByTeam] = useState<Record<string, TeamMemberRecord[]>>({});
   const [memberProfilesById, setMemberProfilesById] = useState<Record<string, MemberProfileRecord>>({});
   const [teamInvitations, setTeamInvitations] = useState<TeamInvitationDisplay[]>([]);
+  const [memberRemovalNotices, setMemberRemovalNotices] = useState<MemberRemovalNotice[]>([]);
   const [updatingInvitationId, setUpdatingInvitationId] = useState<string | null>(null);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
+  const [memberPendingDelete, setMemberPendingDelete] = useState<TeamMemberRecord | null>(null);
   const [lineupName, setLineupName] = useState("");
   const [savedLineups, setSavedLineups] = useState<SavedLineupRecord[]>([]);
+  const [pendingSaveRequest, setPendingSaveRequest] = useState<SaveRequestKind | null>(null);
+  const [previewLineup, setPreviewLineup] = useState<SavedLineupRecord | null>(null);
+  const [previewTacticId, setPreviewTacticId] = useState<string | null>(null);
+  const [previewFrameIndex, setPreviewFrameIndex] = useState(0);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [lockerCategory, setLockerCategory] = useState<LockerCategory>("all");
   const [lockerStatus, setLockerStatus] = useState("");
   const [isLockerLoading, setIsLockerLoading] = useState(false);
@@ -2185,7 +2256,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     { value: "tactics", label: copy.tacticsTab },
   ];
   const filteredSavedLineups =
-    lockerCategory === "all" ? savedLineups : savedLineups.filter((lineup) => lineup.format === lockerCategory);
+    lockerCategory === "all"
+      ? savedLineups.filter((lineup) => !lineup.team_id)
+      : savedLineups.filter((lineup) => !lineup.team_id && lineup.format === lockerCategory);
   const normalizedTeamSearch = teamSearch.trim().toLowerCase();
   const filteredTeams = teams.filter(
     (item) =>
@@ -2196,6 +2269,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const selectedTeam = selectedTeamId ? teams.find((item) => item.id === selectedTeamId) ?? null : null;
   const selectedTeamMembers = selectedTeam ? teamMembersByTeam[selectedTeam.id] ?? [] : [];
   const selectedTeamIsOwner = Boolean(selectedTeam && user && selectedTeam.user_id === user.id);
+  const ownedTeams = user ? teams.filter((item) => item.user_id === user.id) : [];
+  const selectedTeamLineups = selectedTeam
+    ? savedLineups.filter((lineup) => lineup.team_id === selectedTeam.id)
+    : [];
   const selectedTeamHasCurrentUser = Boolean(
     selectedTeam && user && (selectedTeam.user_id === user.id || selectedTeamMembers.some((member) => member.user_id === user.id)),
   );
@@ -2254,32 +2331,78 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         ...selectedTeamMembers.filter((member) => member.user_id !== selectedTeam.user_id),
       ]
     : [];
+  const teamDetailTabs: { value: TeamDetailTab; label: string; count: number }[] = [
+    { value: "members", label: copy.members, count: selectedTeamDisplayMembers.length },
+    { value: "tactics", label: copy.teamTacticsTab, count: selectedTeamLineups.length },
+  ];
+  const notificationCount = teamInvitations.length + memberRemovalNotices.length;
 
   useEffect(() => {
     document.title = "doihinhsanco";
   }, []);
 
-  useEffect(() => {
-    const syncTeamRoute = () => {
-      const params = new URLSearchParams(window.location.search);
-      const pathTeamId = getTeamIdFromPath();
-      const routeTeamId = pathTeamId ?? (params.get("tab") === "team" ? params.get("team") : null);
-      if (!routeTeamId && params.get("tab") !== "team") {
-        setSelectedTeamId(null);
-        setIsJoinTeamPromptOpen(false);
-        return;
+  const writeAppRoute = (nextTab: AppTab, options: { nextPitchSize?: PitchSize; teamId?: string | null; replace?: boolean } = {}) => {
+    const url = new URL(window.location.href);
+    const nextPathname = getTeamIdFromPath() ? "/" : url.pathname;
+    url.pathname = nextPathname;
+    url.searchParams.delete("lineup");
+    url.searchParams.delete("tactics");
+    url.searchParams.delete("team");
+    url.searchParams.set("tab", nextTab);
+
+    if (nextTab === "lineup") {
+      url.searchParams.set("pitch", String(options.nextPitchSize ?? pitchSize));
+    } else {
+      url.searchParams.delete("pitch");
+    }
+
+    if (nextTab === "team" && options.teamId) {
+      url.searchParams.set("team", options.teamId);
+    }
+
+    const nextUrl = url.toString();
+    if (nextUrl === window.location.href) return;
+    if (options.replace) {
+      window.history.replaceState({ tab: nextTab }, "", nextUrl);
+    } else {
+      window.history.pushState({ tab: nextTab }, "", nextUrl);
+    }
+  };
+
+  const syncRouteFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const pathTeamId = getTeamIdFromPath();
+    const nextTab = getInitialAppTab();
+    const routeTeamId = pathTeamId ?? (params.get("tab") === "team" ? params.get("team") : null);
+    const routePitchSize = getPitchSizeFromUrl();
+
+    setActiveTab(nextTab);
+    if (nextTab === "lineup") {
+      setLastWorkspaceTab("lineup");
+      if (routePitchSize && routePitchSize !== pitchSize) {
+        applyPitchSize(routePitchSize, { updateUrl: false });
       }
-      setActiveTab("team");
+    }
+    if (nextTab === "tactics") {
+      setLastWorkspaceTab("tactics");
+    }
+    if (nextTab === "team") {
       setSelectedTeamId(routeTeamId);
       setIsJoinTeamPromptOpen(Boolean(pathTeamId));
       setIsMemberInviteOpen(false);
       setMemberInviteUserId("");
-    };
+    } else {
+      setSelectedTeamId(null);
+      setIsJoinTeamPromptOpen(false);
+    }
+    setIsLineupMenuOpen(false);
+    setIsUserMenuOpen(false);
+  };
 
-    syncTeamRoute();
-    window.addEventListener("popstate", syncTeamRoute);
-    return () => window.removeEventListener("popstate", syncTeamRoute);
-  }, []);
+  useEffect(() => {
+    window.addEventListener("popstate", syncRouteFromUrl);
+    return () => window.removeEventListener("popstate", syncRouteFromUrl);
+  }, [pitchSize, savedPlayersByPitch, savedFormationByPitch, savedCustomCountByPitch, savedOpponentMarkersByPitch, savedDrawLinesByPitch]);
 
   useEffect(() => {
     if (selectedTeamHasCurrentUser) {
@@ -2287,13 +2410,19 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     }
   }, [selectedTeamHasCurrentUser]);
 
-  const switchAppTab = (nextTab: AppTab) => {
+  const switchAppTab = (nextTab: AppTab, options: { nextPitchSize?: PitchSize; teamId?: string | null; updateUrl?: boolean } = {}) => {
     if (nextTab === "lineup" || nextTab === "tactics") {
       setLastWorkspaceTab(nextTab);
     }
     setActiveTab(nextTab);
+    if (nextTab === "team" && !options.teamId) {
+      setSelectedTeamId(null);
+    }
     setIsLineupMenuOpen(false);
     setIsUserMenuOpen(false);
+    if (options.updateUrl !== false) {
+      writeAppRoute(nextTab, { nextPitchSize: options.nextPitchSize, teamId: options.teamId });
+    }
   };
 
   useEffect(() => {
@@ -2486,7 +2615,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setIsLockerLoading(true);
     const { data, error } = await supabase
       .from("lineups")
-      .select("id,user_id,name,format,players_data,created_at")
+      .select("id,user_id,team_id,name,format,players_data,created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -2636,6 +2765,43 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         type: "broadcast",
         event: "team_invitation_changed",
         payload: { userId, at: Date.now() },
+      });
+      await realtimeClient.removeChannel(channel);
+    });
+  };
+
+  const addMemberRemovalNotice = (teamId: string, memberId: string, teamName?: string | null) => {
+    const noticeId = `${teamId}-${memberId}`;
+    setMemberRemovalNotices((current) =>
+      current.some((notice) => notice.id === noticeId)
+        ? current
+        : [
+            {
+              id: noticeId,
+              teamName: teamName || teams.find((item) => item.id === teamId)?.name || teamId.slice(0, 8).toUpperCase(),
+              createdAt: Date.now(),
+            },
+            ...current,
+          ],
+    );
+  };
+
+  const notifyMemberRemoved = async (removedUserId: string, member: TeamMemberRecord, nextTeam: TeamRecord) => {
+    if (!supabase) return;
+    const realtimeClient = supabase;
+    const channel = realtimeClient.channel(`member-removal-sync-${removedUserId}`);
+    await channel.subscribe(async (status) => {
+      if (status !== "SUBSCRIBED") return;
+      await channel.send({
+        type: "broadcast",
+        event: "member_removed",
+        payload: {
+          userId: removedUserId,
+          teamId: nextTeam.id,
+          teamName: nextTeam.name,
+          memberId: member.id,
+          at: Date.now(),
+        },
       });
       await realtimeClient.removeChannel(channel);
     });
@@ -2792,11 +2958,22 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   useEffect(() => {
-    fetchSavedLineups();
-    fetchProfile();
-    fetchTeams();
-    fetchTeamInvitations();
-  }, [user?.id]);
+    if (!user) {
+      fetchSavedLineups();
+      fetchProfile();
+      fetchTeams();
+      fetchTeamInvitations();
+      return;
+    }
+
+    void (async () => {
+      await ensureCurrentUserProfile();
+      fetchSavedLineups();
+      fetchProfile();
+      fetchTeams();
+      fetchTeamInvitations();
+    })();
+  }, [user?.id, teams]);
 
   useEffect(() => {
     if (!supabase || !user) return;
@@ -2816,6 +2993,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         }
 
         if (eventType === "DELETE") {
+          if (previousMember?.user_id === user.id && previousMember.team_id) {
+            addMemberRemovalNotice(previousMember.team_id, changedMember.id);
+            showToast(copy.removedFromTeam, "error");
+          }
           setTeamMembersByTeam((current) =>
             Object.fromEntries(
               Object.entries(current).map(([teamId, members]) => [
@@ -2852,7 +3033,26 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     return () => {
       realtimeClient.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, teams]);
+
+  useEffect(() => {
+    if (!supabase || !user) return;
+    const realtimeClient = supabase;
+    const channel = realtimeClient
+      .channel(`member-removal-sync-${user.id}`)
+      .on("broadcast", { event: "member_removed" }, ({ payload }) => {
+        const noticePayload = payload as Partial<{ userId: string; teamId: string; teamName: string; memberId: string }>;
+        if (noticePayload.userId !== user.id || !noticePayload.teamId || !noticePayload.memberId) return;
+        addMemberRemovalNotice(noticePayload.teamId, noticePayload.memberId, noticePayload.teamName);
+        showToast(copy.removedFromTeam, "error");
+        void fetchTeams();
+      })
+      .subscribe();
+
+    return () => {
+      realtimeClient.removeChannel(channel);
+    };
+  }, [user?.id, teams]);
 
   useEffect(() => {
     if (!supabase || !user) return;
@@ -3238,12 +3438,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
   const openTeamDetail = (teamId: string) => {
     setSelectedTeamId(teamId);
+    setTeamDetailTab("members");
     setIsMemberInviteOpen(false);
     setMemberInviteUserId("");
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", "team");
-    url.searchParams.set("team", teamId);
-    window.history.pushState({ teamId }, "", url.toString());
+    writeAppRoute("team", { teamId });
   };
 
   const buildTeamPayload = (overrides?: { logo_url?: string | null }) => ({
@@ -3380,11 +3578,33 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const addTeamMemberByUserId = async (nextTeam: TeamRecord, invitedUserId: string) => {
     if (!supabase || !user) return;
     if (nextTeam.user_id !== user.id) return;
-    const targetUserId = invitedUserId.trim();
-    if (!targetUserId) return;
+    const rawUserId = invitedUserId.trim();
+    if (!rawUserId) return;
+
+    let targetUserId = rawUserId;
     if (!isValidUuid(targetUserId)) {
-      showToast(copy.invalidUserId, "error");
-      return;
+      const normalizedShortId = rawUserId.replaceAll("-", "").trim().toLowerCase();
+      if (normalizedShortId.length < 6 || normalizedShortId.length > 32 || /[^a-f0-9]/.test(normalizedShortId)) {
+        showToast(copy.invalidUserId, "error");
+        return;
+      }
+
+      const { data: resolvedUserId, error: lookupError } = await supabase.rpc("resolve_profile_short_id", {
+        p_short_id: normalizedShortId,
+      });
+
+      if (lookupError) {
+        console.error("lookup short member id error:", lookupError);
+        showToast(copy.databaseNotReady, "error");
+        return;
+      }
+
+      if (!resolvedUserId || typeof resolvedUserId !== "string") {
+        showToast(copy.invalidUserId, "error");
+        return;
+      }
+
+      targetUserId = resolvedUserId;
     }
     const existingMembers = teamMembersByTeam[nextTeam.id] ?? [];
     const nextNumber =
@@ -3564,7 +3784,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       ...current,
       [member.team_id]: (current[member.team_id] ?? []).filter((item) => item.id !== member.id),
     }));
+    setMemberPendingDelete(null);
     void notifyTeamMembersChanged(member.team_id);
+    void notifyMemberRemoved(member.user_id, member, memberTeam);
   };
 
   const getMiniLineupPoint = (member: TeamMemberDisplay, allMembers: TeamMemberDisplay[]) => {
@@ -3635,7 +3857,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     }
   };
 
-  const saveCurrentLineupToSupabase = async () => {
+  const saveCurrentLineupToSupabase = async (teamId: string | null = null) => {
     if (!supabase) {
       setLockerStatus(copy.supabaseMissing);
       showToast(copy.supabaseMissing, "error");
@@ -3668,6 +3890,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
     const { error } = await supabase.from("lineups").insert({
       user_id: user.id,
+      team_id: teamId,
       name: displayName,
       format: String(pitchSize),
       players_data: getCurrentLineupState({ thumbnailDataUrl, savedAt }),
@@ -3682,12 +3905,13 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       setLockerCategory(String(pitchSize) as LockerCategory);
       setLockerStatus(copy.saved);
       showToast(copy.saved);
+      setPendingSaveRequest(null);
       await fetchSavedLineups();
     }
     setIsLockerLoading(false);
   };
 
-  const saveTacticsBoardToSupabase = async () => {
+  const saveTacticsBoardToSupabase = async (teamId: string | null = null) => {
     if (!supabase) {
       setLockerStatus(copy.supabaseMissing);
       showToast(copy.supabaseMissing, "error");
@@ -3719,6 +3943,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
     const { error } = await supabase.from("lineups").insert({
       user_id: user.id,
+      team_id: teamId,
       name: displayName,
       format: "tactics",
       players_data: {
@@ -3740,6 +3965,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       setLockerCategory("tactics");
       setLockerStatus(copy.saved);
       showToast(copy.saved);
+      setPendingSaveRequest(null);
       await fetchSavedLineups();
     }
     setIsLockerLoading(false);
@@ -3756,7 +3982,11 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       openAuthForSave();
       return;
     }
-    void saveCurrentLineupToSupabase();
+    if (ownedTeams.length > 0) {
+      setPendingSaveRequest("lineup");
+      return;
+    }
+    void saveCurrentLineupToSupabase(null);
   };
 
   const handleSaveTacticsBoard = () => {
@@ -3764,7 +3994,19 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       openAuthForSave();
       return;
     }
-    void saveTacticsBoardToSupabase();
+    if (ownedTeams.length > 0) {
+      setPendingSaveRequest("tactics");
+      return;
+    }
+    void saveTacticsBoardToSupabase(null);
+  };
+
+  const confirmSaveDestination = (teamId: string | null) => {
+    if (pendingSaveRequest === "lineup") {
+      void saveCurrentLineupToSupabase(teamId);
+    } else if (pendingSaveRequest === "tactics") {
+      void saveTacticsBoardToSupabase(teamId);
+    }
   };
 
   const loadSavedLineup = (lineup: SavedLineupRecord) => {
@@ -3783,6 +4025,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       });
       setActiveTab("tactics");
       setLastWorkspaceTab("tactics");
+      writeAppRoute("tactics");
       setLockerStatus("");
       return;
     }
@@ -3808,6 +4051,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setRedoDrawLines([]);
     setIsDrawMode(false);
     setActiveTab("lineup");
+    writeAppRoute("lineup", { nextPitchSize: lineupData.pitchSize });
     setLockerStatus("");
   };
 
@@ -3883,6 +4127,76 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const lineupData = data && (data as SavedTacticsState).kind !== "tactics" ? (data as StoredLineupState) : null;
     const savedAt = typeof lineupData?.savedAt === "string" ? lineupData.savedAt : lineup.created_at;
     return new Date(savedAt).toLocaleString();
+  };
+
+  const getPreviewLineupData = (lineup: SavedLineupRecord | null) => {
+    if (!lineup) return null;
+    const data = lineup.players_data;
+    if (!data || (data as SavedTacticsState).kind === "tactics") return null;
+    const lineupData = data as StoredLineupState;
+    if (!isPitchSize(lineupData.pitchSize) || !isFormationKey(lineupData.formation) || !Array.isArray(lineupData.players)) return null;
+    return lineupData;
+  };
+
+  const getPreviewTacticsData = (lineup: SavedLineupRecord | null) => {
+    if (!lineup) return null;
+    const data = lineup.players_data;
+    if (!data || (data as SavedTacticsState).kind !== "tactics") return null;
+    return data as SavedTacticsState;
+  };
+
+  const previewTacticsData = getPreviewTacticsData(previewLineup);
+  const previewTactics = previewTacticsData?.tactics ?? [];
+  const activePreviewTactic = previewTactics.find((tactic) => tactic.id === previewTacticId) ?? previewTactics[0] ?? null;
+  const activePreviewFrames = activePreviewTactic?.frames ?? [];
+  const previewPlaybackFrames = activePreviewFrames.length > 0 ? [createInitialTacticalFrame(), ...activePreviewFrames] : [];
+  const activePreviewFrame =
+    previewPlaybackFrames[Math.min(Math.max(previewFrameIndex, 0), Math.max(previewPlaybackFrames.length - 1, 0))] ?? [];
+
+  useEffect(() => {
+    const tacticsData = getPreviewTacticsData(previewLineup);
+    const firstTactic = tacticsData?.tactics[0] ?? null;
+    setPreviewTacticId(firstTactic?.id ?? null);
+    setPreviewFrameIndex(0);
+    setIsPreviewPlaying(false);
+    setIsPreviewLooping(false);
+  }, [previewLineup?.id]);
+
+  useEffect(() => {
+    if (!isPreviewPlaying || previewPlaybackFrames.length <= 1) return;
+
+    const intervalId = window.setInterval(() => {
+      setPreviewFrameIndex((current) => {
+        const nextIndex = current + 1;
+        if (nextIndex < previewPlaybackFrames.length) return nextIndex;
+        if (isPreviewLooping) return 0;
+        setIsPreviewPlaying(false);
+        return previewPlaybackFrames.length - 1;
+      });
+    }, 900);
+
+    return () => window.clearInterval(intervalId);
+  }, [isPreviewPlaying, isPreviewLooping, activePreviewTactic?.id, previewPlaybackFrames.length]);
+
+  const playPreviewTactic = () => {
+    if (activePreviewFrames.length === 0) return;
+    setPreviewFrameIndex(0);
+    setIsPreviewPlaying(true);
+  };
+
+  const pausePreviewTactic = () => {
+    setIsPreviewPlaying(false);
+  };
+
+  const stopPreviewTactic = () => {
+    setIsPreviewPlaying(false);
+    setPreviewFrameIndex(0);
+  };
+
+  const selectPreviewTactic = (tacticId: string) => {
+    setPreviewTacticId(tacticId);
+    setPreviewFrameIndex(0);
+    setIsPreviewPlaying(false);
   };
 
   const getPitchPointerPosition = (event: ReactPointerEvent<Element>, options: { clamp?: boolean } = {}) => {
@@ -4153,12 +4467,16 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     }
   };
 
-  const applyPitchSize = (nextPitchSize: PitchSize) => {
+  const applyPitchSize = (nextPitchSize: PitchSize, options: { updateUrl?: boolean } = {}) => {
     setSavedPlayersByPitch((current) => ({ ...current, [pitchSize]: players }));
     setSavedFormationByPitch((current) => ({ ...current, [pitchSize]: formation }));
     setSavedCustomCountByPitch((current) => ({ ...current, [pitchSize]: customCount }));
     setSavedOpponentMarkersByPitch((current) => ({ ...current, [pitchSize]: opponentMarkers }));
     setSavedDrawLinesByPitch((current) => ({ ...current, [pitchSize]: drawLines }));
+
+    if (options.updateUrl !== false) {
+      writeAppRoute("lineup", { nextPitchSize });
+    }
 
     const nextFormation = savedFormationByPitch[nextPitchSize] ?? getDefaultFormation(nextPitchSize);
     const nextCustomCount = savedCustomCountByPitch[nextPitchSize] ?? (nextPitchSize === "custom" ? 5 : customCount);
@@ -4177,6 +4495,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
   const applyCustomCount = (nextCount: number) => {
     const count = clampCustomCount(nextCount);
+    writeAppRoute("lineup", { nextPitchSize: "custom" });
     setCustomCount(count);
     setPitchSize("custom");
     setFormation("custom");
@@ -4427,6 +4746,11 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const isWorkspaceTab = activeTab === "lineup" || activeTab === "tactics";
+  const signOutToLanding = async () => {
+    await signOut();
+    window.history.pushState({}, "", `${window.location.origin}${window.location.pathname}`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
 
   return (
     <main className={`match-bg ${isWorkspaceTab ? "workspace-page" : "scroll-page"} min-h-screen p-4 text-slate-900 antialiased sm:p-6 lg:p-10`}>
@@ -4447,7 +4771,23 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
             </button>
           ) : (
             <div ref={userMenuRef} className="header-user-menu">
-              <span>{user.email}</span>
+              <div className="header-user-identity">
+                <span>{user.email}</span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(shortMemberId);
+                      showToast(copy.copied);
+                    } catch {
+                      window.prompt(copy.copyUserId, shortMemberId);
+                    }
+                  }}
+                  title={copy.copyUserId}
+                >
+                  ID {shortMemberId}
+                </button>
+              </div>
               <button
                 type="button"
                 className="notification-button"
@@ -4459,41 +4799,49 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 aria-expanded={isNotificationOpen}
               >
                 <Bell size={20} />
-                {teamInvitations.length > 0 ? <strong>{teamInvitations.length}</strong> : null}
+                {notificationCount > 0 ? <strong>{notificationCount}</strong> : null}
               </button>
               {isNotificationOpen ? (
                 <div className="notification-dropdown">
                   <div className="notification-title">
                     <span>Notifications</span>
-                    <strong>{teamInvitations.length}</strong>
+                    <strong>{notificationCount}</strong>
                   </div>
-                  {teamInvitations.length === 0 ? (
+                  {notificationCount === 0 ? (
                     <p>{copy.noNotifications}</p>
                   ) : (
-                    teamInvitations.map((invitation) => (
-                      <div key={invitation.id} className="notification-item">
-                        <span>{copy.invitedToTeam}</span>
-                        <strong>{invitation.teamName}</strong>
-                        <div className="notification-actions">
-                          <button
-                            type="button"
-                            onClick={() => respondToTeamInvitation(invitation, "accepted")}
-                            disabled={updatingInvitationId === invitation.id}
-                          >
-                            <Check size={13} />
-                            {copy.acceptInvite}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => respondToTeamInvitation(invitation, "declined")}
-                            disabled={updatingInvitationId === invitation.id}
-                          >
-                            <X size={13} />
-                            {copy.declineInvite}
-                          </button>
+                    <>
+                      {memberRemovalNotices.map((notice) => (
+                        <div key={notice.id} className="notification-item">
+                          <span>{copy.memberRemovedNotification}</span>
+                          <strong>{notice.teamName}</strong>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                      {teamInvitations.map((invitation) => (
+                        <div key={invitation.id} className="notification-item">
+                          <span>{copy.invitedToTeam}</span>
+                          <strong>{invitation.teamName}</strong>
+                          <div className="notification-actions">
+                            <button
+                              type="button"
+                              onClick={() => respondToTeamInvitation(invitation, "accepted")}
+                              disabled={updatingInvitationId === invitation.id}
+                            >
+                              <Check size={13} />
+                              {copy.acceptInvite}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => respondToTeamInvitation(invitation, "declined")}
+                              disabled={updatingInvitationId === invitation.id}
+                            >
+                              <X size={13} />
+                              {copy.declineInvite}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
                   )}
                 </div>
               ) : null}
@@ -4518,7 +4866,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                   <button type="button" onClick={() => switchAppTab("locker")}>
                     {copy.lockerMenu}
                   </button>
-                  <button type="button" onClick={signOut}>
+                  <button type="button" onClick={signOutToLanding}>
                     {copy.signOut}
                   </button>
                 </div>
@@ -4533,8 +4881,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
               type="button"
               className={`lineup-tab-trigger ${activeTab === "lineup" ? "active" : ""}`}
               onClick={() => {
-                setActiveTab("lineup");
-                setLastWorkspaceTab("lineup");
+                switchAppTab("lineup");
                 setIsUserMenuOpen(false);
                 setIsLineupMenuOpen((current) => !current);
               }}
@@ -4554,7 +4901,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     className={pitchSize === option.value ? "active" : ""}
                     onClick={() => {
                       applyPitchSize(option.value);
-                      switchAppTab("lineup");
+                      switchAppTab("lineup", { nextPitchSize: option.value, updateUrl: false });
                     }}
                     role="menuitem"
                   >
@@ -4772,7 +5119,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 name="team-member-user-id"
                 value={memberInviteUserId}
                 onChange={(event) => setMemberInviteUserId(event.target.value)}
-                placeholder="Nhap ID user"
+                placeholder="VD: A1B2C3D4E5"
                 autoComplete="off"
                 autoCapitalize="none"
                 spellCheck={false}
@@ -4784,6 +5131,200 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
               {copy.inviteMember}
             </button>
           </form>
+        </div>
+      ) : null}
+      {memberPendingDelete ? (
+        <div className="auth-screen">
+          <div className="auth-screen-card member-delete-confirm-modal">
+            <div className="panel-heading">
+              <span>{copy.confirmRemoveMemberTitle}</span>
+              <button type="button" onClick={() => setMemberPendingDelete(null)} disabled={deletingMemberId === memberPendingDelete.id}>
+                x
+              </button>
+            </div>
+            <p className="locker-message">
+              {copy.confirmRemoveMemberMessage}
+            </p>
+            <strong>{memberPendingDelete.nickname}</strong>
+            <div className="confirm-actions">
+              <button type="button" onClick={() => setMemberPendingDelete(null)} disabled={deletingMemberId === memberPendingDelete.id}>
+                {copy.cancel}
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => deleteTeamMember(memberPendingDelete)}
+                disabled={deletingMemberId === memberPendingDelete.id}
+              >
+                {deletingMemberId === memberPendingDelete.id ? <ButtonSpinner /> : <Trash2 size={14} />}
+                {copy.confirmRemoveMemberAction}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {pendingSaveRequest ? (
+        <div className="auth-screen">
+          <div className="auth-screen-card save-destination-modal">
+            <div className="panel-heading">
+              <span>{copy.saveDestinationTitle}</span>
+              <button type="button" onClick={() => setPendingSaveRequest(null)} disabled={isLockerLoading}>
+                x
+              </button>
+            </div>
+            <p className="locker-message">{copy.saveToTeamQuestion}</p>
+            <button type="button" className="save-destination-personal" onClick={() => confirmSaveDestination(null)} disabled={isLockerLoading}>
+              {isLockerLoading ? <ButtonSpinner /> : <Save size={15} />}
+              {copy.saveToPersonalLocker}
+            </button>
+            <div className="save-destination-team-list">
+              {ownedTeams.map((item) => (
+                <button key={item.id} type="button" onClick={() => confirmSaveDestination(item.id)} disabled={isLockerLoading}>
+                  <span className="save-destination-team-logo">
+                    {item.logo_url ? <img src={item.logo_url} alt="" /> : item.logo_icon || teamLogoIcons[0]}
+                  </span>
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>{copy.saveToThisTeam}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {previewLineup ? (
+        <div className="auth-screen">
+          <div className="auth-screen-card team-lineup-preview-modal">
+            <div className="panel-heading">
+              <span>{previewLineup.name}</span>
+              <button type="button" onClick={() => setPreviewLineup(null)}>
+                x
+              </button>
+            </div>
+            <div className="team-lineup-preview-meta">
+              <strong>{getSavedLineupFormatLabel(previewLineup)}</strong>
+              <time dateTime={previewLineup.created_at}>{getSavedLineupDateTime(previewLineup)}</time>
+            </div>
+            {getPreviewTacticsData(previewLineup) ? (
+              <div className="team-lineup-preview-content">
+                <div className="team-preview-playback">
+                  <button type="button" onClick={playPreviewTactic} disabled={activePreviewFrames.length === 0 || isPreviewPlaying}>
+                    {copy.play}
+                  </button>
+                  <button type="button" onClick={pausePreviewTactic} disabled={!isPreviewPlaying}>
+                    {copy.pause}
+                  </button>
+                  <button type="button" onClick={stopPreviewTactic} disabled={activePreviewFrames.length === 0}>
+                    {copy.stop}
+                  </button>
+                  <button
+                    type="button"
+                    className={isPreviewLooping ? "active" : ""}
+                    onClick={() => setIsPreviewLooping((current) => !current)}
+                    disabled={activePreviewFrames.length === 0}
+                  >
+                    {copy.loop}
+                  </button>
+                </div>
+                <div className="team-preview-pitch">
+                  <div className="team-preview-line team-preview-half" />
+                  <div className="team-preview-circle" />
+                  <div className="team-preview-box team-preview-box-top" />
+                  <div className="team-preview-box team-preview-box-bottom" />
+                  {activePreviewFrame
+                    .filter((marker) => marker.onPitch)
+                    .map((marker) => (
+                      <motion.span
+                        key={marker.id}
+                        className={`team-preview-marker ${marker.type === "opponent" ? "opponent" : ""} ${
+                          marker.type === "ball" ? "ball" : ""
+                        }`}
+                        initial={false}
+                        animate={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+                        transition={{ type: "spring", stiffness: 95, damping: 18, mass: 0.7 }}
+                      >
+                        {marker.type === "player" ? marker.label : null}
+                      </motion.span>
+                    ))}
+                </div>
+                <div className="team-preview-frame-list">
+                  {activePreviewFrames.map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className={previewFrameIndex === index + 1 ? "active" : ""}
+                      onClick={() => {
+                        setPreviewFrameIndex(index + 1);
+                        setIsPreviewPlaying(false);
+                      }}
+                    >
+                      {copy.frame} {index + 1}
+                    </button>
+                  ))}
+                </div>
+                <div className="team-preview-tactic-list">
+                  {getPreviewTacticsData(previewLineup)?.tactics.map((tactic, index) => (
+                    <button
+                      key={tactic.id}
+                      type="button"
+                      className={activePreviewTactic?.id === tactic.id ? "active" : ""}
+                      onClick={() => selectPreviewTactic(tactic.id)}
+                    >
+                      <strong>{getDisplayTacticName(tactic.name, index, copy)}</strong>
+                      <span>{tactic.frames.length} {copy.framesUnit}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : getPreviewLineupData(previewLineup) ? (
+              <div className="team-lineup-preview-content">
+                <div className="team-preview-pitch">
+                  <div className="team-preview-line team-preview-half" />
+                  <div className="team-preview-circle" />
+                  <div className="team-preview-box team-preview-box-top" />
+                  <div className="team-preview-box team-preview-box-bottom" />
+                  {getPreviewLineupData(previewLineup)?.drawLines.map((line) => (
+                    <svg key={line.id} className="team-preview-draw-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {line.points.length > 1 ? (
+                        <polyline
+                          points={line.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                          fill="none"
+                          stroke="#facc15"
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      ) : null}
+                    </svg>
+                  ))}
+                  {getPreviewLineupData(previewLineup)?.players
+                    .filter((player) => player.onPitch)
+                    .map((player) => (
+                      <span
+                        key={player.id}
+                        className="team-preview-player"
+                        style={{ left: `${player.x}%`, top: `${player.y}%` }}
+                      >
+                        <i>{player.id}</i>
+                        <strong>{player.starterName.trim() || `${copy.player} ${player.id}`}</strong>
+                      </span>
+                    ))}
+                  {getPreviewLineupData(previewLineup)?.opponentMarkers
+                    .filter((marker) => marker.onPitch)
+                    .map((marker) => (
+                      <span
+                        key={marker.id}
+                        className="team-preview-marker opponent"
+                        style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+                      />
+                    ))}
+                </div>
+              </div>
+            ) : (
+              <p className="locker-message">{copy.invalidLineupData}</p>
+            )}
+          </div>
         </div>
       ) : null}
       {selectedTeam && user && !selectedTeamHasCurrentUser && isJoinTeamPromptOpen ? (
@@ -4881,15 +5422,15 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
                   <div className="profile-user-id">
                     <span>{copy.userId}</span>
-                    <code>{user.id}</code>
+                    <code>{shortMemberId}</code>
                     <button
                       type="button"
                       onClick={async () => {
                         try {
-                          await navigator.clipboard.writeText(user.id);
+                          await navigator.clipboard.writeText(shortMemberId);
                           showToast(copy.copied);
                         } catch {
-                          window.prompt(copy.copyUserId, user.id);
+                          window.prompt(copy.copyUserId, shortMemberId);
                         }
                       }}
                     >
@@ -4977,63 +5518,96 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 <p className="locker-message">{copy.signIn}</p>
               ) : selectedTeam ? (
                 <div className="team-detail-view">
-                  <div className="team-detail-main">
-                    <section className="team-detail-header">
-                      <div className="team-detail-logo">
-                        {selectedTeam.logo_url ? <img src={selectedTeam.logo_url} alt="" /> : <span>{selectedTeam.logo_icon || teamLogoIcons[0]}</span>}
-                      </div>
-                      <div>
-                        <strong>{selectedTeam.name}</strong>
-                        {selectedTeam.slogan ? <span>{selectedTeam.slogan}</span> : null}
-                        <small>
-                          {selectedTeamDisplayMembers.length} {copy.totalMembers}
-                        </small>
-                      </div>
-                      <div className="team-header-actions" aria-label="Team share">
-                        <button type="button" onClick={() => copyTeamInviteLink(selectedTeam)} aria-label={copy.copyTeamLink} title={copy.copyTeamLink}>
-                          <Clipboard size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQrInviteUserId("");
-                            setQrTeam(selectedTeam);
-                          }}
-                          aria-label={copy.viewQrCode}
-                          title={copy.viewQrCode}
-                        >
-                          <Share2 size={16} />
-                        </button>
-                      </div>
-                    </section>
+                  <section className="team-detail-header">
+                    <div className="team-detail-logo">
+                      {selectedTeam.logo_url ? <img src={selectedTeam.logo_url} alt="" /> : <span>{selectedTeam.logo_icon || teamLogoIcons[0]}</span>}
+                    </div>
+                    <div>
+                      <strong>{selectedTeam.name}</strong>
+                      {selectedTeam.slogan ? <span>{selectedTeam.slogan}</span> : null}
+                      <small>
+                        {selectedTeamDisplayMembers.length} {copy.totalMembers}
+                      </small>
+                    </div>
+                    <div className="team-header-actions" aria-label="Team share">
+                      <button type="button" onClick={() => copyTeamInviteLink(selectedTeam)} aria-label={copy.copyTeamLink} title={copy.copyTeamLink}>
+                        <Clipboard size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQrInviteUserId("");
+                          setQrTeam(selectedTeam);
+                        }}
+                        aria-label={copy.viewQrCode}
+                        title={copy.viewQrCode}
+                      >
+                        <Share2 size={16} />
+                      </button>
+                    </div>
+                  </section>
 
-                    <section className="mini-lineup-panel">
-                      <div className="team-section-title">
-                        <span>{copy.miniLineup}</span>
-                      </div>
-                      <div className="mini-lineup-pitch">
-                        <div className="mini-center-circle" />
-                        <div className="mini-half-line" />
-                        <div className="mini-box mini-box-top" />
-                        <div className="mini-box mini-box-bottom" />
-                        {selectedTeamDisplayMembers.slice(0, 11).map((member) => {
-                          const point = getMiniLineupPoint(member, selectedTeamDisplayMembers);
-                          return (
-                            <span
-                              key={member.id}
-                              className={`mini-member-dot position-${member.position.toLowerCase()}`}
-                              style={{ left: `${point.x}%`, top: `${point.y}%`, backgroundColor: selectedTeam.shirt_color }}
-                              title={member.nickname}
-                            >
-                              {member.jersey_number}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </section>
-
+                  <div className="team-detail-tabs" role="tablist" aria-label={copy.teamDetails}>
+                    {teamDetailTabs.map((tab) => (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        role="tab"
+                        aria-selected={teamDetailTab === tab.value}
+                        className={teamDetailTab === tab.value ? "active" : ""}
+                        onClick={() => setTeamDetailTab(tab.value)}
+                      >
+                        <span>{tab.label}</span>
+                        <strong>{tab.count}</strong>
+                      </button>
+                    ))}
                   </div>
 
+                  {teamDetailTab === "tactics" ? (
+                    <section className="team-lineups-panel">
+                      <div className="team-section-title">
+                        <span>{copy.teamSavedLineups}</span>
+                        <strong>{selectedTeamLineups.length}</strong>
+                      </div>
+                      <div className="saved-lineup-list team-saved-lineup-list">
+                        {selectedTeamLineups.length === 0 ? <p className="locker-message">{copy.noSavedLineups}</p> : null}
+                        {selectedTeamLineups.map((lineup) => (
+                          <article key={lineup.id} className="saved-lineup-card">
+                            {getSavedLineupThumbnail(lineup) ? (
+                              <img src={getSavedLineupThumbnail(lineup)} alt={lineup.name} className="saved-lineup-thumbnail" />
+                            ) : (
+                              <div className="saved-lineup-thumbnail saved-lineup-thumbnail-placeholder">
+                                {getSavedLineupFormatLabel(lineup)}
+                              </div>
+                            )}
+                            <div>
+                              <strong>{lineup.name}</strong>
+                              <span>{getSavedLineupFormatLabel(lineup)}</span>
+                              <time dateTime={lineup.created_at}>{getSavedLineupDateTime(lineup)}</time>
+                            </div>
+                            <div className="saved-lineup-actions">
+                              <button type="button" onClick={() => setPreviewLineup(lineup)}>
+                                {copy.view}
+                              </button>
+                              <button
+                                type="button"
+                                className="saved-lineup-share"
+                                onClick={() => shareSavedLineup(lineup)}
+                                aria-label={copy.share}
+                              >
+                                <Share2 size={14} />
+                              </button>
+                              {selectedTeamIsOwner ? (
+                                <button type="button" onClick={() => deleteSavedLineup(lineup.id)} disabled={deletingLineupId === lineup.id}>
+                                  {deletingLineupId === lineup.id ? <ButtonSpinner /> : <Trash2 size={14} />}
+                                </button>
+                              ) : null}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ) : (
                   <section className="member-panel">
                     <div className="team-section-title">
                       <span>{copy.members}</span>
@@ -5075,8 +5649,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                             <input
                               value={memberInviteUserId}
                               onChange={(event) => setMemberInviteUserId(event.target.value)}
-                              placeholder="Nhập ID user"
-                              aria-label="Nhập ID user"
+                              placeholder="VD: A1B2C3D4E5"
+                              aria-label={copy.userId}
                             />
                             <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam!, memberInviteUserId)}>
                               <Plus size={14} />
@@ -5092,8 +5666,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                             <input
                               value={memberInviteUserId}
                               onChange={(event) => setMemberInviteUserId(event.target.value)}
-                              placeholder="Nhập ID user"
-                              aria-label="Nhập ID user"
+                              placeholder="VD: A1B2C3D4E5"
+                              aria-label={copy.userId}
                             />
                             <button type="button" onClick={() => addTeamMemberByUserId(selectedTeam!, memberInviteUserId)}>
                               <Plus size={14} />
@@ -5184,7 +5758,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                                   <button
                                     type="button"
                                     className="member-delete-button"
-                                    onClick={() => deleteTeamMember(member)}
+                                    onClick={() => setMemberPendingDelete(member)}
                                     disabled={deletingMemberId === member.id}
                                     aria-label={`${copy.delete} ${member.nickname}`}
                                     title={copy.delete}
@@ -5200,6 +5774,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                       </div>
                     )}
                   </section>
+                  )}
                 </div>
               ) : isTeamFormOpen ? (
                 <div className="profile-card team-card">
@@ -5381,7 +5956,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
             <div className="locker-panel">
               <div className="panel-heading">
                 <span>{copy.savedLineups}</span>
-                <strong>{savedLineups.length}</strong>
+                <strong>{savedLineups.filter((lineup) => !lineup.team_id).length}</strong>
               </div>
               <div className="locker-category-switch" aria-label={copy.savedLineups}>
                 {lockerCategories.map((category) => (
@@ -6056,7 +6631,7 @@ const landingCopy: Record<Language, LandingCopy> = {
     features: [
       { icon: "⚽", title: "Đội hình linh hoạt", desc: "Sân 5, 7, 11 hoặc tuỳ chỉnh. Kéo thả cầu thủ, đặt tên và đổi sơ đồ tức thì." },
       { icon: "🎬", title: "Bảng chiến thuật động", desc: "Dựng từng bước di chuyển rồi chạy hoạt ảnh để xem bài phối hợp." },
-      { icon: "🗄️", title: "Phòng thay đồ", desc: "Lưu đội hình & chiến thuật theo tài khoản, mở lại bất cứ lúc nào." },
+      { icon: "🗄️", title: "Chiến thuật của tôi", desc: "Lưu đội hình & chiến thuật theo tài khoản, mở lại bất cứ lúc nào." },
       { icon: "🔗", title: "Chia sẻ tức thì", desc: "Tạo link hoặc ảnh đội hình để gửi nhanh cho cả đội." },
     ],
     footer: "Đội Hình Sân Cỏ — dựng đội hình, lên chiến thuật, ra sân.",
@@ -6202,19 +6777,31 @@ function LandingPage({
 
 function Root() {
   // Deep links (shared line-up, specific tab) should skip the landing page.
-  const hasDeepLink = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      Boolean(params.get("lineup") || params.get("tab") || params.has("tactics")) ||
-      Boolean(getTeamIdFromPath()) ||
-      window.location.hash.includes("type=recovery") ||
-      window.location.hash.includes("error")
-    );
-  }, []);
+  const hasDeepLink = useMemo(() => hasAppRoute(), []);
   const [entered, setEntered] = useState(hasDeepLink);
   const [language, setLanguage] = useState<Language>("vi");
   const [authDialogMode, setAuthDialogMode] = useState<"sign_in" | "sign_up" | null>(null);
   const { user, isAuthLoading, signOut } = useAuth();
+
+  useEffect(() => {
+    const syncEnteredFromUrl = () => setEntered(hasAppRoute());
+    window.addEventListener("popstate", syncEnteredFromUrl);
+    return () => window.removeEventListener("popstate", syncEnteredFromUrl);
+  }, []);
+
+  const enterWorkspace = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "lineup");
+    url.searchParams.set("pitch", "7");
+    window.history.pushState({ tab: "lineup" }, "", url.toString());
+    setEntered(true);
+  };
+
+  const signOutToLanding = async () => {
+    await signOut();
+    window.history.pushState({}, "", `${window.location.origin}${window.location.pathname}`);
+    setEntered(false);
+  };
 
   if (!entered) {
     return (
@@ -6222,12 +6809,12 @@ function Root() {
         <LandingPage
           language={language}
           onChangeLanguage={setLanguage}
-          onExplore={() => setEntered(true)}
+          onExplore={enterWorkspace}
           onSignIn={() => setAuthDialogMode("sign_in")}
           onSignUp={() => setAuthDialogMode("sign_up")}
           user={user}
           isAuthLoading={isAuthLoading}
-          onSignOut={signOut}
+          onSignOut={signOutToLanding}
         />
         {authDialogMode ? (
           <AuthDialog
@@ -6236,7 +6823,7 @@ function Root() {
             onClose={() => setAuthDialogMode(null)}
             onAuthenticated={() => {
               setAuthDialogMode(null);
-              setEntered(true);
+              enterWorkspace();
             }}
           />
         ) : null}

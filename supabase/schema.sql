@@ -38,6 +38,7 @@ create table if not exists public.teams (
 );
 
 alter table public.teams drop constraint if exists teams_user_id_unique;
+alter table public.lineups add column if not exists team_id uuid references public.teams(id) on delete cascade;
 create table if not exists public.team_members (
   id uuid primary key default gen_random_uuid(),
   team_id uuid not null references public.teams(id) on delete cascade,
@@ -123,6 +124,26 @@ grant execute on function public.is_team_owner(uuid) to anon, authenticated;
 grant execute on function public.is_team_member(uuid) to anon, authenticated;
 grant execute on function public.is_team_invited(uuid) to anon, authenticated;
 
+create or replace function public.resolve_profile_short_id(p_short_id text)
+returns uuid
+language sql
+security definer
+set search_path = public
+as $$
+  with matches as (
+    select id
+    from public.profiles
+    where replace(id::text, '-', '') ilike regexp_replace(lower(coalesce(p_short_id, '')), '[^a-f0-9]', '', 'g') || '%'
+    limit 2
+  )
+  select case
+    when (select count(*) from matches) = 1 then (select id from matches limit 1)
+    else null::uuid
+  end;
+$$;
+
+grant execute on function public.resolve_profile_short_id(text) to authenticated;
+
 create policy "Users can view their profile"
 on public.profiles for select
 using (auth.uid() = id);
@@ -136,22 +157,35 @@ on public.profiles for update
 using (auth.uid() = id)
 with check (auth.uid() = id);
 
+drop policy if exists "Users can view their lineups" on public.lineups;
 create policy "Users can view their lineups"
 on public.lineups for select
-using (auth.uid() = user_id);
+using (
+  auth.uid() = user_id
+  or (team_id is not null and (public.is_team_owner(team_id) or public.is_team_member(team_id)))
+);
 
+drop policy if exists "Users can insert their lineups" on public.lineups;
 create policy "Users can insert their lineups"
 on public.lineups for insert
-with check (auth.uid() = user_id);
+with check (
+  auth.uid() = user_id
+  and (team_id is null or public.is_team_owner(team_id))
+);
 
+drop policy if exists "Users can update their lineups" on public.lineups;
 create policy "Users can update their lineups"
 on public.lineups for update
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+using (auth.uid() = user_id or (team_id is not null and public.is_team_owner(team_id)))
+with check (
+  auth.uid() = user_id
+  and (team_id is null or public.is_team_owner(team_id))
+);
 
+drop policy if exists "Users can delete their lineups" on public.lineups;
 create policy "Users can delete their lineups"
 on public.lineups for delete
-using (auth.uid() = user_id);
+using (auth.uid() = user_id or (team_id is not null and public.is_team_owner(team_id)));
 
 drop policy if exists "Users can view their teams" on public.teams;
 create policy "Users can view their teams"
@@ -408,4 +442,3 @@ using (
   bucket_id = 'team-logos'
   and auth.uid()::text = (storage.foldername(name))[1]
 );
-
