@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import type { User } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { create } from "zustand";
-import { Check, ChevronDown, Clipboard, Download, Pencil, Plus, Redo2, Save, Share2, Trash2, Undo2 } from "lucide-react";
+import { Check, ChevronDown, Clipboard, Clapperboard, Download, Pause, PenLine, Pencil, Play, Plus, Redo2, Repeat, Save, Share2, Square, Trash2, Undo2, Users } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import "./styles.css";
@@ -55,6 +55,7 @@ type TacticalPlaybook = {
 };
 
 type TacticalStore = {
+  currentMode: WorkspaceMode;
   isAnimationMode: boolean;
   tactics: TacticalPlaybook[];
   activeTacticId: string;
@@ -64,9 +65,11 @@ type TacticalStore = {
   currentFrameIndex: number;
   isPlaying: boolean;
   isLooping: boolean;
+  setWorkspaceMode: (mode: WorkspaceMode) => void;
   setAnimationMode: (value: boolean) => void;
   selectFrame: (index: number) => void;
   addFrame: () => void;
+  commitDraftIfChanged: () => TacticalFrame[];
   removeFrame: (index: number) => void;
   clearFrames: () => void;
   updateMarker: (id: string, x: number, y: number, onPitch?: boolean) => void;
@@ -84,6 +87,8 @@ type TacticalStore = {
 type PitchSize = 5 | 7 | 11 | "custom";
 type Language = "vi" | "en";
 type AppTab = "lineup" | "tactics" | "profile" | "locker";
+type WorkspaceMode = "LINEUP" | "CUSTOM" | "ANIMATION";
+type SandboxTool = "PERSONNEL_TOOL" | "DRAW_TOOL" | "ANIMATION_TOOL";
 type FormationKey =
   | "1-2-1"
   | "2-1-1"
@@ -104,16 +109,21 @@ type PitchZone = {
 };
 
 type SharedLineup = {
+  version?: 1 | 2;
+  currentMode?: WorkspaceMode;
   pitchSize?: PitchSize;
   customCount?: number;
   formation: FormationKey;
   players: Pick<Player, "id" | "starterName" | "substituteName" | "extraNames" | "x" | "y" | "onPitch">[];
   opponentMarkers?: OpponentMarker[];
   drawLines?: DrawLine[];
+  animationFrames?: TacticalFrame[];
 };
 
 type StoredLineupState = {
   version: 1;
+  kind?: "unified";
+  currentMode?: WorkspaceMode;
   pitchSize: PitchSize;
   formation: FormationKey;
   customCount: number;
@@ -125,6 +135,7 @@ type StoredLineupState = {
   savedOpponentMarkersByPitch: Partial<Record<PitchSize, OpponentMarker[]>>;
   drawLines: DrawLine[];
   savedDrawLinesByPitch: Partial<Record<PitchSize, DrawLine[]>>;
+  animationFrames?: TacticalFrame[];
   thumbnailDataUrl?: string;
   savedAt?: string;
 };
@@ -606,6 +617,42 @@ const createInitialTacticalFrame = (): TacticalFrame => [
 
 const cloneTacticalFrame = (frame: TacticalFrame): TacticalFrame => frame.map((marker) => ({ ...marker }));
 
+const areTacticalFramesEqual = (a: TacticalFrame | undefined, b: TacticalFrame | undefined) => {
+  if (!a || !b || a.length !== b.length) return false;
+  const bMarkers = new Map(b.map((marker) => [marker.id, marker]));
+  return a.every((marker) => {
+    const other = bMarkers.get(marker.id);
+    return (
+      !!other &&
+      marker.type === other.type &&
+      marker.label === other.label &&
+      marker.onPitch === other.onPitch &&
+      Math.abs(marker.x - other.x) < 0.05 &&
+      Math.abs(marker.y - other.y) < 0.05
+    );
+  });
+};
+
+const createTacticalFrameFromWorkspace = (players: Player[], opponentMarkers: OpponentMarker[]): TacticalFrame => [
+  ...players.map((player) => ({
+    id: `p${player.id}`,
+    label: `${player.id}`,
+    type: "player" as const,
+    x: player.x,
+    y: player.y,
+    onPitch: player.onPitch,
+  })),
+  ...opponentMarkers.map((marker) => ({
+    id: `o${marker.id}`,
+    label: `${marker.id}`,
+    type: "opponent" as const,
+    x: marker.x,
+    y: marker.y,
+    onPitch: marker.onPitch,
+  })),
+  { id: "ball", label: "", type: "ball" as const, x: 50, y: 56, onPitch: true },
+];
+
 const tacticalStorageKey = "lineup-football-tactics-state-v1";
 
 const cloneTacticalFrames = (frames: TacticalFrame[]): TacticalFrame[] => frames.map(cloneTacticalFrame);
@@ -714,6 +761,7 @@ const initialTacticalPlaybooks = getInitialTacticalPlaybooks();
 const initialTacticalPlaybook = initialTacticalPlaybooks[0] ?? createDefaultTacticalPlaybook();
 
 const useTacticalStore = create<TacticalStore>((set, get) => ({
+  currentMode: "LINEUP",
   isAnimationMode: true,
   tactics: initialTacticalPlaybooks,
   activeTacticId: initialTacticalPlaybook.id,
@@ -723,19 +771,56 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
   currentFrameIndex: 0,
   isPlaying: false,
   isLooping: false,
+  setWorkspaceMode: (mode) => set({ currentMode: mode, isAnimationMode: mode === "ANIMATION" }),
   setAnimationMode: (value) => set({ isAnimationMode: value }),
   selectFrame: (index) =>
-    set((state) => ({
-      currentFrameIndex: state.frames.length === 0 ? 0 : Math.min(Math.max(index, 0), state.frames.length - 1),
-      isPlaying: false,
-      playbackFrames: null,
-    })),
+    set((state) => {
+      const selectedIndex = state.frames.length === 0 ? 0 : Math.min(Math.max(index, 0), state.frames.length - 1);
+      const selectedFrame = state.frames[selectedIndex] ?? state.draftFrame;
+      return {
+        currentFrameIndex: selectedIndex,
+        draftFrame: cloneTacticalFrame(selectedFrame),
+        isPlaying: false,
+        playbackFrames: null,
+      };
+    }),
   addFrame: () =>
     set((state) => {
-      const currentFrame = state.frames[state.currentFrameIndex] ?? state.draftFrame;
+      const currentFrame = state.draftFrame;
       const nextFrames = [...state.frames, cloneTacticalFrame(currentFrame)];
-      return { frames: nextFrames, currentFrameIndex: nextFrames.length - 1, isAnimationMode: true, playbackFrames: null };
+      return {
+        frames: nextFrames,
+        draftFrame: cloneTacticalFrame(currentFrame),
+        currentFrameIndex: nextFrames.length,
+        isAnimationMode: true,
+        isPlaying: false,
+        playbackFrames: null,
+      };
     }),
+  commitDraftIfChanged: () => {
+    let committedFrames: TacticalFrame[] = [];
+    set((state) => {
+      const lastFrame = state.frames[state.frames.length - 1];
+      const shouldCommit = state.frames.length === 0 || !areTacticalFramesEqual(state.draftFrame, lastFrame);
+      const nextFrames = shouldCommit ? [...state.frames, cloneTacticalFrame(state.draftFrame)] : state.frames;
+      const nextTactics = shouldCommit
+        ? state.tactics.map((tactic) =>
+            tactic.id === state.activeTacticId ? { ...tactic, frames: cloneTacticalFrames(nextFrames) } : tactic,
+          )
+        : state.tactics;
+      committedFrames = cloneTacticalFrames(nextFrames);
+      if (!shouldCommit) return state;
+      saveStoredTactics(nextTactics);
+      return {
+        tactics: nextTactics,
+        frames: nextFrames,
+        currentFrameIndex: nextFrames.length,
+        isPlaying: false,
+        playbackFrames: null,
+      };
+    });
+    return committedFrames;
+  },
   removeFrame: (index) =>
     set((state) => {
       if (state.frames.length === 0) return state;
@@ -761,13 +846,18 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
       return {
         tactics: nextTactics,
         frames: nextFrames,
-        currentFrameIndex: Math.min(state.currentFrameIndex, nextFrames.length - 1),
+        currentFrameIndex: Math.min(state.currentFrameIndex, nextFrames.length),
         isPlaying: false,
         playbackFrames: null,
       };
     }),
   clearFrames: () =>
     set((state) => {
+      const visibleFrame =
+        state.playbackFrames?.[state.currentFrameIndex] ??
+        state.frames[state.currentFrameIndex] ??
+        state.frames[0] ??
+        state.draftFrame;
       const nextTactics = state.tactics.map((tactic) =>
         tactic.id === state.activeTacticId ? { ...tactic, frames: [] } : tactic,
       );
@@ -775,7 +865,7 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
       return {
         tactics: nextTactics,
         frames: [],
-        draftFrame: createInitialTacticalFrame(),
+        draftFrame: cloneTacticalFrame(visibleFrame),
         playbackFrames: null,
         currentFrameIndex: 0,
         isPlaying: false,
@@ -786,16 +876,7 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
       const updateFrame = (frame: TacticalFrame) =>
         frame.map((marker) => (marker.id === id ? { ...marker, x, y, onPitch: onPitch ?? marker.onPitch } : marker));
 
-      if (state.frames.length === 0) {
-        return { draftFrame: updateFrame(state.draftFrame), playbackFrames: null };
-      }
-
-      return {
-        frames: state.frames.map((frame, frameIndex) =>
-          frameIndex === state.currentFrameIndex ? updateFrame(frame) : frame,
-        ),
-        playbackFrames: null,
-      };
+      return { draftFrame: updateFrame(state.draftFrame), currentFrameIndex: state.frames.length, playbackFrames: null };
     }),
   toggleLoop: () => set((state) => ({ isLooping: !state.isLooping })),
   saveTactic: () =>
@@ -871,12 +952,22 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
     }),
   play: () =>
     set((state) => {
-      if (state.frames.length === 0) return { isPlaying: false, currentFrameIndex: 0, playbackFrames: null };
+      const lastFrame = state.frames[state.frames.length - 1];
+      const shouldCommit = state.frames.length === 0 || !areTacticalFramesEqual(state.draftFrame, lastFrame);
+      const nextFrames = shouldCommit ? [...state.frames, cloneTacticalFrame(state.draftFrame)] : state.frames;
+      const nextTactics = shouldCommit
+        ? state.tactics.map((tactic) =>
+            tactic.id === state.activeTacticId ? { ...tactic, frames: cloneTacticalFrames(nextFrames) } : tactic,
+          )
+        : state.tactics;
+      if (nextFrames.length === 0) return { isPlaying: false, currentFrameIndex: 0, playbackFrames: null };
       return {
+        tactics: nextTactics,
+        frames: nextFrames,
         isPlaying: true,
         currentFrameIndex: 0,
         isAnimationMode: true,
-        playbackFrames: [cloneTacticalFrame(state.draftFrame), ...cloneTacticalFrames(state.frames)],
+        playbackFrames: cloneTacticalFrames(nextFrames),
       };
     }),
   pause: () => set({ isPlaying: false, currentFrameIndex: 0, playbackFrames: null }),
@@ -884,7 +975,7 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
     set((state) => ({
       isPlaying: false,
       currentFrameIndex: 0,
-      playbackFrames: [cloneTacticalFrame(state.draftFrame)],
+      playbackFrames: state.frames.length > 0 ? [cloneTacticalFrame(state.frames[0])] : [cloneTacticalFrame(state.draftFrame)],
     })),
   nextFrame: () =>
     set((state) => {
@@ -892,12 +983,16 @@ const useTacticalStore = create<TacticalStore>((set, get) => ({
       const sequenceLength = state.playbackFrames?.length ?? state.frames.length;
       const nextIndex = state.currentFrameIndex + 1;
       if (nextIndex >= sequenceLength) {
+        const finalFrame = state.playbackFrames?.[sequenceLength - 1] ?? state.frames[sequenceLength - 1] ?? state.draftFrame;
         if (state.isLooping) {
           return { currentFrameIndex: 0, isPlaying: true };
         }
-        // Stop on the last step instead of resetting to the start. Pressing
-        // play again rebuilds the sequence and restarts from the beginning.
-        return { currentFrameIndex: sequenceLength - 1, isPlaying: false };
+        return {
+          currentFrameIndex: state.frames.length,
+          draftFrame: cloneTacticalFrame(finalFrame),
+          playbackFrames: null,
+          isPlaying: false,
+        };
       }
       return { currentFrameIndex: nextIndex };
     }),
@@ -1114,16 +1209,27 @@ const createPlayers = (
   pitchSize: PitchSize,
   formation: FormationKey,
   customCount: number,
-  roster?: Pick<Player, "starterName" | "substituteName" | "extraNames" | "onPitch">[],
-): Player[] =>
-  getFormationPoints(pitchSize, formation, customCount).map((point, index) => ({
-    ...point,
-    position: getZoneName(pitchSize, point.x, point.y),
-    starterName: roster?.[index]?.starterName ?? "",
-    substituteName: roster?.[index]?.substituteName ?? "",
-    extraNames: roster?.[index]?.extraNames ?? [],
-    onPitch: pitchSize === "custom" ? (roster?.[index]?.onPitch ?? index < customCount) : true,
-  }));
+  roster?: (Pick<Player, "starterName" | "substituteName" | "extraNames"> & Partial<Pick<Player, "onPitch">>)[],
+): Player[] => {
+  const formationPoints = getFormationPoints(pitchSize, formation, customCount);
+  return Array.from({ length: 11 }, (_, index) => {
+    const id = index + 1;
+    const point = formationPoints.find((item) => item.id === id) ?? { id, x: 50, y: 50 };
+    const rosterPlayer = roster?.[index];
+
+    return {
+      ...point,
+      position: getZoneName(pitchSize, point.x, point.y),
+      starterName: rosterPlayer?.starterName ?? "",
+      substituteName: rosterPlayer?.substituteName ?? "",
+      extraNames: rosterPlayer?.extraNames ?? [],
+      onPitch:
+        pitchSize === "custom"
+          ? (rosterPlayer?.onPitch ?? index < customCount)
+          : (rosterPlayer?.onPitch ?? formationPoints.some((item) => item.id === id)),
+    };
+  });
+};
 
 const isFormationKey = (value: unknown): value is FormationKey =>
   typeof value === "string" &&
@@ -1173,7 +1279,10 @@ const createDrawLinesFromSharedLineup = (sharedLineup: SharedLineup): DrawLine[]
 const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] => {
   const pitchSize = sharedLineup.pitchSize ?? 7;
   const customCount = clampCustomCount(sharedLineup.customCount);
-  return getFormationPoints(pitchSize, sharedLineup.formation, customCount).map((point) => {
+  const formationPoints = getFormationPoints(pitchSize, sharedLineup.formation, customCount);
+  return Array.from({ length: 11 }, (_, index) => {
+    const id = index + 1;
+    const point = formationPoints.find((item) => item.id === id) ?? { id, x: 50, y: 50 };
     const sharedPlayer = sharedLineup.players.find((player) => player.id === point.id);
     const x = clampCoordinate(sharedPlayer?.x, point.x);
     const y = clampCoordinate(sharedPlayer?.y, point.y);
@@ -1186,7 +1295,12 @@ const createPlayersFromSharedLineup = (sharedLineup: SharedLineup): Player[] => 
       starterName: sharedPlayer?.starterName ?? "",
       substituteName: sharedPlayer?.substituteName ?? "",
       extraNames: Array.isArray(sharedPlayer?.extraNames) ? sharedPlayer.extraNames : [],
-      onPitch: pitchSize === "custom" ? (sharedPlayer?.onPitch ?? point.id <= customCount) : true,
+      onPitch:
+        typeof sharedPlayer?.onPitch === "boolean"
+          ? sharedPlayer.onPitch
+          : pitchSize === "custom"
+            ? point.id <= customCount
+            : formationPoints.some((item) => item.id === point.id),
     };
   });
 };
@@ -1198,8 +1312,12 @@ const encodeSharePayload = (
   players: Player[],
   opponentMarkers: OpponentMarker[],
   drawLines: DrawLine[],
+  animationFrames: TacticalFrame[] = [],
+  currentMode: WorkspaceMode = pitchSize === "custom" ? "CUSTOM" : "LINEUP",
 ) => {
   const payload: SharedLineup = {
+    version: 2,
+    currentMode,
     pitchSize,
     customCount: pitchSize === "custom" ? customCount : undefined,
     formation,
@@ -1212,25 +1330,20 @@ const encodeSharePayload = (
       y: Math.round(y * 10) / 10,
       onPitch,
     })),
-    opponentMarkers:
-      pitchSize === "custom"
-        ? opponentMarkers.map(({ id, x, y, onPitch }) => ({
-            id,
-            x: Math.round(x * 10) / 10,
-            y: Math.round(y * 10) / 10,
-            onPitch,
-          }))
-        : undefined,
-    drawLines:
-      pitchSize === "custom"
-        ? drawLines.map((line) => ({
-            id: line.id,
-            points: line.points.map((point) => ({
-              x: Math.round(point.x * 10) / 10,
-              y: Math.round(point.y * 10) / 10,
-            })),
-          }))
-        : undefined,
+    opponentMarkers: opponentMarkers.map(({ id, x, y, onPitch }) => ({
+      id,
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      onPitch,
+    })),
+    drawLines: drawLines.map((line) => ({
+      id: line.id,
+      points: line.points.map((point) => ({
+        x: Math.round(point.x * 10) / 10,
+        y: Math.round(point.y * 10) / 10,
+      })),
+    })),
+    animationFrames: cloneTacticalFrames(animationFrames),
   };
   const json = JSON.stringify(payload);
   const bytes = new TextEncoder().encode(json);
@@ -1254,12 +1367,22 @@ const decodeSharePayload = (value: string): SharedLineup | null => {
     }
 
     return {
+      version: parsed.version === 2 ? 2 : 1,
+      currentMode:
+        parsed.currentMode === "LINEUP" || parsed.currentMode === "CUSTOM" || parsed.currentMode === "ANIMATION"
+          ? parsed.currentMode
+          : pitchSize === "custom"
+            ? "CUSTOM"
+            : "LINEUP",
       pitchSize,
       customCount: clampCustomCount(parsed.customCount),
       formation: parsed.formation,
       players: parsed.players.filter((player) => typeof player?.id === "number") as SharedLineup["players"],
       opponentMarkers: Array.isArray(parsed.opponentMarkers) ? parsed.opponentMarkers : [],
       drawLines: Array.isArray(parsed.drawLines) ? parsed.drawLines : [],
+      animationFrames: Array.isArray(parsed.animationFrames)
+        ? (parsed.animationFrames.map(normalizeTacticalFrame).filter(Boolean) as TacticalFrame[])
+        : [],
     };
   } catch {
     return null;
@@ -1274,7 +1397,14 @@ const getSharedLineupFromUrl = () => {
 const getInitialAppTab = (): AppTab => {
   const params = new URLSearchParams(window.location.search);
   if (params.get("tab") === "locker") return "locker";
-  return params.get("tab") === "tactics" || params.has("tactics") ? "tactics" : "lineup";
+  return "lineup";
+};
+
+const getInitialWorkspaceMode = (sharedLineup: SharedLineup | null, initialPitchSize: PitchSize): WorkspaceMode => {
+  const params = new URLSearchParams(window.location.search);
+  if (sharedLineup?.currentMode) return sharedLineup.currentMode;
+  if (params.get("tab") === "tactics" || params.has("tactics")) return "ANIMATION";
+  return initialPitchSize === "custom" ? "CUSTOM" : "LINEUP";
 };
 
 const getRegisteredNames = (player: Player) =>
@@ -1722,11 +1852,12 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     ? createPlayersFromSharedLineup(sharedLineup)
     : createPlayers(initialPitchSize, initialFormation, initialCustomCount || 5);
   const initialOpponentMarkers =
-    sharedLineup?.pitchSize === "custom"
+    sharedLineup?.version === 2 || sharedLineup?.pitchSize === "custom"
       ? createOpponentMarkersFromSharedLineup(sharedLineup)
       : createOpponentMarkers();
   const initialDrawLines =
-    sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : [];
+    sharedLineup?.version === 2 || sharedLineup?.pitchSize === "custom" ? createDrawLinesFromSharedLineup(sharedLineup) : [];
+  const initialWorkspaceMode = getInitialWorkspaceMode(sharedLineup, initialPitchSize);
   const [pitchSize, setPitchSize] = useState<PitchSize>(() => initialPitchSize);
   const [formation, setFormation] = useState<FormationKey>(() => initialFormation);
   const [customCount, setCustomCount] = useState(() => initialCustomCount);
@@ -1748,6 +1879,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   }));
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [draggingOpponentId, setDraggingOpponentId] = useState<number | null>(null);
+  const [draggingTacticalMarkerId, setDraggingTacticalMarkerId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<{ type: "player" | "opponent"; id: number; x: number; y: number } | null>(
     null,
   );
@@ -1761,6 +1893,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [selectedMobilePlayerId, setSelectedMobilePlayerId] = useState(1);
   const [activeTab, setActiveTab] = useState<AppTab>(() => getInitialAppTab());
+  const [currentMode, setCurrentMode] = useState<WorkspaceMode>(() => initialWorkspaceMode);
+  const [activeTool, setActiveTool] = useState<SandboxTool>(() =>
+    initialWorkspaceMode === "ANIMATION" ? "ANIMATION_TOOL" : initialWorkspaceMode === "CUSTOM" ? "PERSONNEL_TOOL" : "PERSONNEL_TOOL",
+  );
   const [lastWorkspaceTab, setLastWorkspaceTab] = useState<"lineup" | "tactics">("lineup");
   const [isLineupMenuOpen, setIsLineupMenuOpen] = useState(false);
   const [language, setLanguage] = useState<Language>(initialLanguage);
@@ -1811,14 +1947,59 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const pitchRef = useRef<HTMLDivElement>(null);
   const drawLayerRef = useRef<SVGSVGElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
-  const activePlayers = pitchSize === "custom" ? players.filter((player) => player.onPitch) : players;
+  const wasAnimationPlayingRef = useRef(false);
+  const activePlayers = players.filter((player) => player.onPitch);
   const benchCount = getBenchCount(activePlayers);
-  const formationEntries = getFormationEntries(pitchSize);
   const copy = copyByLanguage[language];
   const languageMeta =
     language === "vi" ? { flag: "🇻🇳", label: "VI", next: "en" as const } : { flag: "🇺🇸", label: "EN", next: "vi" as const };
   const selectedMobilePlayer =
     activePlayers.find((player) => player.id === selectedMobilePlayerId) ?? activePlayers[0] ?? null;
+  const {
+    frames: animationFrames,
+    draftFrame,
+    playbackFrames,
+    currentFrameIndex,
+    isPlaying,
+    isLooping,
+    selectFrame,
+    addFrame,
+    removeFrame,
+    clearFrames,
+    updateMarker: updateTacticalMarker,
+    commitDraftIfChanged,
+    toggleLoop,
+    play,
+    pause,
+    stop,
+    nextFrame,
+  } = useTacticalStore();
+  const activeAnimationFrame = playbackFrames
+    ? (playbackFrames[currentFrameIndex] ?? playbackFrames[0])
+    : currentFrameIndex < animationFrames.length
+      ? (animationFrames[currentFrameIndex] ?? draftFrame)
+      : draftFrame;
+  const animationMarkerMap = useMemo(
+    () => new Map(activeAnimationFrame.map((marker) => [marker.id, marker])),
+    [activeAnimationFrame],
+  );
+  const animationOpponentMarkers = activeAnimationFrame
+    .filter((marker) => marker.type === "opponent" && marker.onPitch)
+    .map((marker) => ({
+      frameId: marker.id,
+      id: Number(marker.id.replace("o", "")),
+      x: marker.x,
+      y: marker.y,
+    }))
+    .filter((marker) => Number.isFinite(marker.id));
+  const ballMarker = activeAnimationFrame.find((marker) => marker.type === "ball");
+  const isPersonnelTool = activeTool === "PERSONNEL_TOOL";
+  const isDrawTool = activeTool === "DRAW_TOOL";
+  const isAnimationTool = activeTool === "ANIMATION_TOOL";
+  const showMarkerTray = isPersonnelTool;
+  const showDrawTools = isDrawTool;
+  const showAnimationTimeline = isAnimationTool;
+  const showAllCanvasObjects = true;
   const lockerCategories: { value: LockerCategory; label: string }[] = [
     { value: "all", label: copy.allCategories },
     { value: "5", label: copy.pitchLabels[5] },
@@ -1834,6 +2015,65 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     document.title = "doihinhsanco";
   }, []);
 
+  useEffect(() => {
+    useTacticalStore.setState({ currentMode, isAnimationMode: currentMode === "ANIMATION" });
+  }, [currentMode]);
+
+  useEffect(() => {
+    if (isAnimationTool || isPlaying || playbackFrames) return;
+    const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers);
+    useTacticalStore.setState({ draftFrame: cloneTacticalFrame(workspaceFrame) });
+  }, [isAnimationTool, isPlaying, opponentMarkers, playbackFrames, players]);
+
+  useEffect(() => {
+    if (!sharedLineup?.animationFrames?.length) return;
+    useTacticalStore.setState({
+      frames: cloneTacticalFrames(sharedLineup.animationFrames),
+      draftFrame: cloneTacticalFrame(sharedLineup.animationFrames[0] ?? createInitialTacticalFrame()),
+      playbackFrames: null,
+      currentFrameIndex: 0,
+      isPlaying: false,
+    });
+  }, [sharedLineup]);
+
+  useEffect(() => {
+    if (!isPlaying || !showAnimationTimeline) return;
+    const timer = window.setTimeout(nextFrame, 900);
+    return () => window.clearTimeout(timer);
+  }, [currentFrameIndex, isPlaying, nextFrame, showAnimationTimeline]);
+
+  useEffect(() => {
+    const finishedPlayback = wasAnimationPlayingRef.current && !isPlaying && currentFrameIndex >= animationFrames.length;
+    wasAnimationPlayingRef.current = isPlaying;
+    if (!isAnimationTool || !finishedPlayback) return;
+
+    setPlayers((current) =>
+      current.map((player) => {
+        const marker = draftFrame.find((item) => item.id === `p${player.id}`);
+        if (!marker) return player;
+        return {
+          ...player,
+          x: marker.x,
+          y: marker.y,
+          position: getZoneName(pitchSize, marker.x, marker.y),
+          onPitch: marker.onPitch,
+        };
+      }),
+    );
+    setOpponentMarkers((current) =>
+      current.map((marker) => {
+        const frameMarker = draftFrame.find((item) => item.id === `o${marker.id}`);
+        if (!frameMarker) return marker;
+        return {
+          ...marker,
+          x: frameMarker.x,
+          y: frameMarker.y,
+          onPitch: frameMarker.onPitch,
+        };
+      }),
+    );
+  }, [animationFrames.length, currentFrameIndex, draftFrame, isAnimationTool, isPlaying, pitchSize]);
+
   const switchAppTab = (nextTab: AppTab) => {
     if (nextTab === "lineup" || nextTab === "tactics") {
       setLastWorkspaceTab(nextTab);
@@ -1841,6 +2081,33 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setActiveTab(nextTab);
     setIsLineupMenuOpen(false);
     setIsUserMenuOpen(false);
+  };
+
+  const applySandboxTool = (nextTool: SandboxTool) => {
+    const nextMode: WorkspaceMode =
+      nextTool === "ANIMATION_TOOL" ? "ANIMATION" : nextTool === "DRAW_TOOL" ? "CUSTOM" : "LINEUP";
+    if (nextTool === "ANIMATION_TOOL") {
+      const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers);
+      useTacticalStore.setState({
+        draftFrame: cloneTacticalFrame(workspaceFrame),
+        currentFrameIndex: useTacticalStore.getState().frames.length,
+        isPlaying: false,
+        playbackFrames: null,
+      });
+    }
+    setActiveTool(nextTool);
+    setCurrentMode(nextMode);
+    setActiveTab("lineup");
+    setLastWorkspaceTab(nextMode === "ANIMATION" ? "tactics" : "lineup");
+    setIsLineupMenuOpen(false);
+    setIsUserMenuOpen(false);
+    setIsDrawMode(nextTool === "DRAW_TOOL");
+    useTacticalStore.setState({
+      currentMode: nextMode,
+      isAnimationMode: nextMode === "ANIMATION",
+      isPlaying: false,
+      playbackFrames: null,
+    });
   };
 
   useEffect(() => {
@@ -1920,7 +2187,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     context.strokeRect(px(26), py(81), pw(48), ph(15));
     context.strokeRect(px(37), py(89), pw(26), ph(7));
 
-    if (pitchSize === "custom") {
+    if (showAllCanvasObjects) {
       drawLines.forEach((line) => {
         if (line.points.length < 2) return;
         context.save();
@@ -1974,7 +2241,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       context.restore();
     });
 
-    if (pitchSize === "custom") {
+    if (showAllCanvasObjects) {
       opponentMarkers
         .filter((marker) => marker.onPitch)
         .forEach((marker) => {
@@ -1993,36 +2260,42 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     return canvas.toDataURL("image/jpeg", 0.78);
   };
 
-  const getCurrentLineupState = (metadata: Partial<Pick<StoredLineupState, "thumbnailDataUrl" | "savedAt">> = {}): StoredLineupState => ({
-    version: 1,
-    pitchSize,
-    formation,
-    customCount,
-    players,
-    savedPlayersByPitch: {
-      ...savedPlayersByPitch,
-      [pitchSize]: players,
-    },
-    savedFormationByPitch: {
-      ...savedFormationByPitch,
-      [pitchSize]: formation,
-    },
-    savedCustomCountByPitch: {
-      ...savedCustomCountByPitch,
-      [pitchSize]: customCount,
-    },
-    opponentMarkers,
-    savedOpponentMarkersByPitch: {
-      ...savedOpponentMarkersByPitch,
-      [pitchSize]: opponentMarkers,
-    },
-    drawLines,
-    savedDrawLinesByPitch: {
-      ...savedDrawLinesByPitch,
-      [pitchSize]: drawLines,
-    },
-    ...metadata,
-  });
+  const getCurrentLineupState = (metadata: Partial<Pick<StoredLineupState, "thumbnailDataUrl" | "savedAt">> = {}): StoredLineupState => {
+    const animationFrames = commitDraftIfChanged();
+    return {
+      version: 1,
+      kind: "unified",
+      currentMode,
+      pitchSize,
+      formation,
+      customCount,
+      players,
+      savedPlayersByPitch: {
+        ...savedPlayersByPitch,
+        [pitchSize]: players,
+      },
+      savedFormationByPitch: {
+        ...savedFormationByPitch,
+        [pitchSize]: formation,
+      },
+      savedCustomCountByPitch: {
+        ...savedCustomCountByPitch,
+        [pitchSize]: customCount,
+      },
+      opponentMarkers,
+      savedOpponentMarkersByPitch: {
+        ...savedOpponentMarkersByPitch,
+        [pitchSize]: opponentMarkers,
+      },
+      drawLines,
+      savedDrawLinesByPitch: {
+        ...savedDrawLinesByPitch,
+        [pitchSize]: drawLines,
+      },
+      animationFrames,
+      ...metadata,
+    };
+  };
 
   const fetchSavedLineups = async () => {
     if (!supabase || !user) {
@@ -2403,7 +2676,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const { error } = await supabase.from("lineups").insert({
       user_id: user.id,
       name: displayName,
-      format: String(pitchSize),
+      format: "unified",
       players_data: getCurrentLineupState({ thumbnailDataUrl, savedAt }),
     });
 
@@ -2413,7 +2686,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       showToast(message, "error");
     } else {
       setLineupName("");
-      setLockerCategory(String(pitchSize) as LockerCategory);
+      setLockerCategory("all");
       setLockerStatus(copy.saved);
       showToast(copy.saved);
       await fetchSavedLineups();
@@ -2434,6 +2707,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
     setLockerStatus("");
     setIsLockerLoading(true);
+    const committedFrames = useTacticalStore.getState().commitDraftIfChanged();
     const tacticalState = useTacticalStore.getState();
     const displayName = lineupName.trim() || `${copy.tacticsTab} ${new Date().toLocaleDateString()}`;
 
@@ -2459,7 +2733,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         kind: "tactics",
         tactics: tacticalState.tactics.map((tactic) =>
           tactic.id === tacticalState.activeTacticId
-            ? { ...tactic, frames: cloneTacticalFrames(tacticalState.frames) }
+            ? { ...tactic, frames: cloneTacticalFrames(committedFrames) }
             : tactic,
         ),
       } satisfies SavedTacticsState,
@@ -2515,7 +2789,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         currentFrameIndex: 0,
         isPlaying: false,
       });
-      setActiveTab("tactics");
+      setCurrentMode("ANIMATION");
+      setActiveTool("ANIMATION_TOOL");
+      setActiveTab("lineup");
       setLastWorkspaceTab("tactics");
       setLockerStatus("");
       return;
@@ -2539,6 +2815,18 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setSavedOpponentMarkersByPitch(lineupData.savedOpponentMarkersByPitch ?? {});
     setDrawLines(Array.isArray(lineupData.drawLines) ? lineupData.drawLines : []);
     setSavedDrawLinesByPitch(lineupData.savedDrawLinesByPitch ?? {});
+    const loadedMode = lineupData.currentMode ?? (lineupData.pitchSize === "custom" ? "CUSTOM" : "LINEUP");
+    setCurrentMode(loadedMode);
+    setActiveTool(loadedMode === "ANIMATION" ? "ANIMATION_TOOL" : "PERSONNEL_TOOL");
+    if (Array.isArray(lineupData.animationFrames)) {
+      useTacticalStore.setState({
+        frames: cloneTacticalFrames(lineupData.animationFrames),
+        draftFrame: cloneTacticalFrame(lineupData.animationFrames[0] ?? createInitialTacticalFrame()),
+        playbackFrames: null,
+        currentFrameIndex: 0,
+        isPlaying: false,
+      });
+    }
     setRedoDrawLines([]);
     setIsDrawMode(false);
     setActiveTab("lineup");
@@ -2587,6 +2875,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         lineupData.players,
         Array.isArray(lineupData.opponentMarkers) ? lineupData.opponentMarkers : [],
         Array.isArray(lineupData.drawLines) ? lineupData.drawLines : [],
+        Array.isArray(lineupData.animationFrames) ? lineupData.animationFrames : [],
+        lineupData.currentMode ?? (lineupData.pitchSize === "custom" ? "CUSTOM" : "LINEUP"),
       ),
     );
 
@@ -2599,6 +2889,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const getSavedLineupFormatLabel = (lineup: SavedLineupRecord) => {
+    if (lineup.format === "unified") return "Unified workspace";
     if (lineup.format === "tactics") return copy.tacticsTab;
     if (lineup.format === "custom") return copy.pitchLabels.custom;
     const numericFormat = Number(lineup.format);
@@ -2658,28 +2949,28 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
-    const position = getPitchPointerPosition(event, { clamp: pitchSize !== "custom" });
+    const position = getPitchPointerPosition(event, { clamp: false });
     if (!position) return;
     setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
-
-    if (pitchSize === "custom") return;
 
     setPlayers((current) => {
       const nextPlayers = current.map((player) =>
         player.id === id
           ? {
               ...player,
-              position: getZoneName(
-                pitchSize,
-                position.isInside ? Math.min(96, Math.max(4, position.x)) : player.x,
-                position.isInside ? Math.min(96, Math.max(4, position.y)) : player.y,
-              ),
+              position: position.isInside
+                ? getZoneName(pitchSize, Math.min(96, Math.max(4, position.x)), Math.min(96, Math.max(4, position.y)))
+                : player.position,
               x: position.isInside ? Math.min(96, Math.max(4, position.x)) : player.x,
               y: position.isInside ? Math.min(96, Math.max(4, position.y)) : player.y,
-              onPitch: true,
+              onPitch: position.isInside,
             }
           : player,
       );
+
+      if (pitchSize === "custom") {
+        setCustomCount(nextPlayers.filter((player) => player.onPitch).length);
+      }
 
       return nextPlayers;
     });
@@ -2704,8 +2995,62 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     );
   };
 
+  const syncPlayerFromAnimation = (id: number, x: number, y: number) => {
+    setPlayers((current) =>
+      current.map((player) =>
+        player.id === id
+          ? {
+              ...player,
+              x,
+              y,
+              position: getZoneName(pitchSize, x, y),
+              onPitch: true,
+            }
+          : player,
+      ),
+    );
+  };
+
+  const syncOpponentFromAnimation = (id: number, x: number, y: number) => {
+    setOpponentMarkers((current) =>
+      current.map((marker) =>
+        marker.id === id
+          ? {
+              ...marker,
+              x,
+              y,
+              onPitch: true,
+            }
+          : marker,
+      ),
+    );
+  };
+
+  const handleTacticalMarkerPointerDown = (event: ReactPointerEvent<HTMLElement>, id: string) => {
+    if (!(isAnimationTool || isPersonnelTool) || isPlaying) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingTacticalMarkerId(id);
+    const position = getPitchPointerPosition(event, { clamp: true });
+    if (position) {
+      updateTacticalMarker(id, position.x, position.y, true);
+    }
+  };
+
+  const handleTacticalMarkerPointerMove = (event: ReactPointerEvent<HTMLElement>, id: string) => {
+    if (draggingTacticalMarkerId !== id || isPlaying) return;
+    const position = getPitchPointerPosition(event, { clamp: true });
+    if (!position) return;
+    updateTacticalMarker(id, position.x, position.y, true);
+  };
+
+  const stopTacticalMarkerDragging = () => {
+    setDraggingTacticalMarkerId(null);
+  };
+
   const startDrawing = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!isDrawMode) return;
+    if (!isDrawMode || !showDrawTools) return;
     const position = getDrawPointerPosition(event);
     if (!position?.isInside) return;
 
@@ -2717,7 +3062,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const continueDrawing = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!isDrawMode || activeDrawLineId === null) return;
+    if (!isDrawMode || !showDrawTools || activeDrawLineId === null) return;
     const position = getDrawPointerPosition(event);
     if (!position) return;
 
@@ -2761,15 +3106,33 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const handleDragStart = (event: ReactPointerEvent<HTMLElement>, id: number) => {
-    if (isDrawMode) return;
+    if (isDrawMode || (isAnimationTool && isPlaying)) return;
+    event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingId(id);
     setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
     dragStartRef.current = { id, x: event.clientX, y: event.clientY };
+    if (isAnimationTool) {
+      const position = getPitchPointerPosition(event, { clamp: true });
+      if (position) {
+        updateTacticalMarker(`p${id}`, position.x, position.y, true);
+        syncPlayerFromAnimation(id, position.x, position.y);
+      }
+    }
   };
 
   const handleDragMove = (event: ReactPointerEvent<HTMLElement>, id: number) => {
     if (draggingId !== id) return;
+    if (isAnimationTool) {
+      const position = getPitchPointerPosition(event, { clamp: true });
+      setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
+      if (position) {
+        updateTacticalMarker(`p${id}`, position.x, position.y, true);
+        syncPlayerFromAnimation(id, position.x, position.y);
+      }
+      return;
+    }
     const dragStart = dragStartRef.current;
     if (!dragStart || dragStart.id !== id) return;
 
@@ -2777,33 +3140,19 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const movedY = event.clientY - dragStart.y;
     if (Math.hypot(movedX, movedY) < 6) return;
 
-    updatePlayerPosition(event, id);
+    setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
   };
 
   const stopDragging = (event: ReactPointerEvent<HTMLElement>) => {
     const id = draggingId;
-    if (id !== null && pitchSize === "custom") {
-      const position = getPitchPointerPosition(event, { clamp: false });
+    if (id !== null && isAnimationTool) {
+      const position = getPitchPointerPosition(event, { clamp: true });
       if (position) {
-        setPlayers((current) => {
-          const nextPlayers = current.map((player) => {
-            if (player.id !== id) return player;
-
-            const x = position.isInside ? Math.min(96, Math.max(4, position.x)) : player.x;
-            const y = position.isInside ? Math.min(96, Math.max(4, position.y)) : player.y;
-
-            return {
-              ...player,
-              position: getZoneName(pitchSize, x, y),
-              x,
-              y,
-              onPitch: position.isInside,
-            };
-          });
-          setCustomCount(nextPlayers.filter((player) => player.onPitch).length);
-          return nextPlayers;
-        });
+        updateTacticalMarker(`p${id}`, position.x, position.y, true);
+        syncPlayerFromAnimation(id, position.x, position.y);
       }
+    } else if (id !== null) {
+      updatePlayerPosition(event, id);
     }
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -2815,20 +3164,42 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const handleOpponentDragStart = (event: ReactPointerEvent<HTMLElement>, id: number) => {
-    if (isDrawMode) return;
+    if (isDrawMode || (isAnimationTool && isPlaying)) return;
+    event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingOpponentId(id);
     setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
+    if (isAnimationTool) {
+      const position = getPitchPointerPosition(event, { clamp: true });
+      if (position) {
+        updateTacticalMarker(`o${id}`, position.x, position.y, true);
+        syncOpponentFromAnimation(id, position.x, position.y);
+      }
+    }
   };
 
   const handleOpponentDragMove = (event: ReactPointerEvent<HTMLElement>, id: number) => {
     if (draggingOpponentId !== id) return;
     setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
+    if (isAnimationTool) {
+      const position = getPitchPointerPosition(event, { clamp: true });
+      if (position) {
+        updateTacticalMarker(`o${id}`, position.x, position.y, true);
+        syncOpponentFromAnimation(id, position.x, position.y);
+      }
+    }
   };
 
   const stopOpponentDragging = (event: ReactPointerEvent<HTMLElement>) => {
     const id = draggingOpponentId;
-    if (id !== null) {
+    if (id !== null && isAnimationTool) {
+      const position = getPitchPointerPosition(event, { clamp: true });
+      if (position) {
+        updateTacticalMarker(`o${id}`, position.x, position.y, true);
+        syncOpponentFromAnimation(id, position.x, position.y);
+      }
+    } else if (id !== null) {
       updateOpponentPosition(event, id);
     }
 
@@ -2876,17 +3247,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     );
   };
 
-  const applyFormation = (nextFormation: FormationKey) => {
-    setFormation(nextFormation);
-    setPlayers((current) => createPlayers(pitchSize, nextFormation, customCount, current));
-    if (pitchSize === "custom") {
-      setOpponentMarkers(createOpponentMarkers());
-      setDrawLines([]);
-      setRedoDrawLines([]);
-      setIsDrawMode(false);
-    }
-  };
-
   const applyPitchSize = (nextPitchSize: PitchSize) => {
     setSavedPlayersByPitch((current) => ({ ...current, [pitchSize]: players }));
     setSavedFormationByPitch((current) => ({ ...current, [pitchSize]: formation }));
@@ -2907,6 +3267,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setDrawLines(savedDrawLines ?? []);
     setRedoDrawLines([]);
     setIsDrawMode(false);
+    setCurrentMode(nextPitchSize === "custom" ? "CUSTOM" : "LINEUP");
+    setActiveTool("PERSONNEL_TOOL");
   };
 
   const applyCustomCount = (nextCount: number) => {
@@ -2914,6 +3276,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setCustomCount(count);
     setPitchSize("custom");
     setFormation("custom");
+    setCurrentMode("CUSTOM");
+    setActiveTool("PERSONNEL_TOOL");
     setPlayers((current) => createPlayers("custom", "custom", count, current));
     setOpponentMarkers(createOpponentMarkers());
     setDrawLines([]);
@@ -2922,12 +3286,19 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const resetPositions = () => {
-    const nextCustomCount = pitchSize === "custom" ? activePlayers.length || 5 : customCount;
-    if (pitchSize === "custom") {
+  const nextCustomCount = pitchSize === "custom" ? activePlayers.length || 5 : customCount;
+    if (showAllCanvasObjects) {
       setCustomCount(nextCustomCount);
     }
-    setPlayers((current) => createPlayers(pitchSize, formation, nextCustomCount, current));
-    if (pitchSize === "custom") {
+    setPlayers((current) =>
+      createPlayers(
+        pitchSize,
+        formation,
+        nextCustomCount,
+        current.map(({ starterName, substituteName, extraNames }) => ({ starterName, substituteName, extraNames })),
+      ),
+    );
+    if (showAllCanvasObjects) {
       setOpponentMarkers(createOpponentMarkers());
       setDrawLines([]);
       setRedoDrawLines([]);
@@ -2937,18 +3308,23 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
   const clearNames = () => {
     const nextCustomCount = pitchSize === "custom" ? activePlayers.length || 5 : customCount;
-    if (pitchSize === "custom") {
+    if (showAllCanvasObjects) {
       setCustomCount(nextCustomCount);
     }
     setPlayers((current) =>
-      createPlayers(pitchSize, formation, nextCustomCount, current).map((player) => ({
+      createPlayers(
+        pitchSize,
+        formation,
+        nextCustomCount,
+        current.map(({ starterName, substituteName, extraNames }) => ({ starterName, substituteName, extraNames })),
+      ).map((player) => ({
         ...player,
         starterName: "",
         substituteName: "",
         extraNames: [],
       })),
     );
-    if (pitchSize === "custom") {
+    if (showAllCanvasObjects) {
       setOpponentMarkers(createOpponentMarkers());
       setDrawLines([]);
       setRedoDrawLines([]);
@@ -2967,6 +3343,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         players,
         opponentMarkers,
         drawLines,
+        useTacticalStore.getState().frames,
+        currentMode,
       ),
     );
 
@@ -3107,7 +3485,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       context.restore();
     });
 
-    if (pitchSize === "custom") {
+    if (showAllCanvasObjects) {
       opponentMarkers
         .filter((marker) => marker.onPitch)
         .forEach((marker) => {
@@ -3121,6 +3499,20 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
           context.stroke();
           context.restore();
         });
+    }
+
+    if (showAnimationTimeline && ballMarker) {
+      context.save();
+      context.fillStyle = "#f8fafc";
+      context.strokeStyle = "#94a3b8";
+      context.lineWidth = css(2);
+      context.shadowColor = "rgba(0,0,0,0.32)";
+      context.shadowBlur = css(5);
+      context.beginPath();
+      context.arc(px(ballMarker.x), py(ballMarker.y), css(10), 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.restore();
     }
 
     const filename = `${pitchSize}-lineup-football-${new Date().toISOString().slice(0, 10)}.png`;
@@ -3200,47 +3592,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
           )}
         </div>
         <h1>Line Up Football</h1>
-        <div className="app-tab-switch" aria-label={copy.chooseAppMode}>
-          <div ref={lineupMenuRef} className="lineup-tab-menu">
-            <button
-              type="button"
-              className={`lineup-tab-trigger ${activeTab === "lineup" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("lineup");
-                setLastWorkspaceTab("lineup");
-                setIsUserMenuOpen(false);
-                setIsLineupMenuOpen((current) => !current);
-              }}
-              aria-expanded={isLineupMenuOpen}
-              aria-haspopup="menu"
-            >
-              {copy.lineupTab}
-              <span>{copy.pitchLabels[pitchSize]}</span>
-              <ChevronDown size={14} />
-            </button>
-            {isLineupMenuOpen ? (
-              <div className="lineup-format-menu" role="menu" aria-label={copy.choosePitchSize}>
-                {pitchOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={pitchSize === option.value ? "active" : ""}
-                    onClick={() => {
-                      applyPitchSize(option.value);
-                      switchAppTab("lineup");
-                    }}
-                    role="menuitem"
-                  >
-                    {copy.pitchLabels[option.value]}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          <button type="button" className={activeTab === "tactics" ? "active" : ""} onClick={() => switchAppTab("tactics")}>
-            {copy.tacticsTab}
-          </button>
-        </div>
       </header>
       {isPasswordRecovery || authHashError ? (
         <div className="auth-screen">
@@ -3683,8 +4034,44 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                   </div>
                 </div>
               ) : null}
-              <div className={`lineup-stage ${pitchSize === "custom" ? "custom-lineup-stage" : ""}`}>
-                {pitchSize === "custom" ? (
+              <div
+                className={`lineup-stage sandbox-canvas-stage ${showMarkerTray ? "show-marker-tray" : ""} ${
+                  showAnimationTimeline ? "show-animation-panel" : ""
+                }`}
+              >
+                <aside className="sandbox-tool-sidebar" aria-label="Canvas tools">
+                  <button
+                    type="button"
+                    className={activeTool === "PERSONNEL_TOOL" ? "active" : ""}
+                    onClick={() => applySandboxTool("PERSONNEL_TOOL")}
+                    aria-label="Đội hình"
+                    title="Đội hình"
+                  >
+                    <Users size={18} />
+                    <span>Đội hình</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={activeTool === "DRAW_TOOL" ? "active" : ""}
+                    onClick={() => applySandboxTool("DRAW_TOOL")}
+                    aria-label={copy.draw}
+                    title={copy.draw}
+                  >
+                    <PenLine size={18} />
+                    <span>{copy.draw}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={activeTool === "ANIMATION_TOOL" ? "active" : ""}
+                    onClick={() => applySandboxTool("ANIMATION_TOOL")}
+                    aria-label="Tạo chuyển động"
+                    title="Tạo chuyển động"
+                  >
+                    <Clapperboard size={18} />
+                    <span>Chuyển động</span>
+                  </button>
+                </aside>
+                {showMarkerTray ? (
                   <div className="custom-side-tray">
                     <div className="custom-player-tray" aria-label={copy.customPlayerTray}>
                       <span>{copy.players}</span>
@@ -3722,13 +4109,27 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                         ))}
                       </div>
                     </div>
+                    <div className="ball-tray" aria-label="Ball marker tray">
+                      <span>Bóng</span>
+                      {ballMarker ? (
+                        <button
+                          type="button"
+                          className="tactical-ball-tray-dot"
+                          onPointerDown={(event) => handleTacticalMarkerPointerDown(event, ballMarker.id)}
+                          onPointerMove={(event) => handleTacticalMarkerPointerMove(event, ballMarker.id)}
+                          onPointerUp={stopTacticalMarkerDragging}
+                          onPointerCancel={stopTacticalMarkerDragging}
+                          aria-label="Drag ball marker"
+                        />
+                      ) : null}
+                    </div>
                   </div>
                 ) : null}
               <div
                 ref={pitchRef}
                 className={`pitch relative mx-auto aspect-[7/10] border-[4px] border-white/80 touch-none select-none ${
                   isDrawMode ? "draw-mode" : ""
-                }`}
+                } ${isPlaying && isAnimationTool ? "playback-mode" : ""}`}
               >
                 <div className="absolute inset-[4%] border-[3px] border-white/90" />
                 <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
@@ -3746,7 +4147,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                   preserveAspectRatio="none"
                   aria-hidden="true"
                 >
-                  {drawLines.map((line) => (
+                  {showAllCanvasObjects ? drawLines.map((line) => (
                     <polyline
                       key={line.id}
                       points={line.points.map((point) => `${point.x},${point.y}`).join(" ")}
@@ -3757,9 +4158,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                       strokeWidth="1.15"
                       vectorEffect="non-scaling-stroke"
                     />
-                  ))}
+                  )) : null}
                 </svg>
-                {isDrawMode ? (
+                {isDrawMode && showDrawTools ? (
                   <div
                     className="draw-hit-layer"
                     onPointerDown={startDrawing}
@@ -3771,6 +4172,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 ) : null}
 
                 {activePlayers.map((player) => {
+                  const animationMarker = isAnimationTool ? animationMarkerMap.get(`p${player.id}`) : null;
+                  if (animationMarker && !animationMarker.onPitch) return null;
                   const starterName = player.starterName.trim() || `${copy.player} ${player.id}`;
                   const benchNames = getBenchNames(player);
 
@@ -3784,7 +4187,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                   className={`player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none ${
                     draggingId === player.id ? "dragging" : ""
                   }`}
-                      style={{ left: `${player.x}%`, top: `${player.y}%` }}
+                      style={{ left: `${animationMarker?.x ?? player.x}%`, top: `${animationMarker?.y ?? player.y}%` }}
                       role="button"
                       tabIndex={0}
                       aria-label={`${copy.dragPlayer} ${getDisplayPosition(player.position, language)}`}
@@ -3807,40 +4210,128 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     </div>
                   );
                 })}
-                {pitchSize === "custom"
-                  ? opponentMarkers
-                      .filter((marker) => marker.onPitch)
-                      .map((marker) => (
+                {showAllCanvasObjects
+                  ? (isAnimationTool ? animationOpponentMarkers : opponentMarkers.filter((marker) => marker.onPitch))
+                      .map((marker) => {
+                        return (
                         <button
                           key={`opponent-${marker.id}`}
                           type="button"
                           className={`opponent-pitch-dot ${draggingOpponentId === marker.id ? "dragging" : ""}`}
-                          style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+                          style={{
+                            left: `${marker.x}%`,
+                            top: `${marker.y}%`,
+                          }}
                           onPointerDown={(event) => handleOpponentDragStart(event, marker.id)}
                           onPointerMove={(event) => handleOpponentDragMove(event, marker.id)}
                           onPointerUp={stopOpponentDragging}
                           onPointerCancel={stopOpponentDragging}
                           aria-label={`${copy.dragOpponent} ${marker.id}`}
                         />
-                      ))
+                        );
+                      })
                   : null}
+                {ballMarker ? (
+                  <button
+                    type="button"
+                    className={`tactical-ball-marker ${draggingTacticalMarkerId === ballMarker.id ? "dragging" : ""}`}
+                    style={{ left: `${ballMarker.x}%`, top: `${ballMarker.y}%` }}
+                    onPointerDown={(event) => handleTacticalMarkerPointerDown(event, ballMarker.id)}
+                    onPointerMove={(event) => handleTacticalMarkerPointerMove(event, ballMarker.id)}
+                    onPointerUp={stopTacticalMarkerDragging}
+                    onPointerCancel={stopTacticalMarkerDragging}
+                    aria-label="Drag ball marker"
+                  />
+                ) : null}
               </div>
+              {showAnimationTimeline ? (
+                <aside className="workspace-timeline" aria-label={copy.tacticalTimeline}>
+                  <div className="workspace-timeline-title">
+                    <span>Tạo chuyển động</span>
+                    <strong>{animationFrames.length} {copy.framesUnit}</strong>
+                  </div>
+                  <div className="workspace-timeline-controls">
+                    <button
+                      type="button"
+                      className="playback-button"
+                      onClick={isPlaying ? pause : play}
+                      disabled={animationFrames.length === 0}
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                      title={isPlaying ? "Pause" : "Play"}
+                    >
+                      {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="playback-button"
+                      onClick={stop}
+                      disabled={animationFrames.length === 0}
+                      aria-label="Stop"
+                      title="Stop"
+                    >
+                      <Square size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`playback-button ${isLooping ? "active" : ""}`}
+                      onClick={toggleLoop}
+                      aria-label="Loop"
+                      title="Loop"
+                    >
+                      <Repeat size={16} />
+                    </button>
+                    <button type="button" onClick={clearFrames} disabled={animationFrames.length === 0}>
+                      {copy.clear}
+                    </button>
+                  </div>
+                  <div className="workspace-frame-list">
+                    {animationFrames.length === 0 ? (
+                      <div className="workspace-frame-empty">
+                        Chưa có bước nào. Bấm Thêm bước để tạo Bước 1.
+                      </div>
+                    ) : null}
+                    {animationFrames.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={currentFrameIndex === index && currentFrameIndex < animationFrames.length && !playbackFrames ? "active" : ""}
+                        onClick={() => selectFrame(index)}
+                      >
+                        {copy.frame} {index + 1}
+                        {animationFrames.length > 1 ? (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              removeFrame(index);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                removeFrame(index);
+                              }
+                            }}
+                            aria-label={`${copy.delete} ${copy.frame} ${index + 1}`}
+                          >
+                            <Trash2 size={12} />
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" className="workspace-add-frame-button" onClick={addFrame}>
+                    <Plus size={15} />
+                    {copy.addFrame}
+                  </button>
+                </aside>
+              ) : null}
               </div>
               <div className="lineup-footer-actions">
                 <div className={`footer-formation-switch ${pitchSize === "custom" ? "custom-formation-switch" : ""}`}>
-                  {pitchSize !== "custom"
-                    ? formationEntries.map(([item]) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => applyFormation(item)}
-                          className={formation === item ? "active" : ""}
-                        >
-                          {item}
-                        </button>
-                      ))
-                    : null}
-                  {pitchSize === "custom" && isDrawMode ? (
+                  {showDrawTools && isDrawMode ? (
                     <div className="draw-history-actions">
                       <button type="button" onClick={undoDrawLine} disabled={drawLines.length === 0}>
                         <Undo2 size={14} />
@@ -3865,16 +4356,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     <Download size={14} />
                     {copy.download}
                   </button>
-                  {pitchSize === "custom" ? (
-                    <button
-                      type="button"
-                      className={`draw-button ${isDrawMode ? "active" : ""}`}
-                      onClick={() => setIsDrawMode((current) => !current)}
-                    >
-                      <Pencil size={14} />
-                      {copy.draw}
-                    </button>
-                  ) : null}
                 </div>
               </div>
             </section>
