@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import type { User } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { create } from "zustand";
-import { Check, ChevronDown, Clipboard, Clapperboard, Download, Pause, PenLine, Pencil, Play, Plus, Redo2, Repeat, Save, Share2, Square, Trash2, Undo2, Users } from "lucide-react";
+import { Check, ChevronDown, Clipboard, Clapperboard, Download, Pause, PenLine, Pencil, Play, Plus, Redo2, Repeat, RotateCcw, Save, Share2, Square, Trash2, Undo2, Users } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import "./styles.css";
@@ -192,6 +192,7 @@ type AppCopy = {
   download: string;
   draw: string;
   clear: string;
+  reset: string;
   undo: string;
   redo: string;
   clearLines: string;
@@ -313,6 +314,7 @@ const copyByLanguage = {
     download: "Tải ảnh",
     draw: "Vẽ",
     clear: "Xoá",
+    reset: "Đặt lại",
     undo: "Hoàn tác",
     redo: "Làm lại",
     clearLines: "Xoá nét vẽ",
@@ -437,6 +439,7 @@ const copyByLanguage = {
     download: "Download",
     draw: "Draw",
     clear: "Clear",
+    reset: "Reset",
     undo: "Undo",
     redo: "Redo",
     clearLines: "Clear lines",
@@ -1880,10 +1883,11 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [draggingOpponentId, setDraggingOpponentId] = useState<number | null>(null);
   const [draggingTacticalMarkerId, setDraggingTacticalMarkerId] = useState<string | null>(null);
-  const [dragPreview, setDragPreview] = useState<{ type: "player" | "opponent"; id: number; x: number; y: number } | null>(
+  const [dragPreview, setDragPreview] = useState<{ type: "player" | "opponent" | "ball"; id: number | string; x: number; y: number } | null>(
     null,
   );
   const [isDrawMode, setIsDrawMode] = useState(false);
+  const [isPlaybackRewinding, setIsPlaybackRewinding] = useState(false);
   const [drawLines, setDrawLines] = useState<DrawLine[]>(() => initialDrawLines);
   const [savedDrawLinesByPitch, setSavedDrawLinesByPitch] = useState<Partial<Record<PitchSize, DrawLine[]>>>(() => ({
     [initialPitchSize]: initialDrawLines,
@@ -1948,6 +1952,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const drawLayerRef = useRef<SVGSVGElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const wasAnimationPlayingRef = useRef(false);
+  const playbackStartTimerRef = useRef<number | null>(null);
   const activePlayers = players.filter((player) => player.onPitch);
   const benchCount = getBenchCount(activePlayers);
   const copy = copyByLanguage[language];
@@ -1993,6 +1998,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     }))
     .filter((marker) => Number.isFinite(marker.id));
   const ballMarker = activeAnimationFrame.find((marker) => marker.type === "ball");
+  const isBallOnPitch = Boolean(ballMarker?.onPitch);
   const isPersonnelTool = activeTool === "PERSONNEL_TOOL";
   const isDrawTool = activeTool === "DRAW_TOOL";
   const isAnimationTool = activeTool === "ANIMATION_TOOL";
@@ -2041,6 +2047,53 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const timer = window.setTimeout(nextFrame, 900);
     return () => window.clearTimeout(timer);
   }, [currentFrameIndex, isPlaying, nextFrame, showAnimationTimeline]);
+
+  useEffect(() => {
+    return () => {
+      if (playbackStartTimerRef.current) {
+        window.clearTimeout(playbackStartTimerRef.current);
+      }
+    };
+  }, []);
+
+  const clearPlaybackStartTimer = () => {
+    if (!playbackStartTimerRef.current) return;
+    window.clearTimeout(playbackStartTimerRef.current);
+    playbackStartTimerRef.current = null;
+  };
+
+  const playAnimationFromStart = () => {
+    clearPlaybackStartTimer();
+    const committedFrames = commitDraftIfChanged();
+    const nextFrames = committedFrames.length > 0 ? committedFrames : useTacticalStore.getState().frames;
+    if (nextFrames.length === 0) return;
+
+    const playbackFramesFromStart = cloneTacticalFrames(nextFrames);
+    setIsPlaybackRewinding(true);
+    useTacticalStore.setState({
+      playbackFrames: [cloneTacticalFrame(playbackFramesFromStart[0])],
+      currentFrameIndex: 0,
+      isPlaying: false,
+      isAnimationMode: true,
+    });
+
+    playbackStartTimerRef.current = window.setTimeout(() => {
+      useTacticalStore.setState({
+        playbackFrames: playbackFramesFromStart,
+        currentFrameIndex: 0,
+        isPlaying: true,
+        isAnimationMode: true,
+      });
+      setIsPlaybackRewinding(false);
+      playbackStartTimerRef.current = null;
+    }, 760);
+  };
+
+  const stopAnimationPlayback = () => {
+    clearPlaybackStartTimer();
+    setIsPlaybackRewinding(false);
+    stop();
+  };
 
   useEffect(() => {
     const finishedPlayback = wasAnimationPlayingRef.current && !isPlaying && currentFrameIndex >= animationFrames.length;
@@ -2911,6 +2964,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const getPitchPointerPosition = (event: ReactPointerEvent<Element>, options: { clamp?: boolean } = {}) => {
+    return getPitchClientPosition(event.clientX, event.clientY, options);
+  };
+
+  const getPitchClientPosition = (clientX: number, clientY: number, options: { clamp?: boolean } = {}) => {
     const pitch = pitchRef.current;
     if (!pitch) return null;
 
@@ -2922,8 +2979,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const contentTop = rect.top + borderTop;
     const contentWidth = pitch.clientWidth;
     const contentHeight = pitch.clientHeight;
-    const rawX = ((event.clientX - contentLeft) / contentWidth) * 100;
-    const rawY = ((event.clientY - contentTop) / contentHeight) * 100;
+    const rawX = ((clientX - contentLeft) / contentWidth) * 100;
+    const rawY = ((clientY - contentTop) / contentHeight) * 100;
     const shouldClamp = options.clamp ?? true;
 
     return {
@@ -3026,12 +3083,67 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     );
   };
 
+  const getBoundedPitchPosition = (position: { x: number; y: number }) => ({
+    x: Math.min(96, Math.max(4, position.x)),
+    y: Math.min(96, Math.max(4, position.y)),
+  });
+
+  const updateBallMarkerFromPointer = (event: ReactPointerEvent<HTMLElement>, commitDrop = false) => {
+    updateBallMarkerFromPoint(event.clientX, event.clientY, commitDrop);
+  };
+
+  const updateBallMarkerFromPoint = (clientX: number, clientY: number, commitDrop = false) => {
+    const marker = ballMarker ?? { id: "ball", label: "", type: "ball" as const, x: 50, y: 56, onPitch: false };
+    const position = getPitchClientPosition(clientX, clientY, { clamp: false });
+    setDragPreview({ type: "ball", id: marker.id, x: clientX, y: clientY });
+    if (!position) return;
+
+    if (position.isInside) {
+      const boundedPosition = getBoundedPitchPosition(position);
+      if (marker.onPitch || commitDrop) {
+        updateTacticalMarker(marker.id, boundedPosition.x, boundedPosition.y, true);
+      }
+      return;
+    }
+
+    if (commitDrop) {
+      updateTacticalMarker(marker.id, marker.x, marker.y, false);
+    }
+  };
+
+  useEffect(() => {
+    if (draggingTacticalMarkerId !== "ball") return;
+
+    const handleWindowPointerMove = (event: PointerEvent) => {
+      if (isPlaying) return;
+      updateBallMarkerFromPoint(event.clientX, event.clientY);
+    };
+    const handleWindowPointerEnd = (event: PointerEvent) => {
+      updateBallMarkerFromPoint(event.clientX, event.clientY, true);
+      setDraggingTacticalMarkerId(null);
+      setDragPreview(null);
+    };
+
+    window.addEventListener("pointermove", handleWindowPointerMove);
+    window.addEventListener("pointerup", handleWindowPointerEnd);
+    window.addEventListener("pointercancel", handleWindowPointerEnd);
+    return () => {
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", handleWindowPointerEnd);
+      window.removeEventListener("pointercancel", handleWindowPointerEnd);
+    };
+  }, [ballMarker, draggingTacticalMarkerId, isPlaying]);
+
   const handleTacticalMarkerPointerDown = (event: ReactPointerEvent<HTMLElement>, id: string) => {
     if (!(isAnimationTool || isPersonnelTool) || isPlaying) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingTacticalMarkerId(id);
+    if (id === "ball") {
+      updateBallMarkerFromPointer(event);
+      return;
+    }
     const position = getPitchPointerPosition(event, { clamp: true });
     if (position) {
       updateTacticalMarker(id, position.x, position.y, true);
@@ -3040,13 +3152,24 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
   const handleTacticalMarkerPointerMove = (event: ReactPointerEvent<HTMLElement>, id: string) => {
     if (draggingTacticalMarkerId !== id || isPlaying) return;
+    if (id === "ball") {
+      updateBallMarkerFromPointer(event);
+      return;
+    }
     const position = getPitchPointerPosition(event, { clamp: true });
     if (!position) return;
     updateTacticalMarker(id, position.x, position.y, true);
   };
 
-  const stopTacticalMarkerDragging = () => {
+  const stopTacticalMarkerDragging = (event?: ReactPointerEvent<HTMLElement>) => {
+    if (draggingTacticalMarkerId === "ball" && event) {
+      updateBallMarkerFromPointer(event, true);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    }
     setDraggingTacticalMarkerId(null);
+    setDragPreview(null);
   };
 
   const startDrawing = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -3306,30 +3429,45 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     }
   };
 
-  const clearNames = () => {
+  const resetWorkspace = () => {
     const nextCustomCount = pitchSize === "custom" ? activePlayers.length || 5 : customCount;
+    const nextOpponentMarkers = createOpponentMarkers();
+    const nextPlayers = createPlayers(
+      pitchSize,
+      formation,
+      nextCustomCount,
+      players.map(({ starterName, substituteName, extraNames }) => ({ starterName, substituteName, extraNames })),
+    ).map((player) => ({
+      ...player,
+      starterName: "",
+      substituteName: "",
+      extraNames: [],
+    }));
+    const nextDraftFrame = createTacticalFrameFromWorkspace(nextPlayers, nextOpponentMarkers);
+
     if (showAllCanvasObjects) {
       setCustomCount(nextCustomCount);
     }
-    setPlayers((current) =>
-      createPlayers(
-        pitchSize,
-        formation,
-        nextCustomCount,
-        current.map(({ starterName, substituteName, extraNames }) => ({ starterName, substituteName, extraNames })),
-      ).map((player) => ({
-        ...player,
-        starterName: "",
-        substituteName: "",
-        extraNames: [],
-      })),
-    );
-    if (showAllCanvasObjects) {
-      setOpponentMarkers(createOpponentMarkers());
-      setDrawLines([]);
-      setRedoDrawLines([]);
-      setIsDrawMode(false);
-    }
+    setPlayers(nextPlayers);
+    setOpponentMarkers(nextOpponentMarkers);
+    setDrawLines([]);
+    setRedoDrawLines([]);
+    setIsDrawMode(false);
+    setDraggingId(null);
+    setDraggingOpponentId(null);
+    setDraggingTacticalMarkerId(null);
+    setDragPreview(null);
+    dragStartRef.current = null;
+    useTacticalStore.setState((state) => ({
+      tactics: state.tactics.map((tactic) =>
+        tactic.id === state.activeTacticId ? { ...tactic, frames: [] } : tactic,
+      ),
+      frames: [],
+      draftFrame: cloneTacticalFrame(nextDraftFrame),
+      playbackFrames: null,
+      currentFrameIndex: 0,
+      isPlaying: false,
+    }));
   };
 
   const copyShareLink = async () => {
@@ -3418,7 +3556,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     context.strokeRect(px(26), py(81), pw(48), ph(15));
     context.strokeRect(px(37), py(89), pw(26), ph(7));
 
-    if (pitchSize === "custom") {
+    if (showAllCanvasObjects) {
       drawLines.forEach((line) => {
         if (line.points.length < 2) return;
         context.save();
@@ -3966,15 +4104,14 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
             <section className="lineup-column">
               <div className="lineup-header">
-                <span>{pitchSize === "custom" ? copy.custom : copy.pitchLabels[pitchSize]} {copy.lineupSuffix}</span>
                 <div className="lineup-header-actions">
                   <button type="button" className="save-button" onClick={handleSaveCurrentLineup} disabled={isLockerLoading}>
                     {isLockerLoading ? <ButtonSpinner /> : lockerStatus === copy.saved ? <Check size={14} /> : <Save size={14} />}
                     {copy.save}
                   </button>
-                  <button type="button" onClick={clearNames}>
-                    <Trash2 size={14} />
-                    {copy.clear}
+                  <button type="button" onClick={resetWorkspace}>
+                    <RotateCcw size={14} />
+                    {copy.reset}
                   </button>
                 </div>
               </div>
@@ -4111,7 +4248,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     </div>
                     <div className="ball-tray" aria-label="Ball marker tray">
                       <span>Bóng</span>
-                      {ballMarker ? (
+                      {ballMarker && !isBallOnPitch ? (
                         <button
                           type="button"
                           className="tactical-ball-tray-dot"
@@ -4129,7 +4266,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 ref={pitchRef}
                 className={`pitch relative mx-auto aspect-[7/10] border-[4px] border-white/80 touch-none select-none ${
                   isDrawMode ? "draw-mode" : ""
-                } ${isPlaying && isAnimationTool ? "playback-mode" : ""}`}
+                } ${(isPlaying || isPlaybackRewinding) && isAnimationTool ? "playback-mode" : ""}`}
               >
                 <div className="absolute inset-[4%] border-[3px] border-white/90" />
                 <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
@@ -4231,7 +4368,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                         );
                       })
                   : null}
-                {ballMarker ? (
+                {ballMarker && isBallOnPitch ? (
                   <button
                     type="button"
                     className={`tactical-ball-marker ${draggingTacticalMarkerId === ballMarker.id ? "dragging" : ""}`}
@@ -4254,8 +4391,8 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     <button
                       type="button"
                       className="playback-button"
-                      onClick={isPlaying ? pause : play}
-                      disabled={animationFrames.length === 0}
+                      onClick={isPlaying ? pause : playAnimationFromStart}
+                      disabled={animationFrames.length === 0 || isPlaybackRewinding}
                       aria-label={isPlaying ? "Pause" : "Play"}
                       title={isPlaying ? "Pause" : "Play"}
                     >
@@ -4264,7 +4401,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     <button
                       type="button"
                       className="playback-button"
-                      onClick={stop}
+                      onClick={stopAnimationPlayback}
                       disabled={animationFrames.length === 0}
                       aria-label="Stop"
                       title="Stop"
@@ -4364,7 +4501,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       </div>
       {activeTab === "lineup" && dragPreview ? (
         <div
-          className={`drag-preview ${dragPreview.type === "opponent" ? "opponent-preview" : "player-preview"}`}
+          className={`drag-preview ${
+            dragPreview.type === "opponent" ? "opponent-preview" : dragPreview.type === "ball" ? "ball-preview" : "player-preview"
+          }`}
           style={{ left: dragPreview.x, top: dragPreview.y }}
           aria-hidden="true"
         >
