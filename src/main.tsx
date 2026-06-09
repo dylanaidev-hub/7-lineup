@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import type { User } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { create } from "zustand";
-import { Check, ChevronDown, Clipboard, Clapperboard, Download, Pause, PenLine, Pencil, Play, Plus, Redo2, Repeat, RotateCcw, Save, Share2, Square, Trash2, Undo2, Users } from "lucide-react";
+import { Check, ChevronDown, Clipboard, Clapperboard, Download, Pause, PenLine, Pencil, Play, Plus, Redo2, Repeat, RotateCcw, Save, Share2, Square, Trash2, Undo2, Users, X } from "lucide-react";
 import { useAuth } from "./hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
 import "./styles.css";
@@ -220,6 +220,7 @@ type AppCopy = {
   newTactic: string;
   tacticName: string;
   delete: string;
+  close: string;
   switchLanguage: string;
   chooseAppMode: string;
   choosePitchSize: string;
@@ -342,6 +343,7 @@ const copyByLanguage = {
     newTactic: "Tạo mới",
     tacticName: "Chiến thuật",
     delete: "Xoá",
+    close: "Đóng",
     switchLanguage: "Đổi ngôn ngữ",
     chooseAppMode: "Chọn chế độ",
     choosePitchSize: "Chọn loại sân",
@@ -467,6 +469,7 @@ const copyByLanguage = {
     newTactic: "New",
     tacticName: "Tactic",
     delete: "Delete",
+    close: "Close",
     switchLanguage: "Switch language",
     chooseAppMode: "Choose app mode",
     choosePitchSize: "Choose pitch size",
@@ -1887,7 +1890,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     null,
   );
   const [isDrawMode, setIsDrawMode] = useState(false);
-  const [isPlaybackRewinding, setIsPlaybackRewinding] = useState(false);
+  const [isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen] = useState(false);
   const [drawLines, setDrawLines] = useState<DrawLine[]>(() => initialDrawLines);
   const [savedDrawLinesByPitch, setSavedDrawLinesByPitch] = useState<Partial<Record<PitchSize, DrawLine[]>>>(() => ({
     [initialPitchSize]: initialDrawLines,
@@ -1900,6 +1903,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const [currentMode, setCurrentMode] = useState<WorkspaceMode>(() => initialWorkspaceMode);
   const [activeTool, setActiveTool] = useState<SandboxTool>(() =>
     initialWorkspaceMode === "ANIMATION" ? "ANIMATION_TOOL" : initialWorkspaceMode === "CUSTOM" ? "PERSONNEL_TOOL" : "PERSONNEL_TOOL",
+  );
+  const [activeBottomSheetTool, setActiveBottomSheetTool] = useState<SandboxTool | null>(() =>
+    initialWorkspaceMode === "ANIMATION" ? "ANIMATION_TOOL" : "PERSONNEL_TOOL",
   );
   const [lastWorkspaceTab, setLastWorkspaceTab] = useState<"lineup" | "tactics">("lineup");
   const [isLineupMenuOpen, setIsLineupMenuOpen] = useState(false);
@@ -1950,7 +1956,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const lineupMenuRef = useRef<HTMLDivElement>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
   const drawLayerRef = useRef<SVGSVGElement>(null);
+  const frameListRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const frameListDragRef = useRef<{ pointerId: number; x: number; scrollLeft: number; moved: boolean } | null>(null);
   const wasAnimationPlayingRef = useRef(false);
   const playbackStartTimerRef = useRef<number | null>(null);
   const activePlayers = players.filter((player) => player.onPitch);
@@ -2002,9 +2010,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   const isPersonnelTool = activeTool === "PERSONNEL_TOOL";
   const isDrawTool = activeTool === "DRAW_TOOL";
   const isAnimationTool = activeTool === "ANIMATION_TOOL";
-  const showMarkerTray = isPersonnelTool;
+  const showMarkerTray = activeBottomSheetTool === "PERSONNEL_TOOL";
   const showDrawTools = isDrawTool;
-  const showAnimationTimeline = isAnimationTool;
+  const showDrawSheet = activeBottomSheetTool === "DRAW_TOOL";
+  const showAnimationTimeline = activeBottomSheetTool === "ANIMATION_TOOL";
   const showAllCanvasObjects = true;
   const lockerCategories: { value: LockerCategory; label: string }[] = [
     { value: "all", label: copy.allCategories },
@@ -2043,10 +2052,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   }, [sharedLineup]);
 
   useEffect(() => {
-    if (!isPlaying || !showAnimationTimeline) return;
+    if (!isPlaying || !isAnimationTool) return;
     const timer = window.setTimeout(nextFrame, 900);
     return () => window.clearTimeout(timer);
-  }, [currentFrameIndex, isPlaying, nextFrame, showAnimationTimeline]);
+  }, [currentFrameIndex, isAnimationTool, isPlaying, nextFrame]);
 
   useEffect(() => {
     return () => {
@@ -2069,7 +2078,6 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     if (nextFrames.length === 0) return;
 
     const playbackFramesFromStart = cloneTacticalFrames(nextFrames);
-    setIsPlaybackRewinding(true);
     useTacticalStore.setState({
       playbackFrames: [cloneTacticalFrame(playbackFramesFromStart[0])],
       currentFrameIndex: 0,
@@ -2084,15 +2092,49 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
         isPlaying: true,
         isAnimationMode: true,
       });
-      setIsPlaybackRewinding(false);
       playbackStartTimerRef.current = null;
-    }, 760);
+    }, 80);
   };
 
   const stopAnimationPlayback = () => {
     clearPlaybackStartTimer();
-    setIsPlaybackRewinding(false);
     stop();
+  };
+
+  const startFrameListDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest("[data-frame-delete]")) return;
+    frameListDragRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      scrollLeft: event.currentTarget.scrollLeft,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveFrameListDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = frameListDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - drag.x;
+    if (Math.abs(deltaX) > 4) {
+      drag.moved = true;
+    }
+    event.currentTarget.scrollLeft = drag.scrollLeft - deltaX;
+  };
+
+  const stopFrameListDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    window.setTimeout(() => {
+      frameListDragRef.current = null;
+    }, 0);
+  };
+
+  const selectFrameFromList = (index: number) => {
+    if (frameListDragRef.current?.moved) return;
+    selectFrame(index);
   };
 
   useEffect(() => {
@@ -2137,6 +2179,11 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
   };
 
   const applySandboxTool = (nextTool: SandboxTool) => {
+    if (activeTool === nextTool && activeBottomSheetTool === nextTool) {
+      setActiveBottomSheetTool(null);
+      return;
+    }
+
     const nextMode: WorkspaceMode =
       nextTool === "ANIMATION_TOOL" ? "ANIMATION" : nextTool === "DRAW_TOOL" ? "CUSTOM" : "LINEUP";
     if (nextTool === "ANIMATION_TOOL") {
@@ -2149,6 +2196,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       });
     }
     setActiveTool(nextTool);
+    setActiveBottomSheetTool(nextTool);
     setCurrentMode(nextMode);
     setActiveTab("lineup");
     setLastWorkspaceTab(nextMode === "ANIMATION" ? "tactics" : "lineup");
@@ -2844,6 +2892,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
       });
       setCurrentMode("ANIMATION");
       setActiveTool("ANIMATION_TOOL");
+      setActiveBottomSheetTool("ANIMATION_TOOL");
       setActiveTab("lineup");
       setLastWorkspaceTab("tactics");
       setLockerStatus("");
@@ -2869,8 +2918,10 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setDrawLines(Array.isArray(lineupData.drawLines) ? lineupData.drawLines : []);
     setSavedDrawLinesByPitch(lineupData.savedDrawLinesByPitch ?? {});
     const loadedMode = lineupData.currentMode ?? (lineupData.pitchSize === "custom" ? "CUSTOM" : "LINEUP");
+    const loadedTool = loadedMode === "ANIMATION" ? "ANIMATION_TOOL" : "PERSONNEL_TOOL";
     setCurrentMode(loadedMode);
-    setActiveTool(loadedMode === "ANIMATION" ? "ANIMATION_TOOL" : "PERSONNEL_TOOL");
+    setActiveTool(loadedTool);
+    setActiveBottomSheetTool(loadedTool);
     if (Array.isArray(lineupData.animationFrames)) {
       useTacticalStore.setState({
         frames: cloneTacticalFrames(lineupData.animationFrames),
@@ -3392,6 +3443,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setIsDrawMode(false);
     setCurrentMode(nextPitchSize === "custom" ? "CUSTOM" : "LINEUP");
     setActiveTool("PERSONNEL_TOOL");
+    setActiveBottomSheetTool("PERSONNEL_TOOL");
   };
 
   const applyCustomCount = (nextCount: number) => {
@@ -3401,6 +3453,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setFormation("custom");
     setCurrentMode("CUSTOM");
     setActiveTool("PERSONNEL_TOOL");
+    setActiveBottomSheetTool("PERSONNEL_TOOL");
     setPlayers((current) => createPlayers("custom", "custom", count, current));
     setOpponentMarkers(createOpponentMarkers());
     setDrawLines([]);
@@ -4102,16 +4155,20 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
               </div>
             </section>
 
-            <section className="lineup-column">
+            <section
+              className={`lineup-column ${
+                isAnimationTool ? "tool-animation" : isDrawMode ? "tool-draw" : "tool-personnel"
+              }`}
+            >
               <div className="lineup-header">
                 <div className="lineup-header-actions">
                   <button type="button" className="save-button" onClick={handleSaveCurrentLineup} disabled={isLockerLoading}>
                     {isLockerLoading ? <ButtonSpinner /> : lockerStatus === copy.saved ? <Check size={14} /> : <Save size={14} />}
-                    {copy.save}
+                    <span>{copy.save}</span>
                   </button>
                   <button type="button" onClick={resetWorkspace}>
                     <RotateCcw size={14} />
-                    {copy.reset}
+                    <span>{copy.reset}</span>
                   </button>
                 </div>
               </div>
@@ -4172,37 +4229,38 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 </div>
               ) : null}
               <div
-                className={`lineup-stage sandbox-canvas-stage ${showMarkerTray ? "show-marker-tray" : ""} ${
+                className={`lineup-stage sandbox-canvas-stage ${
+                  isAnimationTool ? "tool-animation" : isDrawMode ? "tool-draw" : "tool-personnel"
+                } ${
+                  draggingId !== null || draggingOpponentId !== null || draggingTacticalMarkerId !== null ? "dock-dimmed" : ""
+                } ${showMarkerTray ? "show-marker-tray" : ""} ${
                   showAnimationTimeline ? "show-animation-panel" : ""
                 }`}
               >
                 <aside className="sandbox-tool-sidebar" aria-label="Canvas tools">
                   <button
                     type="button"
-                    className={activeTool === "PERSONNEL_TOOL" ? "active" : ""}
+                    className={activeBottomSheetTool === "PERSONNEL_TOOL" ? "active" : ""}
                     onClick={() => applySandboxTool("PERSONNEL_TOOL")}
                     aria-label="Đội hình"
-                    title="Đội hình"
                   >
                     <Users size={18} />
                     <span>Đội hình</span>
                   </button>
                   <button
                     type="button"
-                    className={activeTool === "DRAW_TOOL" ? "active" : ""}
+                    className={activeBottomSheetTool === "DRAW_TOOL" ? "active" : ""}
                     onClick={() => applySandboxTool("DRAW_TOOL")}
                     aria-label={copy.draw}
-                    title={copy.draw}
                   >
                     <PenLine size={18} />
                     <span>{copy.draw}</span>
                   </button>
                   <button
                     type="button"
-                    className={activeTool === "ANIMATION_TOOL" ? "active" : ""}
+                    className={activeBottomSheetTool === "ANIMATION_TOOL" ? "active" : ""}
                     onClick={() => applySandboxTool("ANIMATION_TOOL")}
                     aria-label="Tạo chuyển động"
-                    title="Tạo chuyển động"
                   >
                     <Clapperboard size={18} />
                     <span>Chuyển động</span>
@@ -4266,7 +4324,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 ref={pitchRef}
                 className={`pitch relative mx-auto aspect-[7/10] border-[4px] border-white/80 touch-none select-none ${
                   isDrawMode ? "draw-mode" : ""
-                } ${(isPlaying || isPlaybackRewinding) && isAnimationTool ? "playback-mode" : ""}`}
+                } ${isPlaying && isAnimationTool ? "playback-mode" : ""}`}
               >
                 <div className="absolute inset-[4%] border-[3px] border-white/90" />
                 <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
@@ -4381,6 +4439,74 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                   />
                 ) : null}
               </div>
+              <button
+                type="button"
+                className="mobile-squad-toggle"
+                onClick={() => setIsMobileSquadDrawerOpen(true)}
+                aria-label={copy.squadEditor}
+                title={copy.squadEditor}
+              >
+                <Pencil size={18} />
+              </button>
+              <div
+                className={`mobile-squad-drawer ${isMobileSquadDrawerOpen ? "open" : ""}`}
+                aria-hidden={!isMobileSquadDrawerOpen}
+              >
+                <div className="mobile-squad-drawer-header">
+                  <span>{copy.squadEditor}</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileSquadDrawerOpen(false)}
+                    aria-label={copy.close}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="mobile-squad-drawer-list">
+                  {activePlayers.map((player) => (
+                    <div key={player.id} className="mobile-squad-player-card">
+                      <div className="mobile-squad-player-title">
+                        <span>{player.id}</span>
+                        <strong>{getDisplayPosition(player.position, language)}</strong>
+                        <button
+                          type="button"
+                          onClick={() => addPlayerInput(player.id)}
+                          disabled={player.extraNames.length >= 1}
+                          aria-label={`${copy.addPlayer} ${player.id}`}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                      <input
+                        value={player.starterName}
+                        onChange={(event) => renamePlayer(player.id, "starterName", event.target.value)}
+                        placeholder={copy.starterPlaceholder}
+                      />
+                      <input
+                        value={player.substituteName}
+                        onChange={(event) => renamePlayer(player.id, "substituteName", event.target.value)}
+                        placeholder={copy.substitutePlaceholder}
+                      />
+                      {player.extraNames.slice(0, 1).map((extraName, index) => (
+                        <div key={index} className="mobile-squad-extra-input">
+                          <input
+                            value={extraName}
+                            onChange={(event) => renameExtraPlayer(player.id, index, event.target.value)}
+                            placeholder={`${copy.extraPlayerPlaceholder} ${index + 3}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeExtraPlayerInput(player.id, index)}
+                            aria-label={`${copy.delete} ${copy.player} ${index + 3}`}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
               {showAnimationTimeline ? (
                 <aside className="workspace-timeline" aria-label={copy.tacticalTimeline}>
                   <div className="workspace-timeline-title">
@@ -4392,7 +4518,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                       type="button"
                       className="playback-button"
                       onClick={isPlaying ? pause : playAnimationFromStart}
-                      disabled={animationFrames.length === 0 || isPlaybackRewinding}
+                      disabled={animationFrames.length === 0}
                       aria-label={isPlaying ? "Pause" : "Play"}
                       title={isPlaying ? "Pause" : "Play"}
                     >
@@ -4417,46 +4543,49 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                     >
                       <Repeat size={16} />
                     </button>
-                    <button type="button" onClick={clearFrames} disabled={animationFrames.length === 0}>
-                      {copy.clear}
+                    <button type="button" className="clear-frames-mobile-button" onClick={clearFrames} disabled={animationFrames.length === 0}>
+                      <Trash2 size={15} />
+                      <span>{copy.clearAll}</span>
                     </button>
                   </div>
-                  <div className="workspace-frame-list">
+                  <div
+                    ref={frameListRef}
+                    className="workspace-frame-list"
+                    onPointerDown={startFrameListDrag}
+                    onPointerMove={moveFrameListDrag}
+                    onPointerUp={stopFrameListDrag}
+                    onPointerCancel={stopFrameListDrag}
+                  >
                     {animationFrames.length === 0 ? (
                       <div className="workspace-frame-empty">
                         Chưa có bước nào. Bấm Thêm bước để tạo Bước 1.
                       </div>
                     ) : null}
                     {animationFrames.map((_, index) => (
-                      <button
+                      <div
                         key={index}
-                        type="button"
-                        className={currentFrameIndex === index && currentFrameIndex < animationFrames.length && !playbackFrames ? "active" : ""}
-                        onClick={() => selectFrame(index)}
+                        className={`workspace-frame-item ${
+                          currentFrameIndex === index && currentFrameIndex < animationFrames.length && !playbackFrames ? "active" : ""
+                        }`}
                       >
-                        {copy.frame} {index + 1}
-                        {animationFrames.length > 1 ? (
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              removeFrame(index);
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                removeFrame(index);
-                              }
-                            }}
-                            aria-label={`${copy.delete} ${copy.frame} ${index + 1}`}
-                          >
-                            <Trash2 size={12} />
-                          </span>
-                        ) : null}
-                      </button>
+                        <button type="button" className="workspace-frame-select" onClick={() => selectFrameFromList(index)}>
+                          {copy.frame} {index + 1}
+                        </button>
+                        <button
+                          type="button"
+                          className="workspace-frame-delete-button"
+                          data-frame-delete
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            removeFrame(index);
+                          }}
+                          aria-label={`${copy.delete} ${copy.frame} ${index + 1}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                   <button type="button" className="workspace-add-frame-button" onClick={addFrame}>
@@ -4468,18 +4597,19 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
               </div>
               <div className="lineup-footer-actions">
                 <div className={`footer-formation-switch ${pitchSize === "custom" ? "custom-formation-switch" : ""}`}>
-                  {showDrawTools && isDrawMode ? (
+                  {showDrawSheet && isDrawMode ? (
                     <div className="draw-history-actions">
                       <button type="button" onClick={undoDrawLine} disabled={drawLines.length === 0}>
                         <Undo2 size={14} />
-                        {copy.undo}
+                        <span>{copy.undo}</span>
                       </button>
                       <button type="button" onClick={redoDrawLine} disabled={redoDrawLines.length === 0}>
                         <Redo2 size={14} />
-                        {copy.redo}
+                        <span>{copy.redo}</span>
                       </button>
                       <button type="button" onClick={clearDrawLines} disabled={drawLines.length === 0}>
-                        {copy.clearLines}
+                        <Trash2 size={14} />
+                        <span>{copy.clearLines}</span>
                       </button>
                     </div>
                   ) : null}
@@ -4487,11 +4617,11 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                 <div className="footer-actions-right">
                   <button type="button" className="share-button" onClick={copyShareLink}>
                     {copyStatus === "copied" ? <Check size={14} /> : <Clipboard size={14} />}
-                    {copyStatus === "copied" ? copy.copied : copy.share}
+                    <span>{copyStatus === "copied" ? copy.copied : copy.share}</span>
                   </button>
                   <button type="button" className="download-button" onClick={downloadLineupImage}>
                     <Download size={14} />
-                    {copy.download}
+                    <span>{copy.download}</span>
                   </button>
                 </div>
               </div>
