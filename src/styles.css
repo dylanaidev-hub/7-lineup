@@ -4499,8 +4499,8 @@ option {
   }
 }
 
-/* Mobile zero-scroll workspace with one bottom command dock. */
-@media (max-width: 900px) {
+/* Mobile/tablet zero-scroll workspace with one bottom command dock. */
+@media (max-width: 1024px) {
   @keyframes mobile-sheet-rise {
     from {
       opacity: 0;
@@ -4679,6 +4679,14 @@ option {
     pointer-events: none;
   }
 
+  .lineup-header-actions button.save-button,
+  .lineup-header-actions button:not(.save-button),
+  .lineup-footer-actions .share-button {
+    border: 0;
+    background: #173325;
+    color: #ffffff;
+  }
+
   .footer-actions-right {
     display: flex;
     height: 48px;
@@ -4740,7 +4748,7 @@ option {
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.15fr) minmax(66px, 0.7fr);
     grid-template-rows: minmax(0, 1fr);
     gap: 8px;
-    padding: 10px;
+    padding: 12px;
     border: 1px solid rgba(232, 245, 233, 0.14);
     border-radius: 26px 26px 20px 20px;
     background:
@@ -4823,7 +4831,7 @@ option {
     z-index: 82;
     display: flex;
     justify-content: center;
-    padding: 10px;
+    padding: 12px;
     border: 1px solid rgba(232, 245, 233, 0.14);
     border-radius: 26px 26px 20px 20px;
     background:
@@ -4845,6 +4853,7 @@ option {
     width: min(100%, 430px);
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
+    margin: 0 auto;
     pointer-events: auto;
   }
 
@@ -4887,12 +4896,12 @@ option {
     left: 10px;
     display: grid;
     width: calc(100vw - 20px);
-    height: 158px;
+    height: 140px;
     max-height: none;
     grid-template-columns: 42px 42px minmax(0, 1fr) 42px 42px;
     grid-template-rows: auto 44px 44px;
     gap: 8px;
-    padding: 10px;
+    padding: 12px;
     border-radius: 20px;
     background:
       linear-gradient(180deg, rgba(8, 41, 24, 0.94), rgba(7, 30, 20, 0.88));
@@ -5208,5 +5217,64 @@ option {
 
   .sandbox-tool-sidebar button {
     min-height: 40px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .sandbox-canvas-stage > .pitch,
+  .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .sandbox-canvas-stage.show-animation-panel > .pitch,
+  .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
+  .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
+    top: 154px;
+    width: min(520px, calc(100vw - 48px), calc((100dvh - 246px) * 0.7));
+  }
+
+  .custom-side-tray,
+  .lineup-column.tool-draw .footer-formation-switch,
+  .sandbox-canvas-stage > .workspace-timeline {
+    left: 50%;
+    right: auto;
+    width: min(calc(100vw - 32px), 620px);
+    translate: -50% 0;
+  }
+
+  .lineup-column.tool-draw .footer-formation-switch {
+    width: fit-content;
+    max-width: calc(100vw - 32px);
+  }
+
+  .lineup-column.tool-draw .draw-history-actions {
+    width: min(430px, calc(100vw - 56px));
+  }
+
+  .custom-side-tray {
+    padding: 12px;
+    height: 116px;
+    min-height: 116px;
+  }
+
+  .sandbox-canvas-stage > .workspace-timeline {
+    height: 140px;
+    padding: 12px;
+  }
+
+}
+
+@media (max-width: 1024px) {
+  .mobile-player-editor input,
+  .mobile-player-editor select,
+  .mobile-squad-drawer input,
+  .mobile-squad-player-card input,
+  .mobile-squad-extra-input input,
+  .squad-input-list input,
+  .extra-player-input input,
+  .auth-card input,
+  .auth-screen-card input,
+  .profile-field input,
+  .profile-field textarea,
+  .lineup-save-bar input,
+  .custom-lineup-control input {
+    font-size: 16px !important;
   }
 }
