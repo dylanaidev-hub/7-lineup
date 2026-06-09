@@ -2137,6 +2137,14 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     selectFrame(index);
   };
 
+  const deleteFrameFromList = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const index = Number(event.currentTarget.dataset.frameIndex);
+    if (!Number.isInteger(index)) return;
+    removeFrame(index);
+  };
+
   useEffect(() => {
     const finishedPlayback = wasAnimationPlayingRef.current && !isPlaying && currentFrameIndex >= animationFrames.length;
     wasAnimationPlayingRef.current = isPlaying;
@@ -4575,12 +4583,13 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
                           type="button"
                           className="workspace-frame-delete-button"
                           data-frame-delete
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onClick={(event) => {
+                          data-frame-index={index}
+                          onPointerDown={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
-                            removeFrame(index);
                           }}
+                          onPointerUp={(event) => event.stopPropagation()}
+                          onClick={deleteFrameFromList}
                           aria-label={`${copy.delete} ${copy.frame} ${index + 1}`}
                         >
                           <Trash2 size={12} />
