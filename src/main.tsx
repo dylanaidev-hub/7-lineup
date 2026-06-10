@@ -639,7 +639,13 @@ const areTacticalFramesEqual = (a: TacticalFrame | undefined, b: TacticalFrame |
   });
 };
 
-const createTacticalFrameFromWorkspace = (players: Player[], opponentMarkers: OpponentMarker[]): TacticalFrame => [
+const defaultBallMarker: TacticalMarker = { id: "ball", label: "", type: "ball", x: 50, y: 56, onPitch: true };
+
+const createTacticalFrameFromWorkspace = (
+  players: Player[],
+  opponentMarkers: OpponentMarker[],
+  ballMarker: TacticalMarker = defaultBallMarker,
+): TacticalFrame => [
   ...players.map((player) => ({
     id: `p${player.id}`,
     label: `${player.id}`,
@@ -656,7 +662,7 @@ const createTacticalFrameFromWorkspace = (players: Player[], opponentMarkers: Op
     y: marker.y,
     onPitch: marker.onPitch,
   })),
-  { id: "ball", label: "", type: "ball" as const, x: 50, y: 56, onPitch: true },
+  { ...defaultBallMarker, ...ballMarker, id: "ball", label: "", type: "ball" as const },
 ];
 
 const tacticalStorageKey = "lineup-football-tactics-state-v1";
@@ -2036,7 +2042,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
 
   useEffect(() => {
     if (isAnimationTool || isPlaying || playbackFrames) return;
-    const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers);
+    const currentBallMarker =
+      useTacticalStore.getState().draftFrame.find((marker) => marker.type === "ball") ?? defaultBallMarker;
+    const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers, currentBallMarker);
     useTacticalStore.setState({ draftFrame: cloneTacticalFrame(workspaceFrame) });
   }, [isAnimationTool, isPlaying, opponentMarkers, playbackFrames, players]);
 
@@ -2195,7 +2203,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     const nextMode: WorkspaceMode =
       nextTool === "ANIMATION_TOOL" ? "ANIMATION" : nextTool === "DRAW_TOOL" ? "CUSTOM" : "LINEUP";
     if (nextTool === "ANIMATION_TOOL") {
-      const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers);
+      const currentBallMarker =
+        useTacticalStore.getState().draftFrame.find((marker) => marker.type === "ball") ?? defaultBallMarker;
+      const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers, currentBallMarker);
       useTacticalStore.setState({
         draftFrame: cloneTacticalFrame(workspaceFrame),
         currentFrameIndex: useTacticalStore.getState().frames.length,
