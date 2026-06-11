@@ -1408,8 +1408,26 @@ const getSharedLineupFromUrl = () => {
 
 const getInitialAppTab = (): AppTab => {
   const params = new URLSearchParams(window.location.search);
+  if (params.get("tab") === "profile") return "profile";
   if (params.get("tab") === "locker") return "locker";
+  if (params.get("tab") === "tactics" || params.has("tactics")) return "tactics";
   return "lineup";
+};
+
+const getPitchSizeFromUrl = (): PitchSize | null => {
+  const value = new URLSearchParams(window.location.search).get("pitch");
+  if (value === "custom") return "custom";
+  const numericValue = Number(value);
+  return isPitchSize(numericValue) ? numericValue : null;
+};
+
+const hasAppRoute = () => {
+  const params = new URLSearchParams(window.location.search);
+  return (
+    Boolean(params.get("lineup") || params.get("tab") || params.has("tactics")) ||
+    window.location.hash.includes("type=recovery") ||
+    window.location.hash.includes("error")
+  );
 };
 
 const getInitialWorkspaceMode = (sharedLineup: SharedLineup | null, initialPitchSize: PitchSize): WorkspaceMode => {
@@ -1857,7 +1875,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     authHashError && /otp|recovery|expired|invalid/i.test(`${authHashError.code} ${authHashError.description}`),
   );
   const sharedLineup = useMemo(() => getSharedLineupFromUrl(), []);
-  const initialPitchSize = sharedLineup?.pitchSize ?? 7;
+  const initialPitchSize = sharedLineup?.pitchSize ?? getPitchSizeFromUrl() ?? 7;
   const initialFormation = sharedLineup?.formation ?? "2-3-1";
   const initialCustomCount = sharedLineup ? clampCustomCount(sharedLineup.customCount) : 0;
   const initialPlayers = sharedLineup
@@ -2036,6 +2054,51 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     document.title = "doihinhsanco";
   }, []);
 
+  const writeAppRoute = (nextTab: AppTab, nextPitchSize: PitchSize = pitchSize, replace = false) => {
+    const url = new URL(window.location.href);
+    url.pathname = "/";
+    url.search = "";
+    url.hash = "";
+    url.searchParams.set("tab", nextTab);
+    if (nextTab === "lineup") {
+      url.searchParams.set("pitch", String(nextPitchSize));
+    }
+    if (nextTab === "tactics") {
+      url.searchParams.set("tab", "tactics");
+    }
+    const nextUrl = url.toString();
+    if (nextUrl === window.location.href) return;
+    if (replace) {
+      window.history.replaceState({ tab: nextTab }, "", nextUrl);
+    } else {
+      window.history.pushState({ tab: nextTab }, "", nextUrl);
+    }
+  };
+
+  const syncAppRouteFromUrl = () => {
+    const nextTab = getInitialAppTab();
+    const nextPitchSize = getPitchSizeFromUrl();
+    setActiveTab(nextTab);
+    if (nextTab === "lineup" && nextPitchSize && nextPitchSize !== pitchSize) {
+      applyPitchSize(nextPitchSize, { updateUrl: false });
+    }
+    if (nextTab === "tactics") {
+      setLastWorkspaceTab("tactics");
+      setCurrentMode("ANIMATION");
+      setActiveTool("ANIMATION_TOOL");
+      setActiveBottomSheetTool("ANIMATION_TOOL");
+    } else if (nextTab === "lineup") {
+      setLastWorkspaceTab("lineup");
+    }
+    setIsLineupMenuOpen(false);
+    setIsUserMenuOpen(false);
+  };
+
+  useEffect(() => {
+    window.addEventListener("popstate", syncAppRouteFromUrl);
+    return () => window.removeEventListener("popstate", syncAppRouteFromUrl);
+  }, [pitchSize, savedPlayersByPitch, savedFormationByPitch, savedCustomCountByPitch, savedOpponentMarkersByPitch, savedDrawLinesByPitch]);
+
   useEffect(() => {
     useTacticalStore.setState({ currentMode, isAnimationMode: currentMode === "ANIMATION" });
   }, [currentMode]);
@@ -2185,13 +2248,16 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     );
   }, [animationFrames.length, currentFrameIndex, draftFrame, isAnimationTool, isPlaying, pitchSize]);
 
-  const switchAppTab = (nextTab: AppTab) => {
+  const switchAppTab = (nextTab: AppTab, options: { updateUrl?: boolean } = {}) => {
     if (nextTab === "lineup" || nextTab === "tactics") {
       setLastWorkspaceTab(nextTab);
     }
     setActiveTab(nextTab);
     setIsLineupMenuOpen(false);
     setIsUserMenuOpen(false);
+    if (options.updateUrl !== false) {
+      writeAppRoute(nextTab);
+    }
   };
 
   const applySandboxTool = (nextTool: SandboxTool) => {
@@ -3439,7 +3505,7 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     );
   };
 
-  const applyPitchSize = (nextPitchSize: PitchSize) => {
+  const applyPitchSize = (nextPitchSize: PitchSize, options: { updateUrl?: boolean } = {}) => {
     setSavedPlayersByPitch((current) => ({ ...current, [pitchSize]: players }));
     setSavedFormationByPitch((current) => ({ ...current, [pitchSize]: formation }));
     setSavedCustomCountByPitch((current) => ({ ...current, [pitchSize]: customCount }));
@@ -3462,6 +3528,9 @@ function App({ initialLanguage = "vi" }: { initialLanguage?: Language }) {
     setCurrentMode(nextPitchSize === "custom" ? "CUSTOM" : "LINEUP");
     setActiveTool("PERSONNEL_TOOL");
     setActiveBottomSheetTool("PERSONNEL_TOOL");
+    if (options.updateUrl !== false) {
+      writeAppRoute("lineup", nextPitchSize);
+    }
   };
 
   const applyCustomCount = (nextCount: number) => {
@@ -5087,18 +5156,31 @@ function LandingPage({
 
 function Root() {
   // Deep links (shared line-up, specific tab) should skip the landing page.
-  const hasDeepLink = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      Boolean(params.get("lineup") || params.get("tab") || params.has("tactics")) ||
-      window.location.hash.includes("type=recovery") ||
-      window.location.hash.includes("error")
-    );
-  }, []);
+  const hasDeepLink = useMemo(() => hasAppRoute(), []);
   const [entered, setEntered] = useState(hasDeepLink);
   const [language, setLanguage] = useState<Language>("vi");
   const [authDialogMode, setAuthDialogMode] = useState<"sign_in" | "sign_up" | null>(null);
   const { user, isAuthLoading, signOut } = useAuth();
+  const enterWorkspace = (replace = false) => {
+    const url = new URL(window.location.href);
+    url.pathname = "/";
+    url.search = "";
+    url.hash = "";
+    url.searchParams.set("tab", "lineup");
+    url.searchParams.set("pitch", "7");
+    if (replace) {
+      window.history.replaceState({ tab: "lineup" }, "", url.toString());
+    } else {
+      window.history.pushState({ tab: "lineup" }, "", url.toString());
+    }
+    setEntered(true);
+  };
+
+  useEffect(() => {
+    const syncEnteredFromUrl = () => setEntered(hasAppRoute());
+    window.addEventListener("popstate", syncEnteredFromUrl);
+    return () => window.removeEventListener("popstate", syncEnteredFromUrl);
+  }, []);
 
   if (!entered) {
     return (
@@ -5106,7 +5188,7 @@ function Root() {
         <LandingPage
           language={language}
           onChangeLanguage={setLanguage}
-          onExplore={() => setEntered(true)}
+          onExplore={() => enterWorkspace()}
           onSignIn={() => setAuthDialogMode("sign_in")}
           onSignUp={() => setAuthDialogMode("sign_up")}
           user={user}
@@ -5120,7 +5202,7 @@ function Root() {
             onClose={() => setAuthDialogMode(null)}
             onAuthenticated={() => {
               setAuthDialogMode(null);
-              setEntered(true);
+              enterWorkspace();
             }}
           />
         ) : null}
