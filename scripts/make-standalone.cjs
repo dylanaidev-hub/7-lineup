@@ -3,8 +3,8 @@ const path = require("path");
 
 const distDir = path.resolve(__dirname, "..", "dist");
 const html = fs.readFileSync(path.join(distDir, "index.html"), "utf8");
-const jsName = html.match(/src="\.\/assets\/([^"]+\.js)"/)?.[1];
-const cssName = html.match(/href="\.\/assets\/([^"]+\.css)"/)?.[1];
+const jsName = html.match(/src="(?:\.\/|\/)?assets\/([^"]+\.js)"/)?.[1];
+const cssName = html.match(/href="(?:\.\/|\/)?assets\/([^"]+\.css)"/)?.[1];
 
 if (!jsName || !cssName) {
   throw new Error("Could not find built JS/CSS assets in dist/index.html");
@@ -29,4 +29,5 @@ const standaloneHtml = `<!doctype html>
 `;
 
 fs.writeFileSync(path.join(distDir, "standalone.html"), standaloneHtml);
+fs.writeFileSync(path.join(distDir, "404.html"), html);
 console.log(path.join(distDir, "standalone.html"));

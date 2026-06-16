@@ -1,0 +1,217 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(6, 14, 11, 0.74);
+  backdrop-filter: blur(4px);
+}
+
+.card {
+  display: grid;
+  width: min(100%, 430px);
+  gap: 11px;
+  padding-bottom: 16px;
+  overflow: hidden;
+  background: linear-gradient(165deg, #14302a 0%, #0c1a15 100%);
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+}
+
+.heading {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.heading button {
+  display: grid;
+  min-height: 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(7, 16, 12, 0.22);
+  color: #07100c;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.heading button:hover {
+  background: rgba(7, 16, 12, 0.38);
+}
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin: 2px 16px;
+  padding: 4px;
+  border: 1px solid rgba(232, 245, 233, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.modeSwitch button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(232, 245, 233, 0.6);
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.modeSwitch button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e8f5e9;
+}
+
+.modeSwitch button.active {
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+  box-shadow: 0 2px 8px rgba(92, 203, 132, 0.32);
+}
+
+.card input,
+.card > button {
+  margin-inline: 16px;
+}
+
+.card input {
+  min-height: 40px;
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+  font-size: 12px;
+  font-weight: 800;
+  outline: none;
+}
+
+.card input::placeholder {
+  color: rgba(232, 245, 233, 0.42);
+}
+
+.card input:focus {
+  border-color: #5ccb84;
+  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
+}
+
+.card > button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: #173325;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.submitButton:not(:disabled) {
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+.submitButton:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10%;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  transition: transform 650ms ease;
+  pointer-events: none;
+}
+
+.submitButton:not(:disabled):hover::before {
+  transform: translateX(130%);
+}
+
+.googleButton {
+  border: 1px solid rgba(232, 245, 233, 0.2) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #e8f5e9;
+}
+
+.googleButton:hover {
+  border-color: rgba(92, 203, 132, 0.6) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.message {
+  margin: -1px 16px 0;
+  padding: 0;
+  color: #a7b4ad;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.forgotLink {
+  justify-self: center;
+  min-height: auto !important;
+  margin: 2px 16px 0 !important;
+  padding: 4px 8px !important;
+  border: none !important;
+  background: transparent !important;
+  color: rgba(232, 245, 233, 0.66);
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.forgotLink:hover {
+  color: #7fe0a3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submitButton:not(:disabled)::before {
+    transition: none;
+  }
+}

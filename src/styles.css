@@ -42,6 +42,19 @@ option {
   animation: button-spinner-rotate 720ms linear infinite;
 }
 
+.app-loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #07170f;
+  color: #f4fff8;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 #root {
   width: 100%;
   min-height: 100%;
@@ -59,134 +72,6 @@ option {
     radial-gradient(circle at 76% 45%, rgba(87, 130, 67, 0.7), transparent 30%),
     linear-gradient(135deg, rgba(18, 36, 39, 0.96), rgba(8, 11, 18, 0.96)),
     #101820;
-}
-
-.app-title-bar {
-  position: relative;
-  min-height: 142px;
-  flex: 0 0 auto;
-  background: #171b29;
-  border-bottom: 4px solid #5ccb84;
-  padding: 26px 18px 24px;
-}
-
-.app-title-bar h1 {
-  margin: 0;
-  color: #ffffff;
-  font-size: 22px;
-  font-weight: 950;
-  letter-spacing: 0.18em;
-  line-height: 1;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.header-actions {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  z-index: 20;
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.language-switch,
-.header-login-button,
-.header-user-menu > button,
-.header-user-menu > span {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  padding: 0 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 950;
-  line-height: 1;
-}
-
-.header-user-menu {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-user-menu > span {
-  max-width: 190px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.header-user-menu > button,
-.header-login-button {
-  cursor: pointer;
-}
-
-.header-dropdown-button {
-  width: 34px;
-  justify-content: center;
-  padding: 0;
-}
-
-.user-dropdown {
-  position: absolute;
-  top: 42px;
-  right: 0;
-  display: grid;
-  min-width: 170px;
-  gap: 6px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #ffffff;
-  padding: 8px;
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.22);
-}
-
-.user-dropdown button {
-  min-height: 34px;
-  border: 0;
-  background: #eef0f0;
-  color: #273142;
-  font-size: 11px;
-  font-weight: 900;
-  text-align: left;
-  text-transform: uppercase;
-}
-
-.language-switch span {
-  font-size: 15px;
-}
-
-.auth-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: grid;
-  place-items: center;
-  background: rgba(8, 11, 18, 0.72);
-  padding: 20px;
-}
-
-.auth-screen-card {
-  display: grid;
-  width: min(100%, 430px);
-  gap: 12px;
-  background: #ffffff;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-}
-
-.auth-screen-card > input,
-.auth-screen-card > button {
-  margin-inline: 14px;
-}
-
-.auth-screen-card > button:last-of-type {
-  margin-bottom: 14px;
 }
 
 .pitch-mode-bar {
@@ -821,45 +706,12 @@ option {
     #facc15;
 }
 
-.locker-room {
-  display: grid;
-  grid-template-columns: minmax(360px, 1fr);
-  gap: 18px;
-  height: 100%;
-  min-height: 0;
-  padding: 24px;
-}
-
-.locker-panel {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  background: #ffffff;
-  overflow: hidden;
-}
-
-.auth-card,
 .lineup-save-bar {
   display: grid;
   gap: 10px;
   padding: 14px;
 }
 
-.auth-card p {
-  margin: 0;
-  color: #273142;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.auth-mode-switch {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.auth-card input,
-.auth-screen-card input,
 .lineup-save-bar input {
   min-height: 36px;
   border: 1px solid #d9dee3;
@@ -870,10 +722,7 @@ option {
   outline: none;
 }
 
-.auth-card button,
-.auth-screen-card button,
-.lineup-save-bar button,
-.saved-lineup-actions button {
+.lineup-save-bar button {
   display: inline-flex;
   min-height: 34px;
   align-items: center;
@@ -887,37 +736,15 @@ option {
   text-transform: uppercase;
 }
 
-.auth-mode-switch button {
-  background: #eef0f0;
-  color: #273142;
-}
-
-.auth-mode-switch button.active,
 .lineup-save-bar button {
   background: #5ccb84;
   color: #ffffff;
 }
 
-.auth-card button:disabled,
-.auth-screen-card button:disabled,
 .lineup-save-bar button:disabled,
-.saved-lineup-actions button:disabled,
 .tactic-library-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
-}
-
-.google-auth-button {
-  background: #2f3747 !important;
-}
-
-.locker-message {
-  margin: 0;
-  padding: 14px;
-  color: #647074;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.45;
 }
 
 .inline-save-status {
@@ -935,97 +762,6 @@ option {
   margin: 0 14px 12px;
   color: #173325;
   background: #dff6e8;
-}
-
-.locker-category-switch {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 14px 14px;
-}
-
-.locker-category-switch button {
-  min-height: 32px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0 12px;
-  background: #eef0f0;
-  color: #273142;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.locker-category-switch button.active {
-  background: #173325;
-  color: #ffffff;
-}
-
-.saved-lineup-list {
-  display: grid;
-  gap: 10px;
-  min-height: 0;
-  padding: 0 14px 14px;
-  overflow-y: auto;
-}
-
-.saved-lineup-card {
-  display: grid;
-  grid-template-columns: 74px 1fr auto;
-  gap: 12px;
-  align-items: center;
-  background: #eef0f0;
-  padding: 14px;
-}
-
-.saved-lineup-card strong,
-.saved-lineup-card span,
-.saved-lineup-card time {
-  display: block;
-}
-
-.saved-lineup-thumbnail {
-  width: 74px;
-  aspect-ratio: 7 / 10;
-  object-fit: cover;
-  background: #2e9849;
-}
-
-.saved-lineup-thumbnail-placeholder {
-  display: grid;
-  place-items: center;
-  padding: 8px;
-  color: #ffffff;
-  font-size: 9px;
-  font-weight: 950;
-  line-height: 1.2;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.saved-lineup-card strong {
-  color: #273142;
-  font-size: 13px;
-  font-weight: 950;
-}
-
-.saved-lineup-card span,
-.saved-lineup-card time {
-  margin-top: 4px;
-  color: #647074;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.saved-lineup-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.saved-lineup-actions button:last-child {
-  width: 34px;
-  background: #fee2e2;
-  color: #991b1b;
 }
 
 .lineup-column {
@@ -2044,15 +1780,6 @@ option {
     transform 120ms ease;
 }
 
-.lineup-footer-actions .share-button {
-  background: #ffffff;
-  color: #2e994c;
-}
-
-.lineup-footer-actions .download-button {
-  background: #173325;
-}
-
 .lineup-footer-actions .draw-button.active {
   background: #facc15;
   color: #173325;
@@ -2317,27 +2044,6 @@ option {
     padding: 0;
   }
 
-  .app-title-bar h1 {
-    font-size: 17px;
-    letter-spacing: 0.12em;
-  }
-
-  .app-title-bar {
-    min-height: 96px;
-    padding: 54px 12px 16px;
-  }
-
-  .header-actions {
-    top: 12px;
-    right: 12px;
-    left: 12px;
-    justify-content: flex-end;
-  }
-
-  .header-user-menu > span {
-    max-width: 120px;
-  }
-
   .pitch-mode-switch {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2432,11 +2138,6 @@ option {
 }
 
 @media (max-width: 380px) {
-  .app-title-bar h1 {
-    font-size: 15px;
-    letter-spacing: 0.08em;
-  }
-
   .content-grid {
     padding: 10px;
   }
@@ -2958,18 +2659,6 @@ option {
     linear-gradient(160deg, #0d1b18 0%, #0a1410 60%, #07100c 100%);
 }
 
-.app-title-bar {
-  background: linear-gradient(160deg, #102420, #0a1410);
-  border-bottom: 4px solid var(--lf-green);
-}
-
-.app-title-bar h1 {
-  background: linear-gradient(120deg, #ffffff 0%, #c8f7d8 60%, #5ccb84 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .dashboard-shell,
 .pitch-mode-bar {
   background: transparent;
@@ -2983,8 +2672,7 @@ option {
 .stats-column,
 .lineup-column,
 .tactical-panel,
-.tactic-library-panel,
-.locker-panel {
+.tactic-library-panel {
   border-radius: var(--lf-radius);
   overflow: hidden;
   box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
@@ -3009,52 +2697,30 @@ option {
 .app-tab-switch > button.active,
 .lineup-tab-trigger.active,
 .lineup-format-menu button.active,
-.auth-mode-switch button.active,
-.locker-category-switch button.active,
 .lineup-save-bar button:not(:disabled),
-.auth-screen-card button[type="submit"]:not(:disabled),
 .tactic-library-actions .save-button:not(:disabled) {
   background: var(--lf-grad);
   color: var(--lf-ink-dark);
 }
 
-.lineup-footer-actions .share-button {
-  background: #ffffff;
-  color: #15663a;
-}
-
 /* --- Rounded inputs with a green focus ring --- */
 .squad-input-list input,
 .extra-player-input input,
-.auth-card input,
-.auth-screen-card input,
 .lineup-save-bar input {
   border-radius: 10px;
 }
 
 /* --- Rounded menus, cards and rows --- */
-.user-dropdown,
 .lineup-format-menu {
   border-radius: 14px;
 }
 
-.user-dropdown button,
 .lineup-format-menu button {
   border-radius: 8px;
 }
 
-.saved-lineup-card,
 .squad-row {
   border-radius: 12px;
-}
-
-.saved-lineup-thumbnail {
-  border-radius: 10px;
-}
-
-.auth-screen-card {
-  border-radius: 18px;
-  overflow: hidden;
 }
 
 /* --- Pitches matched to the landing pitch tone --- */
@@ -3270,8 +2936,7 @@ option {
 .tactic-library-actions .save-button:not(:disabled),
 .tactical-timeline .add-frame-button:not(:disabled),
 .tactical-timeline button.active,
-.lineup-save-bar button:not(:disabled),
-.auth-screen-card button[type="submit"]:not(:disabled) {
+.lineup-save-bar button:not(:disabled) {
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -3287,8 +2952,7 @@ option {
 .tactic-library-actions .save-button:not(:disabled)::before,
 .tactical-timeline .add-frame-button:not(:disabled)::before,
 .tactical-timeline button.active::before,
-.lineup-save-bar button:not(:disabled)::before,
-.auth-screen-card button[type="submit"]:not(:disabled)::before {
+.lineup-save-bar button:not(:disabled)::before {
   content: "";
   position: absolute;
   inset: -40% -10%;
@@ -3310,8 +2974,7 @@ option {
 .tactic-library-actions .save-button:not(:disabled):hover,
 .tactical-timeline .add-frame-button:not(:disabled):hover,
 .tactical-timeline button.active:hover,
-.lineup-save-bar button:not(:disabled):hover,
-.auth-screen-card button[type="submit"]:not(:disabled):hover {
+.lineup-save-bar button:not(:disabled):hover {
   background: linear-gradient(135deg, #9bedbb, #63d68d);
   box-shadow: 0 12px 28px rgba(92, 203, 132, 0.5);
   transform: translateY(-1px);
@@ -3322,8 +2985,7 @@ option {
 .tactic-library-actions .save-button:not(:disabled):hover::before,
 .tactical-timeline .add-frame-button:not(:disabled):hover::before,
 .tactical-timeline button.active:hover::before,
-.lineup-save-bar button:not(:disabled):hover::before,
-.auth-screen-card button[type="submit"]:not(:disabled):hover::before {
+.lineup-save-bar button:not(:disabled):hover::before {
   transform: translateX(130%);
 }
 
@@ -3364,7 +3026,6 @@ option {
   .tactical-timeline .add-frame-button:not(:disabled)::before,
   .tactical-timeline button.active::before,
   .lineup-save-bar button:not(:disabled)::before,
-  .auth-screen-card button[type="submit"]:not(:disabled)::before,
   .landing-auth-btn-primary::before,
   .landing-cta::before {
     transition: none;
@@ -3396,555 +3057,6 @@ option {
 .tactical-timeline button.active span {
   background: linear-gradient(135deg, #7fe0a3, #5ccb84);
   color: #07100c;
-}
-
-/* =====================================================================
-   Locker room ("phòng thay đồ") — dark landing theme, synced filters,
-   and breathing room so the category filters no longer stick to the top.
-   ===================================================================== */
-.locker-panel {
-  background: rgba(9, 20, 15, 0.94);
-}
-
-.locker-message {
-  color: rgba(232, 245, 233, 0.6);
-}
-
-/* breathing room: filters get top spacing + a divider under the heading */
-.locker-category-switch {
-  padding: 16px 14px 14px;
-  margin-top: 2px;
-  border-bottom: 1px solid rgba(232, 245, 233, 0.08);
-}
-
-/* filter chips synced with the auth / register button language */
-.locker-category-switch button {
-  border: 1px solid rgba(232, 245, 233, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e8f5e9;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease;
-}
-
-.locker-category-switch button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(92, 203, 132, 0.6);
-}
-
-.locker-category-switch button.active {
-  border-color: transparent;
-  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
-  color: #07100c;
-}
-
-/* a little extra space above the list */
-.saved-lineup-list {
-  padding-top: 4px;
-}
-
-/* saved lineup cards → dark translucent cards */
-.saved-lineup-card {
-  border: 1px solid rgba(232, 245, 233, 0.1);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease;
-}
-
-.saved-lineup-card:hover {
-  border-color: rgba(92, 203, 132, 0.4);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.saved-lineup-card strong {
-  color: #e8f5e9;
-}
-
-.saved-lineup-card span,
-.saved-lineup-card time {
-  color: rgba(232, 245, 233, 0.58);
-}
-
-/* actions: load = secondary pill, delete = danger pill */
-.saved-lineup-actions button {
-  border-radius: 999px;
-}
-
-.saved-lineup-actions button:not(:last-child) {
-  border: 1px solid rgba(232, 245, 233, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e8f5e9;
-}
-
-.saved-lineup-actions button:not(:last-child):hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(92, 203, 132, 0.6);
-}
-
-.saved-lineup-actions .saved-lineup-share {
-  width: 36px;
-  padding: 0;
-  justify-content: center;
-}
-
-.saved-lineup-actions button:last-child {
-  border: 1px solid rgba(255, 120, 120, 0.35);
-  background: rgba(220, 38, 38, 0.16);
-  color: #ffb4b4;
-}
-
-/* profile card inside the locker */
-.auth-card p {
-  color: rgba(232, 245, 233, 0.7);
-}
-
-.auth-card input {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(232, 245, 233, 0.16);
-  color: #e8f5e9;
-}
-
-.auth-card input::placeholder {
-  color: rgba(232, 245, 233, 0.42);
-}
-
-.auth-card input:focus {
-  border-color: #5ccb84;
-  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
-}
-
-.auth-card > button {
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
-  color: #07100c;
-}
-
-/* =====================================================================
-   Redesigned user profile — avatar uploader + structured fields.
-   ===================================================================== */
-.profile-card {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 20px 22px 24px;
-}
-
-.profile-hero {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 18px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(92, 203, 132, 0.16), rgba(9, 20, 15, 0.5));
-  border: 1px solid rgba(232, 245, 233, 0.12);
-}
-
-.profile-avatar {
-  position: relative;
-  flex: 0 0 auto;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  border: 2px solid rgba(92, 203, 132, 0.7);
-  background: linear-gradient(135deg, #1f4a3a, #0c1a15);
-  cursor: pointer;
-  padding: 0;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.profile-avatar:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(92, 203, 132, 0.35);
-}
-
-.profile-avatar:disabled {
-  cursor: progress;
-}
-
-.profile-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.profile-avatar-initials {
-  font-size: 34px;
-  font-weight: 800;
-  color: #bff3d3;
-}
-
-.profile-avatar-overlay {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  background: rgba(6, 14, 11, 0.72);
-  color: #e8f5e9;
-}
-
-.profile-hero-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.profile-hero-info strong {
-  font-size: 19px;
-  color: #f3fbf5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-hero-info span {
-  font-size: 13px;
-  color: rgba(232, 245, 233, 0.62);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-avatar-trigger {
-  align-self: flex-start;
-  margin-top: 6px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(232, 245, 233, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e8f5e9;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
-}
-
-.profile-avatar-trigger:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(92, 203, 132, 0.6);
-}
-
-.profile-avatar-trigger:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.profile-subtitle {
-  margin: 0;
-  color: rgba(232, 245, 233, 0.7);
-  font-size: 14px;
-}
-
-.profile-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.profile-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.profile-field > span {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: rgba(232, 245, 233, 0.66);
-  text-transform: uppercase;
-}
-
-.profile-field-full {
-  grid-column: 1 / -1;
-}
-
-.profile-field input,
-.profile-field textarea {
-  width: 100%;
-  padding: 11px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(232, 245, 233, 0.16);
-  color: #e8f5e9;
-  font-size: 14px;
-  font-family: inherit;
-  resize: vertical;
-}
-
-.profile-field input::placeholder,
-.profile-field textarea::placeholder {
-  color: rgba(232, 245, 233, 0.42);
-}
-
-.profile-field input:focus,
-.profile-field textarea:focus {
-  outline: none;
-  border-color: #5ccb84;
-  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
-}
-
-.profile-hint {
-  margin: 0;
-  font-size: 12px;
-  color: rgba(232, 245, 233, 0.5);
-}
-
-.profile-save {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: none;
-  border-radius: 999px;
-  padding: 12px 28px;
-  font-weight: 700;
-  font-size: 14px;
-  color: #07100c;
-  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
-  box-shadow: 0 10px 24px rgba(92, 203, 132, 0.32);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
-}
-
-.profile-save::before {
-  content: "";
-  position: absolute;
-  inset: -40% -10%;
-  z-index: -1;
-  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.6) 50%, transparent 70%);
-  transform: translateX(-130%);
-  transition: transform 650ms ease;
-  pointer-events: none;
-}
-
-.profile-save:hover:not(:disabled) {
-  background: linear-gradient(135deg, #9bedbb, #63d68d);
-  transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(92, 203, 132, 0.45);
-}
-
-.profile-save:hover:not(:disabled)::before {
-  transform: translateX(130%);
-}
-
-.profile-save:disabled {
-  opacity: 0.7;
-  cursor: progress;
-}
-
-@media (max-width: 640px) {
-  .profile-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-hero {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .profile-hero-info {
-    align-items: center;
-  }
-
-  .profile-avatar-trigger {
-    align-self: center;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-save::before {
-    transition: none;
-  }
-}
-
-/* =====================================================================
-   Authentication popup (sign in / sign up / reset) — dark landing theme
-   and a tidy bottom (no more leftover empty space).
-   ===================================================================== */
-.auth-screen {
-  background: rgba(6, 14, 11, 0.74);
-  backdrop-filter: blur(4px);
-}
-
-.auth-screen-card {
-  gap: 11px;
-  padding-bottom: 16px;
-  background: linear-gradient(165deg, #14302a 0%, #0c1a15 100%);
-  border: 1px solid rgba(232, 245, 233, 0.14);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
-}
-
-/* small, even gap after the heading */
-.auth-screen-card .panel-heading {
-  margin-bottom: 4px;
-}
-
-/* the card padding-bottom now owns the bottom spacing — drop the legacy
-   per-button margin that caused the extra empty space */
-.auth-screen-card > button:last-of-type {
-  margin-bottom: 0;
-}
-
-/* status line hugs the buttons instead of being a tall padded block */
-.auth-screen-card > .locker-message {
-  margin: -1px 16px 0;
-  padding: 0;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-/* wider, consistent side insets */
-.auth-screen-card > input,
-.auth-screen-card > button {
-  margin-inline: 16px;
-}
-
-/* circular ghost close button on the gradient heading */
-.auth-screen-card .panel-heading button {
-  display: grid;
-  min-height: 28px;
-  height: 28px;
-  width: 28px;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  padding: 0;
-  background: rgba(7, 16, 12, 0.22);
-  color: #07100c;
-  font-size: 13px;
-  text-transform: none;
-}
-
-.auth-screen-card .panel-heading button:hover {
-  background: rgba(7, 16, 12, 0.38);
-}
-
-/* dark inputs with a green focus ring */
-.auth-screen-card input {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(232, 245, 233, 0.16);
-  color: #e8f5e9;
-}
-
-.auth-screen-card input::placeholder {
-  color: rgba(232, 245, 233, 0.42);
-}
-
-.auth-screen-card input:focus {
-  border-color: #5ccb84;
-  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
-}
-
-/* mode switch (Sign in / Sign up / Forgot) synced with auth button language */
-.auth-mode-switch button {
-  border: 1px solid rgba(232, 245, 233, 0.2);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e8f5e9;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease;
-}
-
-.auth-mode-switch button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(92, 203, 132, 0.6);
-}
-
-.auth-mode-switch button.active {
-  border-color: transparent;
-  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
-  color: #07100c;
-}
-
-/* Google button → rounded secondary on dark */
-.auth-screen-card .google-auth-button {
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #e8f5e9;
-  border: 1px solid rgba(232, 245, 233, 0.2);
-}
-
-.auth-screen-card .google-auth-button:hover {
-  background: rgba(255, 255, 255, 0.14) !important;
-  border-color: rgba(92, 203, 132, 0.6);
-}
-
-/* submit button: rounded pill (gradient + sweep already applied earlier) */
-.auth-screen-card button[type="submit"] {
-  border-radius: 999px;
-}
-
-/* only two top tabs now (Sign in / Sign up) */
-.auth-mode-switch {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-/* Make the Sign in / Sign up switch read as a SEGMENTED CONTROL (a track
-   with a sliding active tab) so it no longer looks like the inputs or the
-   primary submit button. */
-.auth-screen-card .auth-mode-switch {
-  gap: 4px;
-  margin: 2px 16px;
-  padding: 4px;
-  border: 1px solid rgba(232, 245, 233, 0.12);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.24);
-}
-
-.auth-screen-card .auth-mode-switch button {
-  min-height: 36px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: rgba(232, 245, 233, 0.6);
-  box-shadow: none;
-  letter-spacing: 0.02em;
-}
-
-.auth-screen-card .auth-mode-switch button:hover {
-  border: none;
-  background: rgba(255, 255, 255, 0.05);
-  color: #e8f5e9;
-}
-
-.auth-screen-card .auth-mode-switch button.active {
-  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
-  color: #07100c;
-  box-shadow: 0 2px 8px rgba(92, 203, 132, 0.32);
-}
-
-/* "Forgot password?" / "Back to sign in" as a subtle link at the very
-   bottom of the popup, under the Google button */
-.auth-screen-card .auth-forgot-link {
-  justify-self: center;
-  min-height: auto;
-  margin: 2px 16px 0;
-  padding: 4px 8px;
-  border: none;
-  background: transparent;
-  color: rgba(232, 245, 233, 0.66);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: none;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.auth-screen-card .auth-forgot-link:hover {
-  color: #7fe0a3;
 }
 
 /* =====================================================================
@@ -4059,13 +3171,6 @@ option {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-}
-
-.footer-actions-right {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 /* =====================================================================
@@ -4217,8 +3322,7 @@ option {
     gap: 10px;
   }
 
-  .footer-formation-switch,
-  .footer-actions-right {
+  .footer-formation-switch {
     justify-content: center;
   }
 
@@ -4264,18 +3368,6 @@ option {
     overflow-y: auto;
   }
 
-  /* ---------- Locker & profile: fill width, allow scroll --------------- */
-  .locker-room {
-    grid-template-columns: 1fr;
-    height: auto;
-    padding: 16px;
-    overflow: visible;
-  }
-
-  .locker-panel {
-    height: auto;
-    max-height: none;
-  }
 }
 
 /* Tablet portrait: keep the squad editor compact above the pitch. */
@@ -4680,19 +3772,10 @@ option {
   }
 
   .lineup-header-actions button.save-button,
-  .lineup-header-actions button:not(.save-button),
-  .lineup-footer-actions .share-button {
+  .lineup-header-actions button:not(.save-button) {
     border: 0;
     background: #173325;
     color: #ffffff;
-  }
-
-  .footer-actions-right {
-    display: flex;
-    height: 48px;
-    align-items: center;
-    gap: 8px;
-    pointer-events: auto;
   }
 
   .sandbox-tool-sidebar {
@@ -5197,8 +4280,7 @@ option {
 }
 
 @media (max-width: 360px) {
-  .lineup-header-actions,
-  .footer-actions-right {
+  .lineup-header-actions {
     gap: 4px;
   }
 
@@ -5269,10 +4351,6 @@ option {
   .mobile-squad-extra-input input,
   .squad-input-list input,
   .extra-player-input input,
-  .auth-card input,
-  .auth-screen-card input,
-  .profile-field input,
-  .profile-field textarea,
   .lineup-save-bar input,
   .custom-lineup-control input {
     font-size: 16px !important;

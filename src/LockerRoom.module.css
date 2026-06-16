@@ -1,0 +1,190 @@
+.lockerRoom {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr);
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+  padding: 24px;
+}
+
+.lockerPanel {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--lf-radius);
+  background: rgba(9, 20, 15, 0.94);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
+}
+
+.categorySwitch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 16px 14px 14px;
+  border-bottom: 1px solid rgba(232, 245, 233, 0.08);
+}
+
+.categoryButton {
+  min-height: 32px;
+  border: 1px solid rgba(232, 245, 233, 0.22);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.categoryButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.categoryButtonActive {
+  border-color: transparent;
+  background: var(--lf-grad);
+  color: var(--lf-ink-dark);
+}
+
+.message {
+  margin: 0;
+  padding: 14px;
+  color: rgba(232, 245, 233, 0.6);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.savedLineupList {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  padding: 4px 14px 14px;
+  overflow-y: auto;
+}
+
+.savedLineupCard {
+  display: grid;
+  grid-template-columns: 74px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(232, 245, 233, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 14px;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.savedLineupCard:hover {
+  border-color: rgba(92, 203, 132, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.savedLineupCard strong,
+.savedLineupCard span,
+.savedLineupCard time {
+  display: block;
+}
+
+.savedLineupCard strong {
+  color: #e8f5e9;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.savedLineupCard span,
+.savedLineupCard time {
+  margin-top: 4px;
+  color: rgba(232, 245, 233, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.thumbnail {
+  width: 74px;
+  aspect-ratio: 7 / 10;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #2e9849;
+}
+
+.thumbnailPlaceholder {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 950;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actionButton {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(232, 245, 233, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.actionButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.shareButton {
+  width: 36px;
+  padding: 0;
+}
+
+.deleteButton {
+  width: 34px;
+  border-color: rgba(255, 120, 120, 0.35);
+  background: rgba(220, 38, 38, 0.16);
+  color: #ffb4b4;
+}
+
+.deleteButton:hover {
+  border-color: rgba(255, 120, 120, 0.55);
+  background: rgba(220, 38, 38, 0.26);
+}
+
+@media (max-width: 1024px) {
+  .lockerRoom {
+    grid-template-columns: 1fr;
+    height: auto;
+    padding: 16px;
+    overflow: visible;
+  }
+
+  .lockerPanel {
+    height: auto;
+    max-height: none;
+  }
+}

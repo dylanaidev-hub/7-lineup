@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import styles from "./LandingPage.module.css";
 
 export type LandingLanguage = "vi" | "en";
 
@@ -78,38 +79,39 @@ export function LandingPage({
   authLabels,
 }: LandingPageProps) {
   const c = landingCopy[language];
+  const cx = (...classNames: string[]) => classNames.map((className) => styles[className]).filter(Boolean).join(" ");
 
   return (
-    <main className="landing">
-      <header className="landing-nav">
-        <div className="landing-brand">
-          <span className="landing-logo">⚽</span>
+    <main className={styles.landing}>
+      <header className={styles["landing-nav"]}>
+        <div className={styles["landing-brand"]}>
+          <span className={styles["landing-logo"]}>⚽</span>
           <span>{c.brand}</span>
         </div>
-        <div className="landing-nav-actions">
+        <div className={styles["landing-nav-actions"]}>
           {isAuthLoading ? null : user ? (
-            <div className="landing-user">
-              <span className="landing-user-email">{user.email}</span>
-              <button type="button" className="landing-auth-btn landing-auth-btn-primary" onClick={onExplore}>
+            <div className={styles["landing-user"]}>
+              <span className={styles["landing-user-email"]}>{user.email}</span>
+              <button type="button" className={cx("landing-auth-btn", "landing-auth-btn-primary")} onClick={onExplore}>
                 {c.explore}
               </button>
-              <button type="button" className="landing-auth-btn" onClick={onSignOut}>
+              <button type="button" className={styles["landing-auth-btn"]} onClick={onSignOut}>
                 {authLabels.signOut}
               </button>
             </div>
           ) : (
             <>
-              <button type="button" className="landing-auth-btn" onClick={onSignIn}>
+              <button type="button" className={styles["landing-auth-btn"]} onClick={onSignIn}>
                 {authLabels.signIn}
               </button>
-              <button type="button" className="landing-auth-btn landing-auth-btn-primary" onClick={onSignUp}>
+              <button type="button" className={cx("landing-auth-btn", "landing-auth-btn-primary")} onClick={onSignUp}>
                 {authLabels.signUp}
               </button>
             </>
           )}
           <button
             type="button"
-            className="landing-lang"
+            className={styles["landing-lang"]}
             onClick={() => onChangeLanguage(language === "vi" ? "en" : "vi")}
           >
             {language === "vi" ? "🇻🇳 VI" : "🇺🇸 EN"}
@@ -117,22 +119,22 @@ export function LandingPage({
         </div>
       </header>
 
-      <section className="landing-hero">
-        <div className="landing-hero-content">
-          <p className="landing-eyebrow">{c.eyebrow}</p>
-          <h1 className="landing-title">{c.heroTitle}</h1>
-          <p className="landing-subtitle">{c.heroSubtitle}</p>
-          <button type="button" className="landing-cta" onClick={onExplore}>
+      <section className={styles["landing-hero"]}>
+        <div className={styles["landing-hero-content"]}>
+          <p className={styles["landing-eyebrow"]}>{c.eyebrow}</p>
+          <h1 className={styles["landing-title"]}>{c.heroTitle}</h1>
+          <p className={styles["landing-subtitle"]}>{c.heroSubtitle}</p>
+          <button type="button" className={styles["landing-cta"]} onClick={onExplore}>
             {c.explore}
             <span aria-hidden="true">→</span>
           </button>
         </div>
-        <div className="landing-hero-visual" aria-hidden="true">
-          <div className="landing-pitch">
-            <span className="landing-pitch-line landing-pitch-halfway" />
-            <span className="landing-pitch-circle" />
-            <span className="landing-pitch-box landing-pitch-box-top" />
-            <span className="landing-pitch-box landing-pitch-box-bottom" />
+        <div className={styles["landing-hero-visual"]} aria-hidden="true">
+          <div className={styles["landing-pitch"]}>
+            <span className={cx("landing-pitch-line", "landing-pitch-halfway")} />
+            <span className={styles["landing-pitch-circle"]} />
+            <span className={cx("landing-pitch-box", "landing-pitch-box-top")} />
+            <span className={cx("landing-pitch-box", "landing-pitch-box-bottom")} />
             {[
               { x: 50, y: 90 },
               { x: 26, y: 70 },
@@ -146,21 +148,21 @@ export function LandingPage({
             ].map((dot, index) => (
               <span
                 key={index}
-                className={`landing-pitch-dot${index === 0 ? " landing-pitch-dot-keeper" : ""}`}
+                className={cx("landing-pitch-dot", ...(index === 0 ? ["landing-pitch-dot-keeper"] : []))}
                 style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
               />
             ))}
-            <span className="landing-pitch-ball" />
+            <span className={styles["landing-pitch-ball"]} />
           </div>
         </div>
       </section>
 
-      <section className="landing-features">
-        <h2 className="landing-features-title">{c.featuresTitle}</h2>
-        <div className="landing-feature-grid">
+      <section className={styles["landing-features"]}>
+        <h2 className={styles["landing-features-title"]}>{c.featuresTitle}</h2>
+        <div className={styles["landing-feature-grid"]}>
           {c.features.map((feature) => (
-            <article key={feature.title} className="landing-feature-card">
-              <span className="landing-feature-icon" aria-hidden="true">
+            <article key={feature.title} className={styles["landing-feature-card"]}>
+              <span className={styles["landing-feature-icon"]} aria-hidden="true">
                 {feature.icon}
               </span>
               <h3>{feature.title}</h3>
@@ -168,13 +170,13 @@ export function LandingPage({
             </article>
           ))}
         </div>
-        <button type="button" className="landing-cta landing-cta-secondary" onClick={onExplore}>
+        <button type="button" className={cx("landing-cta", "landing-cta-secondary")} onClick={onExplore}>
           {c.explore}
           <span aria-hidden="true">→</span>
         </button>
       </section>
 
-      <footer className="landing-footer">{c.footer}</footer>
+      <footer className={styles["landing-footer"]}>{c.footer}</footer>
     </main>
   );
 }
