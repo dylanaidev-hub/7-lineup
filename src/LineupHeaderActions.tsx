@@ -1,4 +1,5 @@
 import { Check, RotateCcw, Save } from "lucide-react";
+import styles from "./LineupHeaderActions.module.css";
 
 type LineupHeaderActionsProps = {
   saveLabel: string;
@@ -24,13 +25,13 @@ export function LineupHeaderActions({
   onReset,
 }: LineupHeaderActionsProps) {
   return (
-    <div className="lineup-header">
-      <div className="lineup-header-actions">
-        <button type="button" className="save-button" onClick={onSave} disabled={isSaving}>
+    <div className={styles.header}>
+      <div className={styles.actions}>
+        <button type="button" className={`${styles.button} ${styles.saveButton}`} onClick={onSave} disabled={isSaving}>
           {isSaving ? <ButtonSpinner /> : status === savedLabel ? <Check size={14} /> : <Save size={14} />}
           <span>{saveLabel}</span>
         </button>
-        <button type="button" onClick={onReset}>
+        <button type="button" className={styles.button} onClick={onReset}>
           <RotateCcw size={14} />
           <span>{resetLabel}</span>
         </button>

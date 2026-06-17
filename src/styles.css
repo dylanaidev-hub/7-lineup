@@ -134,8 +134,7 @@ option {
   overflow: hidden;
 }
 
-.panel-heading,
-.lineup-header {
+.panel-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -147,12 +146,6 @@ option {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.lineup-header {
-  justify-content: flex-end;
-  min-height: 56px;
-  padding: 12px 14px;
 }
 
 .sandbox-toolbar {
@@ -403,8 +396,7 @@ option {
   background: #5ccb84;
 }
 
-.tactic-library-actions .save-button,
-.lineup-header-actions .save-button {
+.tactic-library-actions .save-button {
   background: linear-gradient(135deg, #facc15, #f59e0b);
   color: #173325;
   box-shadow: none;
@@ -1226,79 +1218,6 @@ option {
   grid-template-columns: 58px minmax(0, 1fr) 230px;
 }
 
-.sandbox-tool-sidebar {
-  display: grid;
-  grid-column: 1;
-  grid-row: 1;
-  align-self: center;
-  align-content: center;
-  gap: 8px;
-  height: clamp(380px, calc(100vh - 310px), 600px);
-  min-height: 0;
-  padding: 6px;
-  border: 1px solid rgba(232, 245, 233, 0.16);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(9, 34, 22, 0.86), rgba(8, 24, 17, 0.72));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 18px 34px rgba(7, 16, 12, 0.22);
-  backdrop-filter: blur(10px);
-}
-
-.sandbox-tool-sidebar button {
-  display: grid;
-  min-height: 46px;
-  place-items: center;
-  gap: 3px;
-  border: 1px solid rgba(232, 245, 233, 0.1);
-  border-radius: 14px;
-  padding: 6px 3px;
-  background: rgba(255, 255, 255, 0.055);
-  color: rgba(232, 245, 233, 0.74);
-  cursor: pointer;
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-}
-
-.sandbox-tool-sidebar button.active {
-  border-color: rgba(125, 224, 163, 0.84);
-  background: linear-gradient(180deg, rgba(125, 224, 163, 0.94), rgba(92, 203, 132, 0.88));
-  color: #07100c;
-  box-shadow:
-    0 10px 22px rgba(36, 150, 75, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.46);
-}
-
-.sandbox-tool-sidebar button:hover:not(.active) {
-  border-color: rgba(125, 224, 163, 0.36);
-  background: rgba(232, 245, 233, 0.1);
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.sandbox-tool-sidebar button:active {
-  transform: translateY(1px);
-}
-
-.sandbox-tool-sidebar button svg {
-  width: 17px;
-  height: 17px;
-  stroke-width: 2.4;
-}
-
-.sandbox-tool-sidebar button span {
-  font-size: 7.5px;
-  font-weight: 950;
-  line-height: 1.25;
-  text-align: center;
-  text-transform: uppercase;
-}
-
 .custom-side-tray {
   display: grid;
   grid-column: 3;
@@ -1680,73 +1599,22 @@ option {
   white-space: nowrap;
 }
 
-.lineup-header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.lineup-header-actions button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 38px;
-  border: 0;
-  border-radius: 999px;
-  padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    opacity 160ms ease,
-    transform 120ms ease;
-}
-
-.lineup-header-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.lineup-header-actions button:not(:disabled):hover,
 .lineup-footer-actions button:not(:disabled):hover,
 .tactic-library-actions button:not(:disabled):hover {
   filter: brightness(1.06);
   transform: translateY(-1px);
 }
 
-.lineup-header-actions button:not(:disabled):active,
 .lineup-footer-actions button:not(:disabled):active,
 .tactic-library-actions button:not(:disabled):active {
   filter: brightness(0.96);
   transform: translateY(1px);
 }
 
-.lineup-header-actions button:focus-visible,
 .lineup-footer-actions button:focus-visible,
 .tactic-library-actions button:focus-visible {
   outline: 3px solid rgba(250, 204, 21, 0.75);
   outline-offset: 3px;
-}
-
-.lineup-header-actions button:last-child {
-  background: #2f3747;
-}
-
-.lineup-header-actions button:first-child {
-  background: #5ccb84;
-  color: #ffffff;
-}
-
-.lineup-header-actions .save-button {
-  min-height: 42px;
-  border: 2px solid rgba(255, 255, 255, 0.78);
-  padding: 8px 16px;
-  font-size: 11px;
 }
 
 .lineup-footer-actions {
@@ -1856,29 +1724,12 @@ option {
     padding-bottom: 24px;
   }
 
-  .lineup-header {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
   .sandbox-canvas-stage,
   .sandbox-canvas-stage.show-marker-tray,
   .sandbox-canvas-stage.show-animation-panel,
   .sandbox-canvas-stage.show-marker-tray.show-animation-panel {
     grid-template-columns: 1fr;
     gap: 10px;
-  }
-
-  .sandbox-tool-sidebar {
-    grid-column: auto;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    order: 2;
-    align-content: stretch;
-    border-radius: 18px;
-  }
-
-  .sandbox-tool-sidebar button {
-    min-height: 48px;
   }
 
   .custom-side-tray {
@@ -1976,18 +1827,6 @@ option {
     grid-column: 1 / -1;
   }
 
-  .lineup-header {
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 12px;
-  }
-
-  .lineup-header-actions {
-    width: 100%;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-
   .lineup-footer-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2059,13 +1898,8 @@ option {
     padding: 12px;
   }
 
-  .panel-heading,
-  .lineup-header {
+  .panel-heading {
     min-height: 40px;
-  }
-
-  .lineup-header {
-    flex-direction: column;
   }
 
   .lineup-footer-actions button {
@@ -2687,8 +2521,7 @@ option {
 }
 
 /* --- Accent headings + active/primary buttons use the green gradient --- */
-.panel-heading,
-.lineup-header {
+.panel-heading {
   background: var(--lf-grad);
   color: var(--lf-ink-dark);
 }
@@ -3086,7 +2919,6 @@ option {
   align-content: stretch;
 }
 
-.sandbox-canvas-stage .sandbox-tool-sidebar,
 .sandbox-canvas-stage .custom-side-tray {
   align-self: stretch;
   height: auto;
@@ -3115,12 +2947,6 @@ option {
   width: auto;
   justify-self: center;
   align-self: center;
-}
-
-/* trim the vertical footprint of the header/formation bars */
-.lineup-column .lineup-header {
-  min-height: 48px;
-  padding: 8px 14px;
 }
 
 .formation-switch {
@@ -3451,36 +3277,6 @@ option {
     align-self: start;
   }
 
-  .sandbox-tool-sidebar {
-    grid-column: 1;
-    grid-row: auto;
-    order: 2;
-    width: min(100%, 440px);
-    height: auto;
-    min-height: 0;
-    justify-self: center;
-    align-self: stretch;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-content: stretch;
-    padding: 6px;
-    border-radius: 18px;
-  }
-
-  .sandbox-tool-sidebar button {
-    min-height: 54px;
-    gap: 5px;
-    padding: 8px 6px;
-  }
-
-  .sandbox-tool-sidebar button svg {
-    width: 19px;
-    height: 19px;
-  }
-
-  .sandbox-tool-sidebar button span {
-    font-size: 10px;
-  }
-
   .custom-side-tray {
     grid-column: 1;
     grid-row: auto;
@@ -3527,11 +3323,6 @@ option {
     padding: 8px;
   }
 
-  .lineup-header {
-    padding: 14px 14px;
-    gap: 10px;
-  }
-
   .lineup-actions {
     width: 100%;
     justify-content: center;
@@ -3545,7 +3336,6 @@ option {
   .sandbox-canvas-stage > .pitch,
   .sandbox-canvas-stage.show-marker-tray > .pitch,
   .sandbox-canvas-stage.show-animation-panel > .pitch,
-  .sandbox-tool-sidebar,
   .custom-side-tray,
   .sandbox-canvas-stage > .workspace-timeline,
   .workspace-timeline {
@@ -3685,38 +3475,13 @@ option {
     width: min(calc(100vw - 24px), calc((100dvh - 245px) * 0.7));
   }
 
-  .lineup-header,
   .lineup-footer-actions,
-  .sandbox-tool-sidebar,
   .custom-side-tray,
   .sandbox-canvas-stage > .workspace-timeline {
     position: fixed;
     z-index: 80;
   }
 
-  .lineup-header {
-    right: auto;
-    bottom: calc(env(safe-area-inset-bottom) + 10px);
-    left: 12px;
-    display: flex;
-    height: 48px;
-    align-items: center;
-    min-height: 0;
-    width: auto;
-    padding: 0 !important;
-    background: transparent;
-    letter-spacing: 0;
-  }
-
-  .lineup-header-actions {
-    display: flex;
-    height: 48px;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .lineup-header-actions button,
-  .lineup-header-actions .save-button,
   .lineup-footer-actions button {
     display: inline-grid;
     width: 40px;
@@ -3734,16 +3499,11 @@ option {
       inset 0 1px 0 rgba(255, 255, 255, 0.24);
   }
 
-  .sandbox-tool-sidebar button,
-  .lineup-header-actions button,
-  .lineup-header-actions .save-button,
   .lineup-footer-actions button {
     align-items: center;
     justify-items: center;
   }
 
-  .sandbox-tool-sidebar button svg,
-  .lineup-header-actions button svg,
   .lineup-footer-actions button svg {
     display: block;
     width: 17px;
@@ -3753,7 +3513,6 @@ option {
     vertical-align: middle;
   }
 
-  .lineup-header-actions button > :not(svg):not(.button-spinner),
   .lineup-footer-actions button > :not(svg):not(.button-spinner) {
     display: none;
   }
@@ -3769,55 +3528,6 @@ option {
     padding: 0;
     background: transparent;
     pointer-events: none;
-  }
-
-  .lineup-header-actions button.save-button,
-  .lineup-header-actions button:not(.save-button) {
-    border: 0;
-    background: #173325;
-    color: #ffffff;
-  }
-
-  .sandbox-tool-sidebar {
-    right: auto;
-    bottom: calc(env(safe-area-inset-bottom) + 10px);
-    left: 50%;
-    display: grid;
-    width: min(46vw, 292px);
-    height: 46px;
-    min-height: 0;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(8, 31, 21, 0.9);
-    box-shadow:
-      0 18px 32px rgba(0, 0, 0, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(16px);
-    transform: translateX(-50%);
-  }
-
-  .sandbox-tool-sidebar button {
-    width: 100%;
-    min-height: 42px;
-    border-radius: 999px;
-    padding: 0;
-    gap: 0;
-  }
-
-  .sandbox-tool-sidebar button svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .sandbox-tool-sidebar button span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
   }
 
   .custom-side-tray {
@@ -4280,11 +3990,6 @@ option {
 }
 
 @media (max-width: 360px) {
-  .lineup-header-actions {
-    gap: 4px;
-  }
-
-  .lineup-header-actions button,
   .lineup-footer-actions button {
     width: 36px;
     min-width: 36px;
@@ -4292,14 +3997,6 @@ option {
     min-height: 36px;
   }
 
-  .sandbox-tool-sidebar {
-    width: min(42vw, 150px);
-    height: 48px;
-  }
-
-  .sandbox-tool-sidebar button {
-    min-height: 40px;
-  }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {

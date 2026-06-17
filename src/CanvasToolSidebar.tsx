@@ -1,4 +1,5 @@
 import { Clapperboard, PenLine, Users } from "lucide-react";
+import styles from "./CanvasToolSidebar.module.css";
 
 export type CanvasTool = "PERSONNEL_TOOL" | "DRAW_TOOL" | "ANIMATION_TOOL";
 
@@ -17,11 +18,14 @@ export function CanvasToolSidebar({
   animationLabel = "Chuyển động",
   onSelectTool,
 }: CanvasToolSidebarProps) {
+  const getButtonClassName = (tool: CanvasTool) =>
+    activeTool === tool ? `${styles.button} ${styles.buttonActive}` : styles.button;
+
   return (
-    <aside className="sandbox-tool-sidebar" aria-label="Canvas tools">
+    <aside className={styles.sidebar} aria-label="Canvas tools">
       <button
         type="button"
-        className={activeTool === "PERSONNEL_TOOL" ? "active" : ""}
+        className={getButtonClassName("PERSONNEL_TOOL")}
         onClick={() => onSelectTool("PERSONNEL_TOOL")}
         aria-label={lineupLabel}
       >
@@ -30,7 +34,7 @@ export function CanvasToolSidebar({
       </button>
       <button
         type="button"
-        className={activeTool === "DRAW_TOOL" ? "active" : ""}
+        className={getButtonClassName("DRAW_TOOL")}
         onClick={() => onSelectTool("DRAW_TOOL")}
         aria-label={drawLabel}
       >
@@ -39,7 +43,7 @@ export function CanvasToolSidebar({
       </button>
       <button
         type="button"
-        className={activeTool === "ANIMATION_TOOL" ? "active" : ""}
+        className={getButtonClassName("ANIMATION_TOOL")}
         onClick={() => onSelectTool("ANIMATION_TOOL")}
         aria-label={animationLabel}
       >
