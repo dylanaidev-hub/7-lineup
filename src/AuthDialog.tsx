@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { isSupabaseConfigured, supabase } from "./lib/supabaseClient";
+import { isSupabaseConfigured } from "./lib/supabaseClient";
+import { useAuthDialogForm } from "./hooks/useAuthDialogForm";
 import styles from "./AuthDialog.module.css";
 
 export type AuthLanguage = "vi" | "en";
@@ -80,34 +80,9 @@ const authCopyByLanguage: Record<AuthLanguage, AuthCopy> = {
   },
 };
 
-const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-
-const parseRateLimitSeconds = (message?: string): number | null => {
-  const match = message?.match(/(\d+)\s*seconds?/i);
-  return match ? Number(match[1]) : null;
-};
-
-const localizeError = (message: string | undefined, copy: AuthCopy): string => {
-  if (!message) return copy.networkError;
-  if (/invalid login credentials/i.test(message)) return copy.invalidCredentials;
-  if (/already registered|already exists|user already/i.test(message)) return copy.emailAlreadyRegistered;
-  if (/network|fetch/i.test(message)) return copy.networkError;
-  return message;
-};
-
 function ButtonSpinner() {
   return <span className="button-spinner" aria-hidden="true" />;
 }
-
-const fetchEmailProviders = async (email: string) => {
-  if (!supabase) return null;
-  const { data, error } = await supabase.rpc("email_auth_providers", { p_email: email });
-  if (error) {
-    console.error("email_auth_providers error:", error.message);
-    return null;
-  }
-  return data as { account_exists: boolean; has_password: boolean; has_google: boolean } | null;
-};
 
 export function AuthDialog({
   language,
@@ -121,173 +96,25 @@ export function AuthDialog({
   onAuthenticated?: () => void;
 }) {
   const copy = authCopyByLanguage[language];
-  const [authMode, setAuthMode] = useState<"sign_in" | "sign_up" | "reset">(initialMode);
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authUsername, setAuthUsername] = useState("");
-  const [authStatus, setAuthStatus] = useState("");
-  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
-  const [isGoogleAuthLoading, setIsGoogleAuthLoading] = useState(false);
-  const [resetCooldown, setResetCooldown] = useState(0);
-
-  useEffect(() => {
-    if (resetCooldown <= 0) return;
-    const intervalId = window.setInterval(() => {
-      setResetCooldown((seconds) => {
-        if (seconds <= 1) {
-          window.clearInterval(intervalId);
-          return 0;
-        }
-        return seconds - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(intervalId);
-  }, [resetCooldown]);
-
-  const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!supabase) {
-      setAuthStatus(copy.supabaseMissing);
-      return;
-    }
-
-    setAuthStatus("");
-    const email = authEmail.trim().toLowerCase();
-    const password = authPassword.trim();
-
-    if (!isValidEmail(email)) {
-      setAuthStatus(copy.invalidEmail);
-      return;
-    }
-
-    if (authMode !== "reset" && password.length < 6) {
-      setAuthStatus(copy.passwordTooShort);
-      return;
-    }
-
-    setIsAuthSubmitting(true);
-
-    if (authMode === "reset") {
-      const providers = await fetchEmailProviders(email);
-      if (providers?.account_exists && providers.has_google && !providers.has_password) {
-        setAuthStatus(copy.googleAccountNoPassword);
-        setIsAuthSubmitting(false);
-        return;
-      }
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname,
-      });
-      if (error) {
-        const cooldownSeconds = parseRateLimitSeconds(error.message);
-        if (cooldownSeconds) {
-          setResetCooldown(cooldownSeconds);
-          setAuthStatus("");
-        } else {
-          setAuthStatus(localizeError(error.message, copy));
-        }
-      } else {
-        setResetCooldown(0);
-        setAuthStatus(copy.resetEmailSent);
-      }
-      setIsAuthSubmitting(false);
-      return;
-    }
-
-    if (authMode === "sign_up") {
-      const providers = await fetchEmailProviders(email);
-      if (providers?.has_google) {
-        setAuthStatus(copy.emailUsesGoogle);
-        setIsAuthSubmitting(false);
-        return;
-      }
-
-      const result = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { username: authUsername.trim() || email.split("@")[0] } },
-      });
-
-      if (result.error) {
-        setAuthStatus(localizeError(result.error.message, copy));
-        setIsAuthSubmitting(false);
-        return;
-      }
-
-      const identities = result.data.user?.identities;
-      if (Array.isArray(identities) && identities.length === 0) {
-        setAuthStatus(copy.emailAlreadyRegistered);
-        setIsAuthSubmitting(false);
-        return;
-      }
-
-      setAuthStatus(copy.checkEmailToConfirm);
-      setIsAuthSubmitting(false);
-      return;
-    }
-
-    const result = await supabase.auth.signInWithPassword({ email, password });
-    if (result.error) {
-      const providers = await fetchEmailProviders(email);
-      setAuthStatus(
-        providers?.account_exists && providers.has_google && !providers.has_password
-          ? copy.emailUsesGoogle
-          : localizeError(result.error.message, copy),
-      );
-      setIsAuthSubmitting(false);
-      return;
-    }
-
-    setIsAuthSubmitting(false);
-    setAuthStatus(copy.signedInSuccessfully);
-    onAuthenticated?.();
-    onClose();
-  };
-
-  const signInWithGoogle = async () => {
-    if (!supabase) {
-      setAuthStatus(copy.supabaseMissing);
-      return;
-    }
-    setIsGoogleAuthLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin + window.location.pathname },
-    });
-    if (error) {
-      setAuthStatus(localizeError(error.message, copy));
-      setIsGoogleAuthLoading(false);
-    }
-  };
+  const {
+    authMode, authEmail, authPassword, authUsername, authStatus, isAuthSubmitting,
+    isGoogleAuthLoading, resetCooldown, setAuthEmail, setAuthPassword, setAuthUsername,
+    handleAuthSubmit, signInWithGoogle, changeMode,
+  } = useAuthDialogForm({ initialMode, copy, onClose, onAuthenticated });
 
   return (
     <div className={styles.screen}>
       <form className={styles.card} onSubmit={handleAuthSubmit}>
         <div className={styles.heading}>
           <span>{copy.authTitle}</span>
-          <button type="button" onClick={onClose}>
-            x
-          </button>
+          <button type="button" onClick={onClose}>x</button>
         </div>
         {!isSupabaseConfigured ? <p className={styles.message}>{copy.supabaseMissing}</p> : null}
         <div className={styles.modeSwitch}>
-          <button
-            type="button"
-            className={authMode === "sign_in" ? styles.active : ""}
-            onClick={() => {
-              setAuthMode("sign_in");
-              setAuthStatus("");
-            }}
-          >
+          <button type="button" className={authMode === "sign_in" ? styles.active : ""} onClick={() => changeMode("sign_in")}>
             {copy.signIn}
           </button>
-          <button
-            type="button"
-            className={authMode === "sign_up" ? styles.active : ""}
-            onClick={() => {
-              setAuthMode("sign_up");
-              setAuthStatus("");
-            }}
-          >
+          <button type="button" className={authMode === "sign_up" ? styles.active : ""} onClick={() => changeMode("sign_up")}>
             {copy.signUp}
           </button>
         </div>
@@ -296,13 +123,7 @@ export function AuthDialog({
         ) : null}
         <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder={copy.email} required />
         {authMode !== "reset" ? (
-          <input
-            type="password"
-            value={authPassword}
-            onChange={(event) => setAuthPassword(event.target.value)}
-            placeholder={copy.password}
-            required
-          />
+          <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={copy.password} required />
         ) : null}
         <button
           type="submit"
@@ -312,11 +133,7 @@ export function AuthDialog({
           {isAuthSubmitting ? <ButtonSpinner /> : null}
           {authMode === "reset" && resetCooldown > 0
             ? `${copy.resetPassword} (${resetCooldown}s)`
-            : authMode === "sign_up"
-              ? copy.signUp
-              : authMode === "reset"
-                ? copy.resetPassword
-                : copy.signIn}
+            : authMode === "sign_up" ? copy.signUp : authMode === "reset" ? copy.resetPassword : copy.signIn}
         </button>
         <button
           type="button"
@@ -329,17 +146,8 @@ export function AuthDialog({
         </button>
         {authMode === "reset" && resetCooldown > 0 ? (
           <p className={styles.message}>{copy.resetCooldownMessage.replace("{seconds}", String(resetCooldown))}</p>
-        ) : authStatus ? (
-          <p className={styles.message}>{authStatus}</p>
-        ) : null}
-        <button
-          type="button"
-          className={styles.forgotLink}
-          onClick={() => {
-            setAuthMode(authMode === "reset" ? "sign_in" : "reset");
-            setAuthStatus("");
-          }}
-        >
+        ) : authStatus ? <p className={styles.message}>{authStatus}</p> : null}
+        <button type="button" className={styles.forgotLink} onClick={() => changeMode(authMode === "reset" ? "sign_in" : "reset")}>
           {authMode === "reset" ? copy.backToSignIn : copy.forgotPassword}
         </button>
       </form>
