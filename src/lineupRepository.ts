@@ -9,22 +9,13 @@ type SaveLineupRecordArgs = {
   playersData: SavedLineupRecord["players_data"];
 };
 
-export const saveLineupRecordToSupabase = async ({
-  supabase,
-  user,
-  name,
-  format,
-  playersData,
-}: SaveLineupRecordArgs) => {
+export async function saveLineupRecord({ supabase, user, name, format, playersData }: SaveLineupRecordArgs) {
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: user.id,
     username: user.user_metadata?.username ?? user.email?.split("@")[0] ?? "",
     avatar_url: user.user_metadata?.avatar_url ?? null,
   });
-
-  if (profileError) {
-    return { error: profileError };
-  }
+  if (profileError) return { error: profileError };
 
   const { error } = await supabase.from("lineups").insert({
     user_id: user.id,
@@ -32,7 +23,5 @@ export const saveLineupRecordToSupabase = async ({
     format,
     players_data: playersData,
   });
-
   return { error };
-};
-
+}

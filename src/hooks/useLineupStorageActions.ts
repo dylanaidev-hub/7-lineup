@@ -1,34 +1,14 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { User } from "@supabase/supabase-js";
-import type { AppTab, PitchSize } from "../appRouting";
-import type { CanvasTool } from "../CanvasToolSidebar";
-import {
-  createOpponentMarkers,
-  isFormationKey,
-  type DrawLine,
-  type FormationKey,
-  type FormationPlayer,
-  type OpponentMarker,
-} from "../formationData";
-import { clampCustomCount } from "../lineupShare";
-import { saveLineupRecordToSupabase } from "../lineupPersistence";
-import {
-  createStoredLineupState,
-  type SavedLineupRecord,
-  type StoredLineupState,
-} from "../lineupState";
+import type { PitchSize } from "../appRouting";
+import type { DrawLine, FormationKey, FormationPlayer, OpponentMarker } from "../formationData";
+import { saveLineupRecord } from "../lineupRepository";
+import { isStoredLineupState, serializeLineupState } from "../lineupSerializer";
+import type { SavedLineupRecord } from "../lineupState";
 import { createLineupThumbnail } from "../lineupThumbnail";
 import { createSavedLineupShareUrl } from "../savedLineupShare";
 import { copyTextOrPrompt } from "../shareUtils";
 import { useTacticalStore, type WorkspaceMode } from "../stores/tacticalStore";
-import {
-  cloneTacticalFrame,
-  cloneTacticalFrames,
-  createDefaultTacticalPlaybook,
-  createInitialTacticalFrame,
-  normalizeTacticalPlaybooks,
-} from "../tacticalData";
-import { isPitchSize } from "../appRouting";
 import { supabase } from "../lib/supabaseClient";
 import type { LockerCategory } from "./useLockerRoomData";
 
@@ -70,23 +50,6 @@ type UseLineupStorageActionsOptions = {
   setIsLockerLoading: Dispatch<SetStateAction<boolean>>;
   setLineupName: Dispatch<SetStateAction<string>>;
   setLockerCategory: Dispatch<SetStateAction<LockerCategory>>;
-  setPitchSize: Dispatch<SetStateAction<PitchSize>>;
-  setFormation: Dispatch<SetStateAction<FormationKey>>;
-  setCustomCount: Dispatch<SetStateAction<number>>;
-  setPlayers: Dispatch<SetStateAction<FormationPlayer[]>>;
-  setSavedPlayersByPitch: Dispatch<SetStateAction<Partial<Record<PitchSize, FormationPlayer[]>>>>;
-  setSavedFormationByPitch: Dispatch<SetStateAction<Partial<Record<PitchSize, FormationKey>>>>;
-  setSavedCustomCountByPitch: Dispatch<SetStateAction<Partial<Record<PitchSize, number>>>>;
-  setOpponentMarkers: Dispatch<SetStateAction<OpponentMarker[]>>;
-  setSavedOpponentMarkersByPitch: Dispatch<SetStateAction<Partial<Record<PitchSize, OpponentMarker[]>>>>;
-  setDrawLines: Dispatch<SetStateAction<DrawLine[]>>;
-  setSavedDrawLinesByPitch: Dispatch<SetStateAction<Partial<Record<PitchSize, DrawLine[]>>>>;
-  setRedoDrawLines: Dispatch<SetStateAction<DrawLine[]>>;
-  setCurrentMode: Dispatch<SetStateAction<WorkspaceMode>>;
-  setActiveTool: Dispatch<SetStateAction<CanvasTool>>;
-  setActiveBottomSheetTool: Dispatch<SetStateAction<CanvasTool | null>>;
-  setActiveTab: Dispatch<SetStateAction<AppTab>>;
-  setIsDrawMode: Dispatch<SetStateAction<boolean>>;
 };
 
 export function useLineupStorageActions({
@@ -116,34 +79,15 @@ export function useLineupStorageActions({
   setIsLockerLoading,
   setLineupName,
   setLockerCategory,
-  setPitchSize,
-  setFormation,
-  setCustomCount,
-  setPlayers,
-  setSavedPlayersByPitch,
-  setSavedFormationByPitch,
-  setSavedCustomCountByPitch,
-  setOpponentMarkers,
-  setSavedOpponentMarkersByPitch,
-  setDrawLines,
-  setSavedDrawLinesByPitch,
-  setRedoDrawLines,
-  setCurrentMode,
-  setActiveTool,
-  setActiveBottomSheetTool,
-  setActiveTab,
-  setIsDrawMode,
 }: UseLineupStorageActionsOptions) {
   const openAuthForSave = () => {
     setAuthDialogMode("sign_in");
     setIsAuthScreenOpen(true);
   };
 
-  const getCurrentLineupState = (
-    metadata: Partial<Pick<StoredLineupState<FormationKey>, "thumbnailDataUrl" | "savedAt">> = {},
-  ): StoredLineupState<FormationKey> => {
+  const getCurrentLineupState = (metadata: { thumbnailDataUrl?: string; savedAt?: string } = {}) => {
     const animationFrames = useTacticalStore.getState().commitDraftIfChanged();
-    return createStoredLineupState(
+    return serializeLineupState(
       {
         currentMode,
         pitchSize,
@@ -157,8 +101,8 @@ export function useLineupStorageActions({
         savedOpponentMarkersByPitch,
         drawLines,
         savedDrawLinesByPitch,
-        animationFrames,
       },
+      animationFrames,
       metadata,
     );
   };
@@ -186,7 +130,7 @@ export function useLineupStorageActions({
       playerLabel: copy.player,
     });
 
-    const { error } = await saveLineupRecordToSupabase({
+    const { error } = await saveLineupRecord({
       supabase,
       user,
       name: displayName,
@@ -216,66 +160,6 @@ export function useLineupStorageActions({
     void saveCurrentLineupToSupabase();
   };
 
-  const loadSavedLineup = (lineup: SavedLineupRecord<FormationKey>) => {
-    const data = lineup.players_data;
-    if ("kind" in data && data.kind === "tactics") {
-      const tactics = normalizeTacticalPlaybooks(data.tactics);
-      const activeTactic = tactics[0] ?? createDefaultTacticalPlaybook();
-      useTacticalStore.setState({
-        tactics,
-        activeTacticId: activeTactic.id,
-        frames: cloneTacticalFrames(activeTactic.frames),
-        draftFrame: createInitialTacticalFrame(),
-        playbackFrames: null,
-        currentFrameIndex: 0,
-        isPlaying: false,
-      });
-      setCurrentMode("ANIMATION");
-      setActiveTool("ANIMATION_TOOL");
-      setActiveBottomSheetTool("ANIMATION_TOOL");
-      setActiveTab("lineup");
-      setLockerStatus("");
-      return;
-    }
-
-    const lineupData = data as StoredLineupState<FormationKey>;
-    if (!lineupData || !isPitchSize(lineupData.pitchSize) || !isFormationKey(lineupData.formation) || !Array.isArray(lineupData.players)) {
-      setLockerStatus(copy.invalidLineupData);
-      showToast(copy.invalidLineupData, "error");
-      return;
-    }
-
-    setPitchSize(lineupData.pitchSize);
-    setFormation(lineupData.formation);
-    setCustomCount(clampCustomCount(lineupData.customCount));
-    setPlayers(lineupData.players);
-    setSavedPlayersByPitch(lineupData.savedPlayersByPitch ?? {});
-    setSavedFormationByPitch(lineupData.savedFormationByPitch ?? {});
-    setSavedCustomCountByPitch(lineupData.savedCustomCountByPitch ?? {});
-    setOpponentMarkers(Array.isArray(lineupData.opponentMarkers) ? lineupData.opponentMarkers : createOpponentMarkers());
-    setSavedOpponentMarkersByPitch(lineupData.savedOpponentMarkersByPitch ?? {});
-    setDrawLines(Array.isArray(lineupData.drawLines) ? lineupData.drawLines : []);
-    setSavedDrawLinesByPitch(lineupData.savedDrawLinesByPitch ?? {});
-    const loadedMode = lineupData.currentMode ?? (lineupData.pitchSize === "custom" ? "CUSTOM" : "LINEUP");
-    const loadedTool = loadedMode === "ANIMATION" ? "ANIMATION_TOOL" : "PERSONNEL_TOOL";
-    setCurrentMode(loadedMode);
-    setActiveTool(loadedTool);
-    setActiveBottomSheetTool(loadedTool);
-    if (Array.isArray(lineupData.animationFrames)) {
-      useTacticalStore.setState({
-        frames: cloneTacticalFrames(lineupData.animationFrames),
-        draftFrame: cloneTacticalFrame(lineupData.animationFrames[0] ?? createInitialTacticalFrame()),
-        playbackFrames: null,
-        currentFrameIndex: 0,
-        isPlaying: false,
-      });
-    }
-    setRedoDrawLines([]);
-    setIsDrawMode(false);
-    setActiveTab("lineup");
-    setLockerStatus("");
-  };
-
   const shareSavedLineup = async (lineup: SavedLineupRecord<FormationKey>) => {
     const data = lineup.players_data;
     if ("kind" in data && data.kind === "tactics") {
@@ -283,13 +167,12 @@ export function useLineupStorageActions({
       return;
     }
 
-    const lineupData = data as StoredLineupState<FormationKey>;
-    if (!lineupData || !isPitchSize(lineupData.pitchSize) || !isFormationKey(lineupData.formation) || !Array.isArray(lineupData.players)) {
+    if (!isStoredLineupState(data)) {
       showToast(copy.invalidLineupData, "error");
       return;
     }
 
-    const url = createSavedLineupShareUrl(lineupData, window.location.href);
+    const url = createSavedLineupShareUrl(data, window.location.href);
     const copied = await copyTextOrPrompt(url.toString(), copy.share);
     if (copied) {
       showToast(copy.copied);
@@ -298,7 +181,6 @@ export function useLineupStorageActions({
 
   return {
     handleSaveCurrentLineup,
-    loadSavedLineup,
     shareSavedLineup,
   };
 }

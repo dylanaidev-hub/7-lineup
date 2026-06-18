@@ -39,6 +39,7 @@ import { useLineupExportActions } from "./hooks/useLineupExportActions";
 import { useLineupDragControls } from "./hooks/useLineupDragControls";
 import { useLockerRoomData, type LockerCategory } from "./hooks/useLockerRoomData";
 import { useLineupStorageActions } from "./hooks/useLineupStorageActions";
+import { useLineupRestoreActions } from "./hooks/useLineupRestoreActions";
 import { useOutsidePointerDown } from "./hooks/useOutsidePointerDown";
 import { usePasswordRecoveryFlow } from "./hooks/usePasswordRecoveryFlow";
 import { useProfile } from "./hooks/useProfile";
@@ -250,7 +251,7 @@ export default function App({ initialLanguage = "vi" }: { initialLanguage?: Lang
     setPlayers,
     setOpponentMarkers,
   });
-  const { handleSaveCurrentLineup, loadSavedLineup, shareSavedLineup } = useLineupStorageActions({
+  const { handleSaveCurrentLineup, shareSavedLineup } = useLineupStorageActions({
     user,
     copy,
     lineupName,
@@ -277,6 +278,11 @@ export default function App({ initialLanguage = "vi" }: { initialLanguage?: Lang
     setIsLockerLoading,
     setLineupName,
     setLockerCategory,
+  });
+  const { loadSavedLineup } = useLineupRestoreActions({
+    invalidMessage: copy.invalidLineupData,
+    showToast,
+    setLockerStatus,
     setPitchSize,
     setFormation,
     setCustomCount,
