@@ -1,0 +1,450 @@
+.tactical-shell {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(520px, 1fr) minmax(240px, 300px);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  padding: 18px;
+}
+
+.tactical-panel,
+.tactic-library-panel {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.tactical-controls {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 14px;
+}
+
+.tactical-controls button,
+.tactical-timeline button {
+  min-height: 34px;
+  border: 0;
+  background: #2f3747;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tactical-controls button:first-child {
+  background: #5ccb84;
+}
+
+.tactical-controls button.active {
+  background: #163d2a;
+  box-shadow: inset 0 0 0 2px rgba(92, 203, 132, 0.95);
+}
+
+.tactical-controls button:disabled,
+.tactical-timeline button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.tactic-library {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px;
+}
+
+.tactic-library-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tactic-library-actions button:last-child {
+  grid-column: 1 / -1;
+}
+
+.tactic-library-actions button {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  background: #173325;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 120ms ease;
+}
+
+.tactic-library-actions button:first-child {
+  background: #5ccb84;
+}
+
+.tactic-library-actions .save-button {
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  color: #173325;
+  box-shadow: none;
+}
+
+.tactic-library-actions .save-button {
+  min-height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+}
+
+.tactic-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tactic-list > button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  min-height: 86px;
+  align-content: space-between;
+  align-items: start;
+  gap: 8px;
+  border: 0;
+  background: #eef0f0;
+  color: #273142;
+  padding: 14px;
+  text-align: left;
+}
+
+.tactic-list > button.active {
+  background: #dff6e8;
+  box-shadow: inset 0 4px 0 #5ccb84;
+}
+
+.tactic-list span {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tactic-list small {
+  grid-column: 1;
+  color: #647074;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tactic-list span[role="button"] {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  height: 24px;
+  width: 24px;
+  place-items: center;
+  color: #dc2626;
+}
+
+.tactical-timeline {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  padding: 0 14px 14px;
+  overflow-y: auto;
+}
+
+.tactical-timeline button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  background: #eef0f0;
+  color: #273142;
+}
+
+.tactical-timeline button.active {
+  background: #5ccb84;
+  color: #ffffff;
+}
+
+.tactical-timeline button span {
+  display: grid;
+  height: 20px;
+  width: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(17, 24, 39, 0.18);
+  color: inherit;
+  font-size: 11px;
+}
+
+.tactical-timeline .add-frame-button {
+  justify-content: center;
+  gap: 6px;
+  background: #173325;
+  color: #ffffff;
+}
+
+.tactical-timeline .clear-frames-button {
+  justify-content: center;
+  gap: 6px;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tactical-help {
+  margin: auto 14px 14px;
+  color: #647074;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.tactical-tray {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 14px;
+  background: rgba(15, 51, 34, 0.28);
+}
+
+.tactical-tray span {
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tactical-tray-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tactical-tray-dot {
+  display: grid;
+  height: 30px;
+  width: 30px;
+  place-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #111827;
+  cursor: grab;
+  font-size: 11px;
+  font-weight: 950;
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.14);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.tactical-tray-dot.opponent {
+  background: #dc2626;
+}
+
+.tactical-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  min-height: 0;
+  align-items: center;
+  background: #43ad5e;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.tactical-side-tray {
+  display: grid;
+  align-self: stretch;
+  align-content: center;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tactical-side-tray .tactical-tray {
+  padding: 10px;
+}
+
+.tactical-side-tray .tactical-tray-list {
+  justify-content: center;
+}
+
+.tactical-pitch {
+  position: relative;
+  aspect-ratio: 7 / 10;
+  height: min(100%, 640px);
+  max-width: 100%;
+  justify-self: center;
+  overflow: hidden;
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  user-select: none;
+  -webkit-user-select: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.055) 0,
+      rgba(255, 255, 255, 0.055) 58px,
+      rgba(0, 0, 0, 0.04) 58px,
+      rgba(0, 0, 0, 0.04) 116px
+    ),
+    linear-gradient(135deg, #37a84f 0%, #2e9849 50%, #2a8841 100%);
+  touch-action: pan-y;
+}
+
+.tactical-marker-shell {
+  position: absolute;
+  z-index: 12;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.tactical-marker-shell:active {
+  cursor: grabbing;
+}
+
+.tactical-marker-shell.is-dragging {
+  opacity: 0;
+}
+
+.tactical-marker {
+  display: grid;
+  height: 42px;
+  width: 42px;
+  place-items: center;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 950;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.tactical-marker.ball-marker {
+  height: 24px;
+  width: 24px;
+  border: 2px solid #111827;
+  background:
+    radial-gradient(circle at 30% 30%, #ffffff 0 20%, transparent 21%),
+    #facc15;
+}
+
+.tactical-marker.opponent-marker {
+  height: 28px;
+  width: 28px;
+  border-width: 2px;
+  background: #dc2626;
+}
+
+.tactical-drag-preview {
+  position: fixed;
+  z-index: 9999;
+  display: grid;
+  height: 42px;
+  width: 42px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 950;
+  pointer-events: none;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.28);
+}
+
+.tactical-drag-preview.opponent {
+  height: 28px;
+  width: 28px;
+  border-width: 2px;
+  background: #dc2626;
+}
+
+.tactical-drag-preview.ball {
+  height: 24px;
+  width: 24px;
+  border: 2px solid #111827;
+  background:
+    radial-gradient(circle at 30% 30%, #ffffff 0 20%, transparent 21%),
+    #facc15;
+}
+
+.lineup-save-bar {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.lineup-save-bar input {
+  min-height: 36px;
+  border: 1px solid #d9dee3;
+  padding: 0 10px;
+  color: #273142;
+  font-size: 12px;
+  font-weight: 800;
+  outline: none;
+}
+
+.lineup-save-bar button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  background: #173325;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lineup-save-bar button {
+  background: #5ccb84;
+  color: #ffffff;
+}
+
+.lineup-save-bar button:disabled,
+.tactic-library-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.inline-save-status {
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(23, 51, 37, 0.16);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.tactical-save-status {
+  margin: 0 14px 12px;
+  color: #173325;
+  background: #dff6e8;
+}

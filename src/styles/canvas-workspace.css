@@ -1,0 +1,144 @@
+.lineup-column {
+  display: flex;
+  align-self: start;
+  height: 100%;
+  flex-direction: column;
+  background: #43ad5e;
+  overflow: hidden;
+}
+
+.pitch-size-switch,
+.formation-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #43ad5e;
+}
+
+.custom-formation-switch {
+  justify-content: space-between;
+}
+
+.pitch-size-switch {
+  padding-bottom: 0;
+}
+
+.header-pitch-size-switch {
+  justify-content: center;
+  margin-top: 18px;
+  padding: 0;
+  background: transparent;
+}
+
+.header-pitch-size-switch button {
+  min-width: 72px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-tab-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.lineup-tab-menu {
+  position: relative;
+}
+
+.app-tab-switch > button,
+.lineup-tab-trigger {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #eaffef;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lineup-tab-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lineup-tab-trigger span {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 10px;
+}
+
+.app-tab-switch > button.active,
+.lineup-tab-trigger.active {
+  background: #5ccb84;
+  color: #ffffff;
+}
+
+.lineup-format-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 190px;
+  gap: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  padding: 8px;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.22);
+}
+
+.lineup-format-menu button {
+  min-height: 34px;
+  border: 0;
+  background: #eef0f0;
+  color: #273142;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.lineup-format-menu button.active {
+  background: #5ccb84;
+  color: #ffffff;
+}
+
+.pitch-size-switch button,
+.formation-switch button {
+  min-height: 30px;
+  border: 0;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #eaffef;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.pitch-size-switch button.active,
+.formation-switch button.active {
+  background: #ffffff;
+  color: #2e994c;
+}
+
+.draw-history-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.draw-history-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.draw-history-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}

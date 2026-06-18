@@ -1,4 +1,5 @@
 import { Redo2, Trash2, Undo2 } from "lucide-react";
+import styles from "./DrawControls.module.css";
 
 type DrawControlsProps = {
   undoLabel: string;
@@ -24,7 +25,7 @@ export function DrawControls({
   onClear,
 }: DrawControlsProps) {
   return (
-    <div className="draw-history-actions">
+    <div className={`${styles.actions} draw-history-actions`}>
       <button type="button" onClick={onUndo} disabled={!canUndo}>
         <Undo2 size={14} />
         <span>{undoLabel}</span>
