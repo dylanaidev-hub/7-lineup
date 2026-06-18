@@ -1,18 +1,14 @@
 import type { Dispatch, PointerEvent as ReactPointerEvent, RefObject, SetStateAction } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { PitchSize } from "../appRouting";
 import { getZoneName, type FormationPlayer, type OpponentMarker } from "../formationData";
 import type { TacticalMarker } from "../tacticalData";
+import { clampPitchCoordinate, getBoundedPitchPosition, getPitchClientPosition } from "../pitchPointer";
+import { useMarkerDragSession } from "./useMarkerDragSession";
 
 export type LineupDragPreviewState = {
   type: "player" | "opponent" | "ball";
   id: number | string;
-  x: number;
-  y: number;
-};
-
-type PitchPosition = {
-  isInside: boolean;
   x: number;
   y: number;
 };
@@ -31,13 +27,6 @@ type UseLineupDragControlsOptions = {
   setOpponentMarkers: Dispatch<SetStateAction<OpponentMarker[]>>;
 };
 
-const clampPitchCoordinate = (value: number) => Math.min(96, Math.max(4, value));
-
-const getBoundedPitchPosition = (position: { x: number; y: number }) => ({
-  x: clampPitchCoordinate(position.x),
-  y: clampPitchCoordinate(position.y),
-});
-
 export function useLineupDragControls({
   pitchRef,
   pitchSize,
@@ -51,44 +40,16 @@ export function useLineupDragControls({
   setCustomCount,
   setOpponentMarkers,
 }: UseLineupDragControlsOptions) {
-  const [draggingId, setDraggingId] = useState<number | null>(null);
-  const [draggingOpponentId, setDraggingOpponentId] = useState<number | null>(null);
   const [draggingTacticalMarkerId, setDraggingTacticalMarkerId] = useState<string | null>(null);
-  const [dragPreview, setDragPreview] = useState<LineupDragPreviewState | null>(null);
-  const dragStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
-
-  const getPitchClientPosition = (clientX: number, clientY: number, options: { clamp?: boolean } = {}): PitchPosition | null => {
-    const pitch = pitchRef.current;
-    if (!pitch) return null;
-
-    const rect = pitch.getBoundingClientRect();
-    const styles = window.getComputedStyle(pitch);
-    const borderLeft = Number.parseFloat(styles.borderLeftWidth) || 0;
-    const borderTop = Number.parseFloat(styles.borderTopWidth) || 0;
-    const contentLeft = rect.left + borderLeft;
-    const contentTop = rect.top + borderTop;
-    const contentWidth = pitch.clientWidth;
-    const contentHeight = pitch.clientHeight;
-    const rawX = ((clientX - contentLeft) / contentWidth) * 100;
-    const rawY = ((clientY - contentTop) / contentHeight) * 100;
-    const shouldClamp = options.clamp ?? true;
-
-    return {
-      isInside: rawX >= 0 && rawX <= 100 && rawY >= 0 && rawY <= 100,
-      x: shouldClamp ? clampPitchCoordinate(rawX) : rawX,
-      y: shouldClamp ? clampPitchCoordinate(rawY) : rawY,
-    };
-  };
+  const [tacticalDragPreview, setTacticalDragPreview] = useState<LineupDragPreviewState | null>(null);
 
   const getPitchPointerPosition = (event: ReactPointerEvent<Element>, options: { clamp?: boolean } = {}) => {
-    return getPitchClientPosition(event.clientX, event.clientY, options);
+    return getPitchClientPosition(pitchRef, event.clientX, event.clientY, options);
   };
 
   const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
     const position = getPitchPointerPosition(event, { clamp: false });
     if (!position) return;
-    setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
-
     setPlayers((current) => {
       const nextPlayers = current.map((player) =>
         player.id === id
@@ -115,8 +76,6 @@ export function useLineupDragControls({
   const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number) => {
     const position = getPitchPointerPosition(event, { clamp: false });
     if (!position) return;
-    setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
-
     setOpponentMarkers((current) =>
       current.map((marker) =>
         marker.id === id
@@ -162,10 +121,36 @@ export function useLineupDragControls({
     );
   };
 
+  const updateAnimatedPlayer = (event: ReactPointerEvent<HTMLElement>, id: number) => {
+    const position = getPitchPointerPosition(event, { clamp: true });
+    if (!position) return;
+    updateTacticalMarker(`p${id}`, position.x, position.y, true);
+    syncPlayerFromAnimation(id, position.x, position.y);
+  };
+
+  const updateAnimatedOpponent = (event: ReactPointerEvent<HTMLElement>, id: number) => {
+    const position = getPitchPointerPosition(event, { clamp: true });
+    if (!position) return;
+    updateTacticalMarker(`o${id}`, position.x, position.y, true);
+    syncOpponentFromAnimation(id, position.x, position.y);
+  };
+
+  const playerDrag = useMarkerDragSession<number>({
+    canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
+    onMove: isAnimationTool ? updateAnimatedPlayer : undefined,
+    onDrop: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id)),
+  });
+
+  const opponentDrag = useMarkerDragSession<number>({
+    canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
+    onMove: isAnimationTool ? updateAnimatedOpponent : undefined,
+    onDrop: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id)),
+  });
+
   const updateBallMarkerFromPoint = (clientX: number, clientY: number, commitDrop = false) => {
     const marker = ballMarker ?? { id: "ball", label: "", type: "ball" as const, x: 50, y: 56, onPitch: false };
-    const position = getPitchClientPosition(clientX, clientY, { clamp: false });
-    setDragPreview({ type: "ball", id: marker.id, x: clientX, y: clientY });
+    const position = getPitchClientPosition(pitchRef, clientX, clientY, { clamp: false });
+    setTacticalDragPreview({ type: "ball", id: marker.id, x: clientX, y: clientY });
     if (!position) return;
 
     if (position.isInside) {
@@ -195,7 +180,7 @@ export function useLineupDragControls({
     const handleWindowPointerEnd = (event: PointerEvent) => {
       updateBallMarkerFromPoint(event.clientX, event.clientY, true);
       setDraggingTacticalMarkerId(null);
-      setDragPreview(null);
+      setTacticalDragPreview(null);
     };
 
     window.addEventListener("pointermove", handleWindowPointerMove);
@@ -243,134 +228,34 @@ export function useLineupDragControls({
       }
     }
     setDraggingTacticalMarkerId(null);
-    setDragPreview(null);
-  };
-
-  const handleDragStart = (event: ReactPointerEvent<HTMLElement>, id: number) => {
-    if (isDrawMode || (isAnimationTool && isPlaying)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDraggingId(id);
-    setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
-    dragStartRef.current = { id, x: event.clientX, y: event.clientY };
-    if (isAnimationTool) {
-      const position = getPitchPointerPosition(event, { clamp: true });
-      if (position) {
-        updateTacticalMarker(`p${id}`, position.x, position.y, true);
-        syncPlayerFromAnimation(id, position.x, position.y);
-      }
-    }
-  };
-
-  const handleDragMove = (event: ReactPointerEvent<HTMLElement>, id: number) => {
-    if (draggingId !== id) return;
-    if (isAnimationTool) {
-      const position = getPitchPointerPosition(event, { clamp: true });
-      setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
-      if (position) {
-        updateTacticalMarker(`p${id}`, position.x, position.y, true);
-        syncPlayerFromAnimation(id, position.x, position.y);
-      }
-      return;
-    }
-    const dragStart = dragStartRef.current;
-    if (!dragStart || dragStart.id !== id) return;
-
-    const movedX = event.clientX - dragStart.x;
-    const movedY = event.clientY - dragStart.y;
-    if (Math.hypot(movedX, movedY) < 6) return;
-
-    setDragPreview({ type: "player", id, x: event.clientX, y: event.clientY });
-  };
-
-  const stopDragging = (event: ReactPointerEvent<HTMLElement>) => {
-    const id = draggingId;
-    if (id !== null && isAnimationTool) {
-      const position = getPitchPointerPosition(event, { clamp: true });
-      if (position) {
-        updateTacticalMarker(`p${id}`, position.x, position.y, true);
-        syncPlayerFromAnimation(id, position.x, position.y);
-      }
-    } else if (id !== null) {
-      updatePlayerPosition(event, id);
-    }
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDraggingId(null);
-    setDragPreview(null);
-    dragStartRef.current = null;
-  };
-
-  const handleOpponentDragStart = (event: ReactPointerEvent<HTMLElement>, id: number) => {
-    if (isDrawMode || (isAnimationTool && isPlaying)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDraggingOpponentId(id);
-    setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
-    if (isAnimationTool) {
-      const position = getPitchPointerPosition(event, { clamp: true });
-      if (position) {
-        updateTacticalMarker(`o${id}`, position.x, position.y, true);
-        syncOpponentFromAnimation(id, position.x, position.y);
-      }
-    }
-  };
-
-  const handleOpponentDragMove = (event: ReactPointerEvent<HTMLElement>, id: number) => {
-    if (draggingOpponentId !== id) return;
-    setDragPreview({ type: "opponent", id, x: event.clientX, y: event.clientY });
-    if (isAnimationTool) {
-      const position = getPitchPointerPosition(event, { clamp: true });
-      if (position) {
-        updateTacticalMarker(`o${id}`, position.x, position.y, true);
-        syncOpponentFromAnimation(id, position.x, position.y);
-      }
-    }
-  };
-
-  const stopOpponentDragging = (event: ReactPointerEvent<HTMLElement>) => {
-    const id = draggingOpponentId;
-    if (id !== null && isAnimationTool) {
-      const position = getPitchPointerPosition(event, { clamp: true });
-      if (position) {
-        updateTacticalMarker(`o${id}`, position.x, position.y, true);
-        syncOpponentFromAnimation(id, position.x, position.y);
-      }
-    } else if (id !== null) {
-      updateOpponentPosition(event, id);
-    }
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDraggingOpponentId(null);
-    setDragPreview(null);
+    setTacticalDragPreview(null);
   };
 
   const clearDragState = () => {
-    setDraggingId(null);
-    setDraggingOpponentId(null);
+    playerDrag.clear();
+    opponentDrag.clear();
     setDraggingTacticalMarkerId(null);
-    setDragPreview(null);
-    dragStartRef.current = null;
+    setTacticalDragPreview(null);
   };
 
+  const dragPreview: LineupDragPreviewState | null = playerDrag.preview
+    ? { type: "player", ...playerDrag.preview }
+    : opponentDrag.preview
+      ? { type: "opponent", ...opponentDrag.preview }
+      : tacticalDragPreview;
+
   return {
-    draggingId,
-    draggingOpponentId,
+    draggingId: playerDrag.activeId,
+    draggingOpponentId: opponentDrag.activeId,
     draggingTacticalMarkerId,
     dragPreview,
     clearDragState,
-    handleDragStart,
-    handleDragMove,
-    stopDragging,
-    handleOpponentDragStart,
-    handleOpponentDragMove,
-    stopOpponentDragging,
+    handleDragStart: playerDrag.onPointerDown,
+    handleDragMove: playerDrag.onPointerMove,
+    stopDragging: playerDrag.onPointerEnd,
+    handleOpponentDragStart: opponentDrag.onPointerDown,
+    handleOpponentDragMove: opponentDrag.onPointerMove,
+    stopOpponentDragging: opponentDrag.onPointerEnd,
     handleTacticalMarkerPointerDown,
     handleTacticalMarkerPointerMove,
     stopTacticalMarkerDragging,
