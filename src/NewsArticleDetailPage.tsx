@@ -11,8 +11,8 @@ import listStyles from "./NewsKnowledgePage.module.css";
 import styles from "./NewsArticleDetailPage.module.css";
 
 const detailCopy = {
-  vi: { back: "Tin tức & Kiến thức", related: "Có thể bạn quan tâm" },
-  en: { back: "News & Knowledge", related: "You may also like" },
+  vi: { back: "Tin tức & Kiến thức", related: "Có thể bạn quan tâm", content: "Nội dung bài viết" },
+  en: { back: "News & Knowledge", related: "You may also like", content: "Article content" },
 };
 
 export function NewsArticleDetailPage({ language, slug }: { language: LandingLanguage; slug: string }) {
@@ -52,9 +52,12 @@ export function NewsArticleDetailPage({ language, slug }: { language: LandingLan
         </div>
         <h1>{article.title[language]}</h1>
         <p className={styles.lead}>{article.summary[language]}</p>
-        <div className={styles.content}>
-          {cmsArticle.richText ? <ContentfulRichText document={cmsArticle.richText} assets={cmsArticle.richTextAssets} /> : article.body[language].map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-        </div>
+        <section aria-labelledby="article-content-title">
+          <h2 id="article-content-title" className={styles.srOnly}>{c.content}</h2>
+          <div className={styles.content}>
+            {cmsArticle.richText ? <ContentfulRichText document={cmsArticle.richText} assets={cmsArticle.richTextAssets} /> : article.body[language].map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+          </div>
+        </section>
       </article>
 
       {related.length ? (
