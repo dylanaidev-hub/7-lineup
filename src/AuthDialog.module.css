@@ -4,20 +4,26 @@
   z-index: 10000;
   display: grid;
   place-items: center;
-  padding: 20px;
+  overflow-y: auto;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   background: rgba(6, 14, 11, 0.74);
   backdrop-filter: blur(4px);
+  animation: backdropIn 180ms ease-out both;
 }
 
 .card {
   display: grid;
   width: min(100%, 430px);
+  max-height: calc(100dvh - 40px);
   gap: 11px;
   padding-bottom: 16px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid rgba(232, 245, 233, 0.18);
+  border-radius: 24px;
   background: linear-gradient(165deg, #14302a 0%, #0c1a15 100%);
-  border: 1px solid rgba(232, 245, 233, 0.14);
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  animation: dialogIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .heading {
@@ -54,6 +60,15 @@
 
 .heading button:hover {
   background: rgba(7, 16, 12, 0.38);
+}
+
+.heading button:active {
+  transform: scale(0.94);
+}
+
+.heading button:focus-visible {
+  outline: 2px solid #07100c;
+  outline-offset: 2px;
 }
 
 .modeSwitch {
@@ -104,7 +119,7 @@
 .card input {
   min-height: 40px;
   border: 1px solid rgba(232, 245, 233, 0.16);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0 12px;
   background: rgba(255, 255, 255, 0.06);
   color: #e8f5e9;
@@ -132,7 +147,7 @@
   gap: 6px;
   overflow: hidden;
   border: 0;
-  border-radius: 999px;
+  border-radius: 12px;
   background: #173325;
   color: #ffffff;
   font-size: 11px;
@@ -210,7 +225,52 @@
   color: #7fe0a3;
 }
 
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .screen {
+    padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+
+  .card {
+    max-height: calc(100dvh - 28px);
+    border-radius: 20px;
+  }
+
+  .heading {
+    min-height: 54px;
+  }
+
+  .card input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .card > button {
+    min-height: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .screen,
+  .card {
+    animation: none;
+  }
+
   .submitButton:not(:disabled)::before {
     transition: none;
   }

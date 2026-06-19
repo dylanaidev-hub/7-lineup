@@ -286,13 +286,12 @@ export const useTacticalStore = create<TacticalStore>((set) => ({
           return { currentFrameIndex: 0, isPlaying: true };
         }
         return {
-          currentFrameIndex: state.frames.length,
+          currentFrameIndex: Math.max(sequenceLength - 1, 0),
           draftFrame: cloneTacticalFrame(finalFrame),
-          playbackFrames: null,
+          playbackFrames: state.playbackFrames ?? cloneTacticalFrames(state.frames),
           isPlaying: false,
         };
       }
       return { currentFrameIndex: nextIndex };
     }),
 }));
-

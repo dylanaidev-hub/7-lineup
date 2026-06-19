@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { X } from "lucide-react";
 import styles from "./AuthDialog.module.css";
 
 type RecoveryCopy = {
@@ -58,11 +59,11 @@ export function PasswordRecoveryDialog({
 }: PasswordRecoveryDialogProps) {
   return (
     <div className={styles.screen}>
-      <form className={styles.card} onSubmit={onSubmit}>
+      <form className={styles.card} onSubmit={onSubmit} role="dialog" aria-modal="true" aria-labelledby="recovery-dialog-title">
         <div className={styles.heading}>
-          <span>{isPasswordRecovery || isRecoveryExpiryError ? copy.setNewPasswordTitle : copy.authTitle}</span>
-          <button type="button" onClick={onClose}>
-            x
+          <span id="recovery-dialog-title">{isPasswordRecovery || isRecoveryExpiryError ? copy.setNewPasswordTitle : copy.authTitle}</span>
+          <button type="button" onClick={onClose} aria-label="Đóng">
+            <X size={17} strokeWidth={2.5} />
           </button>
         </div>
         {!isSupabaseConfigured ? <p className={styles.message}>{copy.supabaseMissing}</p> : null}

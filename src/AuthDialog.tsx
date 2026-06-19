@@ -1,5 +1,6 @@
 import { isSupabaseConfigured } from "./lib/supabaseClient";
 import { useAuthDialogForm } from "./hooks/useAuthDialogForm";
+import { X } from "lucide-react";
 import styles from "./AuthDialog.module.css";
 
 export type AuthLanguage = "vi" | "en";
@@ -104,10 +105,12 @@ export function AuthDialog({
 
   return (
     <div className={styles.screen}>
-      <form className={styles.card} onSubmit={handleAuthSubmit}>
+      <form className={styles.card} onSubmit={handleAuthSubmit} role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title">
         <div className={styles.heading}>
-          <span>{copy.authTitle}</span>
-          <button type="button" onClick={onClose}>x</button>
+          <span id="auth-dialog-title">{copy.authTitle}</span>
+          <button type="button" onClick={onClose} aria-label={language === "vi" ? "Đóng" : "Close"}>
+            <X size={17} strokeWidth={2.5} />
+          </button>
         </div>
         {!isSupabaseConfigured ? <p className={styles.message}>{copy.supabaseMissing}</p> : null}
         <div className={styles.modeSwitch}>

@@ -11,6 +11,7 @@ const STATIC_ROUTES = [
   "/ve-chung-toi",
   "/tinh-nang/tao-doi-hinh",
   "/tinh-nang/ve-sa-ban",
+  "/tinh-nang/tao-chuyen-dong",
 ];
 
 type ContentfulRoute = { slug: string; updatedAt?: string };

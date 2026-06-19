@@ -24,15 +24,20 @@
 .logo { width: 34px; height: 34px; }
 .panel { display: flex; align-items: center; gap: 28px; }
 .navigation { display: flex; align-items: center; gap: 24px; }
-.navigation a {
+.navigation a,
+.featureTrigger {
   position: relative;
   padding: 10px 0;
+  border: 0;
+  background: transparent;
   color: rgba(235, 248, 237, 0.72);
+  font: inherit;
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
 }
-.navigation a:hover, .navigation .active { color: #8be2a6; }
+.navigation a:hover, .navigation .active, .featureTrigger:hover { color: #8be2a6; }
 .navigation .active::after {
   content: "";
   position: absolute;
@@ -42,6 +47,31 @@
   height: 2px;
   background: #67d68c;
 }
+.featureMenu { position: relative; }
+.featureTrigger { display: inline-flex; align-items: center; gap: 5px; }
+.featureTrigger svg { transition: transform 160ms ease; }
+.featureTrigger .chevronOpen { transform: rotate(180deg); }
+.featureDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 30;
+  display: grid;
+  width: 210px;
+  padding: 8px;
+  border: 1px solid rgba(139, 226, 166, 0.22);
+  border-radius: 12px;
+  background: #10241a;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -6px);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+}
+.featureDropdownOpen { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.featureDropdown a { padding: 11px 12px; border-radius: 8px; color: rgba(235, 248, 237, 0.78); }
+.featureDropdown a:hover, .featureDropdown a.active { background: rgba(121, 223, 155, 0.12); color: #8be2a6; }
+.featureDropdown a.active::after { display: none; }
 .actions { display: flex; align-items: center; gap: 8px; }
 .button, .primaryButton, .languageButton, .menuButton {
   min-height: 38px;
@@ -54,9 +84,9 @@
   cursor: pointer;
 }
 .button, .primaryButton { padding: 0 16px; border-radius: 999px; }
-.primaryButton { border-color: #72dc95; background: #72dc95; color: #071b12; }
+.primaryButton { border-color: transparent; background: linear-gradient(135deg, #7fe0a3, #5ccb84); color: #07100c; box-shadow: 0 8px 20px rgba(92, 203, 132, 0.28); }
 .button:hover { border-color: rgba(139, 226, 166, 0.7); }
-.primaryButton:hover { background: #91e8ad; }
+.primaryButton:hover { background: linear-gradient(135deg, #9bedbb, #63d68d); transform: translateY(-1px); }
 .languageButton { width: 42px; border-radius: 999px; }
 .email { max-width: 170px; overflow: hidden; text-overflow: ellipsis; color: rgba(235, 248, 237, 0.72); font-size: 12px; }
 .menuButton { display: none; width: 40px; padding: 0; place-items: center; border-radius: 6px; }
@@ -78,8 +108,25 @@
   }
   .panelOpen { display: block; }
   .navigation { align-items: stretch; flex-direction: column; gap: 2px; }
-  .navigation a { padding: 12px; }
+  .navigation a, .featureTrigger { width: 100%; justify-content: space-between; padding: 12px; text-align: left; }
   .navigation .active::after { left: 12px; right: auto; width: 28px; }
+  .featureMenu { width: 100%; }
+  .featureDropdown {
+    position: static;
+    width: 100%;
+    max-height: 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 10px;
+    box-shadow: none;
+    opacity: 1;
+    overflow: hidden;
+    visibility: visible;
+    transform: none;
+    transition: max-height 180ms ease, padding 180ms ease;
+  }
+  .featureDropdownOpen { max-height: 180px; padding: 6px 8px 8px; }
+  .featureDropdown a { padding: 10px 12px 10px 22px; }
   .actions { flex-wrap: wrap; padding: 14px 12px 4px; border-top: 1px solid rgba(232, 245, 233, 0.1); }
   .email { flex-basis: 100%; max-width: 100%; margin-bottom: 4px; }
 }

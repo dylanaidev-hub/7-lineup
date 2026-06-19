@@ -38,6 +38,19 @@ export function useUnifiedWorkspaceState(
       sharedLineup?.version === 2 || sharedLineup?.pitchSize === "custom"
         ? createDrawLinesFromSharedLineup(sharedLineup)
         : [];
+    const requestedTool = new URLSearchParams(window.location.search).get("tool");
+    const tool: CanvasTool =
+      requestedTool === "animation"
+        ? "ANIMATION_TOOL"
+        : requestedTool === "draw"
+          ? "DRAW_TOOL"
+          : "PERSONNEL_TOOL";
+    const mode: WorkspaceMode =
+      tool === "ANIMATION_TOOL"
+        ? "ANIMATION"
+        : tool === "DRAW_TOOL"
+          ? "CUSTOM"
+          : getInitialWorkspaceMode(sharedLineup, pitchSize);
 
     return {
       pitchSize,
@@ -46,7 +59,8 @@ export function useUnifiedWorkspaceState(
       players,
       opponentMarkers,
       drawLines,
-      mode: getInitialWorkspaceMode(sharedLineup, pitchSize),
+      mode,
+      tool,
     };
   }, [sharedLineup]);
 
@@ -71,13 +85,13 @@ export function useUnifiedWorkspaceState(
   const [savedDrawLinesByPitch, setSavedDrawLinesByPitch] = useState<Partial<Record<PitchSize, DrawLine[]>>>({
     [initial.pitchSize]: initial.drawLines,
   });
-  const [isDrawMode, setIsDrawMode] = useState(false);
+  const [isDrawMode, setIsDrawMode] = useState(initial.tool === "DRAW_TOOL");
   const [isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [selectedMobilePlayerId, setSelectedMobilePlayerId] = useState(1);
   const [activeTab, setActiveTab] = useState<AppTab>(() => getInitialAppTab());
   const [currentMode, setCurrentMode] = useState<WorkspaceMode>(initial.mode);
-  const initialTool: CanvasTool = initial.mode === "ANIMATION" ? "ANIMATION_TOOL" : "PERSONNEL_TOOL";
+  const initialTool = initial.tool;
   const [activeTool, setActiveTool] = useState<CanvasTool>(initialTool);
   const [activeBottomSheetTool, setActiveBottomSheetTool] = useState<CanvasTool | null>(initialTool);
   const [language, setLanguage] = useState<Language>(initialLanguage);

@@ -8,6 +8,7 @@ const requiredRoutes = [
   "/ve-chung-toi",
   "/tinh-nang/tao-doi-hinh",
   "/tinh-nang/ve-sa-ban",
+  "/tinh-nang/tao-chuyen-dong",
 ];
 
 function fail(message) {

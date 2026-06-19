@@ -8,6 +8,7 @@ import { LandingPage } from "./LandingPage";
 import { NewsKnowledgePage } from "./NewsKnowledgePage";
 import { NewsArticleDetailPage } from "./NewsArticleDetailPage";
 import { PublicSiteHeader } from "./PublicSiteHeader";
+import { PublicSiteFooter } from "./PublicSiteFooter";
 import { PublicContentPage, type PublicPageKind } from "./PublicContentPage";
 import { SeoHead } from "./SeoHead";
 import { useAuth } from "./hooks/useAuth";
@@ -166,6 +167,7 @@ function NewsRoute({
           }}
         />
         {slug ? <NewsArticleDetailPage language={language} slug={slug} /> : <NewsKnowledgePage language={language} />}
+        <PublicSiteFooter language={language} onExplore={enterWorkspace} />
       </div>
       {authDialogMode ? (
         <AuthDialog
@@ -194,12 +196,16 @@ function PublicContentRoute({
   const navigate = useNavigate();
   const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode | null>(null);
   const { user, isAuthLoading, signOut } = useAuth();
-  const enterWorkspace = () => navigate("/app/lineup?pitch=7");
+  const enterWorkspace = () => {
+    const tool = kind === "tactics" ? "draw" : kind === "animation" ? "animation" : null;
+    navigate(`/app/lineup?pitch=7${tool ? `&tool=${tool}` : ""}`);
+  };
   return (
     <>
       <div style={{ background: "#091a12" }}>
         <PublicSiteHeader language={language} onChangeLanguage={setLanguage} onExplore={enterWorkspace} onSignIn={() => setAuthDialogMode("sign_in")} onSignUp={() => setAuthDialogMode("sign_up")} user={user} isAuthLoading={isAuthLoading} onSignOut={async () => { await signOut(); navigate("/"); }} authLabels={{ signIn: routeCopy[language].signIn, signUp: routeCopy[language].signUp, signOut: routeCopy[language].signOut }} />
         <PublicContentPage kind={kind} onExplore={enterWorkspace} />
+        <PublicSiteFooter language={language} onExplore={enterWorkspace} />
       </div>
       {authDialogMode ? <AuthDialog language={language} initialMode={authDialogMode} onClose={() => setAuthDialogMode(null)} onAuthenticated={() => { setAuthDialogMode(null); enterWorkspace(); }} /> : null}
     </>
@@ -236,6 +242,7 @@ function RootRouter() {
       <Route path="/ve-chung-toi" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="about" />} />
       <Route path="/tinh-nang/tao-doi-hinh" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="lineup" />} />
       <Route path="/tinh-nang/ve-sa-ban" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="tactics" />} />
+      <Route path="/tinh-nang/tao-chuyen-dong" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="animation" />} />
       <Route path="/app" element={<Navigate to="/app/lineup?pitch=7" replace />} />
       <Route path="/app/lineup" element={<CanvasRoute language={language} />} />
       <Route path="/app/tactics" element={<TacticsRouteRedirect />} />

@@ -2,9 +2,10 @@
 .hero, .sections, .cta { width: min(1040px, calc(100% - 40px)); margin: 0 auto; }
 .hero { min-height: 430px; display: grid; grid-template-columns: minmax(0, 1fr) 280px; align-items: center; gap: 72px; padding: 64px 0; border-bottom: 1px solid rgba(139, 226, 166, .18); }
 .eyebrow { margin: 0 0 15px; color: #79df9b; font-size: 12px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; }
-.hero h1 { max-width: 760px; margin: 0; font-size: clamp(38px, 6vw, 66px); line-height: 1.06; letter-spacing: 0; }
+.hero h1 { max-width: 820px; margin: 0; font-size: clamp(42px, 6.5vw, 72px); line-height: 1.03; letter-spacing: 0; }
 .intro { max-width: 730px; margin: 24px 0 30px; color: rgba(237, 248, 240, .72); font-size: 18px; line-height: 1.7; }
-.hero button, .cta button { min-height: 48px; display: inline-flex; align-items: center; gap: 9px; padding: 0 20px; border: 0; border-radius: 999px; background: #79df9b; color: #081b11; font: inherit; font-size: 13px; font-weight: 900; cursor: pointer; }
+.hero button, .cta button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 28px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #7fe0a3, #5ccb84); color: #07100c; font: inherit; font-size: 15px; font-weight: 900; cursor: pointer; box-shadow: 0 14px 32px rgba(92, 203, 132, .34); transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease; }
+.hero button:hover, .cta button:hover { background: linear-gradient(135deg, #9bedbb, #63d68d); transform: translateY(-2px); box-shadow: 0 18px 40px rgba(92, 203, 132, .46); }
 .visual { position: relative; aspect-ratio: 1; display: grid; place-items: center; border: 1px solid rgba(121, 223, 155, .35); background: rgba(121, 223, 155, .07); color: #79df9b; }
 .visual svg:last-child { position: absolute; right: 24px; bottom: 24px; }
 .sections { padding: 64px 0; }
@@ -13,7 +14,7 @@
 .sections h2 { margin: 0 0 8px; font-size: 24px; }
 .sections p, .cta p { max-width: 780px; margin: 0; color: rgba(237, 248, 240, .68); line-height: 1.7; }
 .cta { padding: 48px; border: 1px solid rgba(121, 223, 155, .25); background: #11271b; text-align: center; }
-.cta h2 { margin: 0 0 10px; font-size: 30px; }
+.cta h2 { margin: 0 0 10px; font-size: clamp(30px, 4vw, 42px); line-height: 1.15; }
 .cta p { margin: 0 auto 24px; }
 .cta button { margin-right: 18px; }
 .cta a { color: #8be2a6; font-size: 13px; font-weight: 800; }

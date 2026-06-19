@@ -45,6 +45,7 @@ import {
   cloneTacticalFrame,
   createTacticalFrameFromWorkspace,
   defaultBallMarker,
+  type TacticalFrame,
 } from "../tacticalData";
 
 type SandboxTool = CanvasTool;
@@ -91,6 +92,7 @@ export function useAppController(initialLanguage: Language = "vi") {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const lineupMenuRef = useRef<HTMLDivElement>(null);
   const workspaceBallMarkerRef = useRef({ ...defaultBallMarker });
+  const workspaceInitialFrameRef = useRef<TacticalFrame | null>(null);
   const copy = copyByLanguage[language];
   const languageMeta =
     language === "vi" ? { flag: "🇻🇳", label: "VI", next: "en" as const } : { flag: "🇺🇸", label: "EN", next: "vi" as const };
@@ -380,6 +382,7 @@ export function useAppController(initialLanguage: Language = "vi") {
         useTacticalStore.getState().draftFrame.find((marker) => marker.type === "ball") ?? defaultBallMarker;
       workspaceBallMarkerRef.current = { ...currentBallMarker };
       const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers, currentBallMarker);
+      workspaceInitialFrameRef.current = cloneTacticalFrame(workspaceFrame);
       useTacticalStore.setState({
         draftFrame: cloneTacticalFrame(workspaceFrame),
         currentFrameIndex: useTacticalStore.getState().frames.length,
@@ -387,14 +390,18 @@ export function useAppController(initialLanguage: Language = "vi") {
         playbackFrames: null,
       });
     } else if (activeTool === "ANIMATION_TOOL") {
+      const workspaceInitialFrame =
+        workspaceInitialFrameRef.current ??
+        createTacticalFrameFromWorkspace(players, opponentMarkers, workspaceBallMarkerRef.current);
+      const initialBallMarker = workspaceInitialFrame.find((marker) => marker.type === "ball") ?? defaultBallMarker;
+      workspaceBallMarkerRef.current = { ...initialBallMarker };
       useTacticalStore.setState({
-        draftFrame: cloneTacticalFrame(
-          createTacticalFrameFromWorkspace(players, opponentMarkers, workspaceBallMarkerRef.current),
-        ),
+        draftFrame: cloneTacticalFrame(workspaceInitialFrame),
         currentFrameIndex: useTacticalStore.getState().frames.length,
         isPlaying: false,
         playbackFrames: null,
       });
+      workspaceInitialFrameRef.current = null;
     }
     setActiveTool(nextTool);
     setActiveBottomSheetTool(nextTool);

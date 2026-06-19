@@ -1,7 +1,7 @@
 import type { User } from "@supabase/supabase-js";
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { ChevronDown, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import type { LandingLanguage } from "./LandingPage";
 import styles from "./PublicSiteHeader.module.css";
 
@@ -18,14 +18,30 @@ type PublicSiteHeaderProps = {
 };
 
 const copy = {
-  vi: { brand: "Đội Hình Sân Cỏ", home: "Trang chủ", lineup: "Tạo đội hình", tactics: "Vẽ sa bàn", news: "Tin tức", about: "Về chúng tôi", tool: "Vào công cụ" },
-  en: { brand: "Lineup Football", home: "Home", lineup: "Lineup", tactics: "Tactics", news: "News", about: "About", tool: "Open workspace" },
+  vi: { brand: "Đội Hình Sân Cỏ", home: "Trang chủ", features: "Tính năng", lineup: "Tạo đội hình", tactics: "Vẽ sa bàn", animation: "Tạo chuyển động", news: "Tin tức", about: "Về chúng tôi", tool: "Vào công cụ" },
+  en: { brand: "Lineup Football", home: "Home", features: "Features", lineup: "Create lineup", tactics: "Draw tactics board", animation: "Create animation", news: "News", about: "About", tool: "Open workspace" },
 };
 
 export function PublicSiteHeader(props: PublicSiteHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [featuresOpen, setFeaturesOpen] = useState(false);
+  const featureMenuRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
   const c = copy[props.language];
-  const closeMenu = () => setMenuOpen(false);
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setFeaturesOpen(false);
+  };
+  const isFeaturesActive = location.pathname.startsWith("/tinh-nang/");
+
+  useEffect(() => {
+    if (!featuresOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!featureMenuRef.current?.contains(event.target as Node)) setFeaturesOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [featuresOpen]);
 
   return (
     <header className={styles.header}>
@@ -49,20 +65,29 @@ export function PublicSiteHeader(props: PublicSiteHeaderProps) {
           <NavLink to="/" end onClick={closeMenu} className={({ isActive }) => (isActive ? styles.active : undefined)}>
             {c.home}
           </NavLink>
-          <NavLink
-            to="/tinh-nang/tao-doi-hinh"
-            onClick={closeMenu}
-            className={({ isActive }) => (isActive ? styles.active : undefined)}
-          >
-            {c.lineup}
-          </NavLink>
-          <NavLink
-            to="/tinh-nang/ve-sa-ban"
-            onClick={closeMenu}
-            className={({ isActive }) => (isActive ? styles.active : undefined)}
-          >
-            {c.tactics}
-          </NavLink>
+          <div className={styles.featureMenu} ref={featureMenuRef}>
+            <button
+              type="button"
+              className={`${styles.featureTrigger} ${isFeaturesActive ? styles.active : ""}`}
+              aria-expanded={featuresOpen}
+              aria-haspopup="menu"
+              onClick={() => setFeaturesOpen((open) => !open)}
+            >
+              {c.features}
+              <ChevronDown size={16} className={featuresOpen ? styles.chevronOpen : ""} />
+            </button>
+            <div className={`${styles.featureDropdown} ${featuresOpen ? styles.featureDropdownOpen : ""}`} role="menu">
+              <NavLink to="/tinh-nang/tao-doi-hinh" onClick={closeMenu} role="menuitem" className={({ isActive }) => (isActive ? styles.active : undefined)}>
+                {c.lineup}
+              </NavLink>
+              <NavLink to="/tinh-nang/ve-sa-ban" onClick={closeMenu} role="menuitem" className={({ isActive }) => (isActive ? styles.active : undefined)}>
+                {c.tactics}
+              </NavLink>
+              <NavLink to="/tinh-nang/tao-chuyen-dong" onClick={closeMenu} role="menuitem" className={({ isActive }) => (isActive ? styles.active : undefined)}>
+                {c.animation}
+              </NavLink>
+            </div>
+          </div>
           <NavLink
             to="/tin-tuc"
             onClick={closeMenu}
