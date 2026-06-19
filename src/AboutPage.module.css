@@ -1,0 +1,240 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: clip;
+  padding-bottom: 80px;
+  background: transparent;
+  color: #edf8f0;
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  min-height: min(610px, calc(100vh - 76px));
+  align-items: flex-end;
+  background: transparent;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: max(3vw, calc((100vw - 1180px) / 2));
+  width: min(44vw, 560px);
+  aspect-ratio: 1;
+  background: url("/soccer_ball2.svg") center / contain no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0.11;
+  transform: translateY(-48%) rotate(-8deg);
+  -webkit-mask-image: radial-gradient(circle, #000 32%, rgba(0, 0, 0, 0.72) 56%, transparent 76%);
+  mask-image: radial-gradient(circle, #000 32%, rgba(0, 0, 0, 0.72) 56%, transparent 76%);
+  pointer-events: none;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 88px 0 92px;
+}
+
+.eyebrow,
+.sectionLabel {
+  margin: 0 0 14px;
+  color: #79df9b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  max-width: 780px;
+  margin: 0;
+  font-size: clamp(44px, 6.5vw, 78px);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.heroContent > p:not(.eyebrow) {
+  max-width: 670px;
+  margin: 24px 0 30px;
+  color: rgba(237, 248, 240, 0.78);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.hero button,
+.closing button {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 28px;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(92, 203, 132, 0.34);
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.hero button:hover,
+.closing button:hover {
+  background: linear-gradient(135deg, #9bedbb, #63d68d);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(92, 203, 132, 0.46);
+}
+
+.origin,
+.principles,
+.audience,
+.closing {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.origin {
+  padding: 104px 0;
+}
+
+.originGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 88px;
+  align-items: start;
+}
+
+.origin h2,
+.sectionHeading h2,
+.audience h2,
+.closing h2 {
+  margin: 0;
+  font-size: clamp(32px, 4.2vw, 52px);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.originCopy {
+  padding-top: 5px;
+}
+
+.originCopy p,
+.principleList p,
+.audience > div:last-child > p:last-child {
+  margin: 0;
+  color: rgba(237, 248, 240, 0.68);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.originCopy p + p {
+  margin-top: 20px;
+}
+
+.principles {
+  padding: 104px 0;
+}
+
+.sectionHeading {
+  max-width: 760px;
+  margin-bottom: 58px;
+}
+
+.principleList article {
+  display: grid;
+  grid-template-columns: 54px 46px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding: 30px 0;
+}
+
+.principleNumber {
+  color: rgba(121, 223, 155, 0.62);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.principleList h3 {
+  margin: -4px 0 8px;
+  font-size: 23px;
+}
+
+.principleList p {
+  max-width: 740px;
+}
+
+.audience {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 58px;
+  align-items: center;
+  padding: 74px 0;
+}
+
+.audienceIcon {
+  justify-self: center;
+}
+
+.audience h2 {
+  max-width: 820px;
+  font-size: clamp(30px, 3.8vw, 48px);
+}
+
+.audience > div:last-child > p:last-child {
+  max-width: 820px;
+  margin-top: 22px;
+}
+
+.closing {
+  position: relative;
+  overflow: hidden;
+  height: clamp(220px, 28vw, 380px);
+  border-radius: 28px;
+  background: url("/cta-banner.png") center center / cover no-repeat;
+}
+
+.closing button {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  z-index: 2;
+  transform: translateX(-50%);
+  margin-top: 0;
+}
+
+.closing button:hover {
+  transform: translateX(-50%) translateY(-2px);
+}
+
+@media (max-width: 760px) {
+  .page { padding-bottom: 56px; }
+  .hero { min-height: 590px; }
+  .hero::before {
+    top: 23%;
+    right: 5vw;
+    width: 78vw;
+    opacity: 0.065;
+    transform: rotate(-8deg);
+  }
+  .heroContent { width: min(100% - 28px, 1120px); padding: 64px 0 62px; }
+  .heroTitle { font-size: clamp(39px, 12vw, 56px); }
+  .heroContent > p:not(.eyebrow) { font-size: 16px; }
+  .origin, .principles, .audience, .closing { width: min(100% - 28px, 1120px); }
+  .origin, .principles { padding: 70px 0; }
+  .originGrid { grid-template-columns: 1fr; gap: 28px; }
+  .sectionHeading { margin-bottom: 38px; }
+  .principleList article { grid-template-columns: 38px 46px minmax(0, 1fr); gap: 14px; padding: 24px 0; }
+  .principleList h3 { font-size: 20px; }
+  .audience { grid-template-columns: 1fr; gap: 28px; padding: 58px 0; }
+  .closing {
+    height: clamp(200px, 36vw, 280px);
+    border-radius: 22px;
+  }
+}

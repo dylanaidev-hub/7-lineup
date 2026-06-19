@@ -1,0 +1,43 @@
+.actionsRight {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shareButton {
+  background: #ffffff;
+  color: #2e994c;
+}
+
+.downloadButton {
+  background: #173325;
+}
+
+@media (max-width: 1024px) {
+  .actionsRight {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .actionsRight {
+    display: flex;
+    height: 48px;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+  }
+
+  .shareButton {
+    border: 0;
+    background: #173325;
+    color: #ffffff;
+  }
+}
+
+@media (max-width: 360px) {
+  .actionsRight {
+    gap: 4px;
+  }
+}

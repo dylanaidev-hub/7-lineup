@@ -1,0 +1,1655 @@
+/* =====================================================================
+   In-app theme aligned with the landing page
+   Dark green surroundings, gradient-green accents, rounded cards and
+   markers synced with the landing look & feel.
+   ===================================================================== */
+:root {
+  --lf-green: #5ccb84;
+  --lf-green-light: #7fe0a3;
+  --lf-grad: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  --lf-ink-dark: #07100c;
+  --lf-frame: #0f2a1d;
+  --lf-radius: 16px;
+}
+
+/* --- Backgrounds --- */
+.match-bg {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(92, 203, 132, 0.28), transparent 38%),
+    radial-gradient(circle at 86% 82%, rgba(46, 120, 78, 0.32), transparent 42%),
+    linear-gradient(160deg, #0d1b18 0%, #0a1410 60%, #07100c 100%);
+}
+
+.dashboard-shell,
+.pitch-mode-bar {
+  background: transparent;
+}
+
+.pitch-mode-bar {
+  border-bottom: 1px solid rgba(232, 245, 233, 0.08);
+}
+
+/* --- Panels become rounded cards floating on the dark backdrop --- */
+.stats-column,
+.lineup-column,
+.tactical-panel,
+.tactic-library-panel {
+  border-radius: var(--lf-radius);
+  overflow: hidden;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
+}
+
+.lineup-column,
+.tactical-stage,
+.pitch-size-switch,
+.formation-switch,
+.lineup-footer-actions {
+  background: var(--lf-frame);
+}
+
+/* --- Accent headings + active/primary buttons use the green gradient --- */
+.panel-heading {
+  background: var(--lf-grad);
+  color: var(--lf-ink-dark);
+}
+
+.pitch-mode-switch button.active,
+.app-tab-switch > button.active,
+.lineup-tab-trigger.active,
+.lineup-format-menu button.active,
+.lineup-save-bar button:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled) {
+  background: var(--lf-grad);
+  color: var(--lf-ink-dark);
+}
+
+/* --- Rounded inputs with a green focus ring --- */
+.squad-input-list input,
+.extra-player-input input,
+.lineup-save-bar input {
+  border-radius: 10px;
+}
+
+/* --- Rounded menus, cards and rows --- */
+.lineup-format-menu {
+  border-radius: 14px;
+}
+
+.lineup-format-menu button {
+  border-radius: 8px;
+}
+
+.squad-row {
+  border-radius: 12px;
+}
+
+/* --- Pitches matched to the landing pitch tone --- */
+.pitch,
+.tactical-pitch {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(255, 255, 255, 0.05) 11.11%,
+      rgba(255, 255, 255, 0.07) 11.11%,
+      rgba(255, 255, 255, 0.07) 22.22%
+    ),
+    linear-gradient(180deg, #1c5236, #134029);
+}
+
+.pitch {
+  border: 2px solid rgba(232, 245, 233, 0.22);
+  border-radius: 12px;
+}
+
+/* --- Tactical markers mirror the landing pitch palette:
+   home players in amber, opponents in red, ball in white. --- */
+.tactical-marker:not(.ball-marker):not(.opponent-marker),
+.tactical-tray-dot:not(.opponent),
+.tactical-drag-preview:not(.opponent):not(.ball) {
+  background: linear-gradient(135deg, #ffd84d, #ff9f1c);
+  color: #2a1700;
+}
+
+.tactical-marker.ball-marker,
+.tactical-drag-preview.ball {
+  position: relative;
+  border: 2px solid #ffffff;
+  background: #ffffff var(--soccer-ball-icon) center / 100% 100% no-repeat;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.28),
+    inset -4px -5px 7px rgba(15, 23, 42, 0.12);
+}
+
+/* =====================================================================
+   Squad editor sidebar · dynamic tactics board · tactic list
+   Re-skinned to the dark landing theme; buttons mirror the
+   login / register (auth) button language.
+   ===================================================================== */
+
+/* ---- Reusable button language synced with the auth buttons ---- */
+.lf-btn-primary,
+.squad-row-header button:not(:disabled),
+.tactical-controls button:first-child:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled),
+.tactical-timeline .add-frame-button:not(:disabled),
+.tactical-timeline button.active {
+  border: none;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+  box-shadow: 0 8px 20px rgba(92, 203, 132, 0.3);
+}
+
+.lf-btn-secondary,
+.extra-player-input button:not(:disabled),
+.tactical-controls button:not(:disabled),
+.tactical-timeline button:not(:disabled),
+.tactic-library-actions button:not(:disabled) {
+  border: 1px solid rgba(232, 245, 233, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8f5e9;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 120ms ease;
+}
+
+/* keep the primary accents winning over the generic secondary rule */
+.tactical-controls button:first-child:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled),
+.tactical-timeline .add-frame-button:not(:disabled),
+.tactical-timeline button.active {
+  border: none;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+.extra-player-input button:not(:disabled):hover,
+.tactical-controls button:not(:disabled):hover,
+.tactical-timeline button:not(:disabled):hover,
+.tactic-library-actions button:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.tactical-controls button.active:not(:disabled) {
+  border: 1px solid transparent;
+  background: rgba(92, 203, 132, 0.18);
+  color: #e8f5e9;
+  box-shadow: inset 0 0 0 2px rgba(92, 203, 132, 0.9);
+}
+
+.tactical-timeline .clear-frames-button:not(:disabled) {
+  border: 1px solid rgba(255, 120, 120, 0.4);
+  background: rgba(220, 38, 38, 0.16);
+  color: #ffb4b4;
+}
+
+/* round the dense action buttons into pills like the auth buttons */
+.tactical-controls button,
+.tactical-timeline button,
+.tactic-library-actions button,
+.extra-player-input button {
+  border-radius: 999px;
+}
+
+/* ---- Squad editor sidebar surface ("Chỉnh đội hình") ---- */
+.squad-editor {
+  background: rgba(9, 20, 15, 0.94);
+}
+
+.squad-row {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(232, 245, 233, 0.1);
+}
+
+.squad-row-header strong {
+  color: #e8f5e9;
+}
+
+.squad-row-header span {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e8f5e9;
+}
+
+.squad-input-list input,
+.extra-player-input input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  color: #e8f5e9;
+}
+
+.squad-input-list input::placeholder,
+.extra-player-input input::placeholder {
+  color: rgba(232, 245, 233, 0.42);
+}
+
+.squad-input-list input:focus,
+.extra-player-input input:focus {
+  border-color: #5ccb84;
+  box-shadow: 0 0 0 3px rgba(92, 203, 132, 0.22);
+}
+
+/* ---- Dynamic tactics board panel ("bảng chiến thuật động") ---- */
+.tactical-panel {
+  background: rgba(9, 20, 15, 0.94);
+}
+
+.tactical-help {
+  color: rgba(232, 245, 233, 0.55);
+}
+
+.tactical-tray {
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  background: rgba(15, 51, 34, 0.4);
+}
+
+.tactical-timeline button span {
+  background: rgba(232, 245, 233, 0.18);
+}
+
+.tactical-save-status {
+  background: rgba(92, 203, 132, 0.18);
+  color: #d9ffe6;
+}
+
+/* ---- Tactic list panel ("danh sách tactic") ---- */
+.tactic-library-panel {
+  background: rgba(9, 20, 15, 0.94);
+}
+
+.tactic-list > button {
+  border: 1px solid rgba(232, 245, 233, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e8f5e9;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.tactic-list > button:hover {
+  border-color: rgba(92, 203, 132, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tactic-list > button.active {
+  background: rgba(92, 203, 132, 0.16);
+  border-color: rgba(92, 203, 132, 0.7);
+  box-shadow: inset 0 3px 0 #5ccb84;
+}
+
+.tactic-list small {
+  color: rgba(232, 245, 233, 0.55);
+}
+
+.tactic-list span[role="button"] {
+  color: #ff7a7a;
+}
+
+/* =====================================================================
+   Primary button hover — animated gradient sweep (shine) instead of the
+   accidental dark/translucent state.
+   ===================================================================== */
+.squad-row-header button:not(:disabled),
+.tactical-controls button:first-child:not(:disabled),
+.tactic-library-actions .save-button:not(:disabled),
+.tactical-timeline .add-frame-button:not(:disabled),
+.tactical-timeline button.active,
+.lineup-save-bar button:not(:disabled) {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease,
+    transform 140ms ease;
+}
+
+/* the moving sheen sits above the green gradient but below the label */
+.squad-row-header button:not(:disabled)::before,
+.tactical-controls button:first-child:not(:disabled)::before,
+.tactic-library-actions .save-button:not(:disabled)::before,
+.tactical-timeline .add-frame-button:not(:disabled)::before,
+.tactical-timeline button.active::before,
+.lineup-save-bar button:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10%;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  transition: transform 650ms ease;
+  pointer-events: none;
+}
+
+/* keep the gradient (slightly brighter) on hover + glow, never go dark */
+.squad-row-header button:not(:disabled):hover,
+.tactical-controls button:first-child:not(:disabled):hover,
+.tactic-library-actions .save-button:not(:disabled):hover,
+.tactical-timeline .add-frame-button:not(:disabled):hover,
+.tactical-timeline button.active:hover,
+.lineup-save-bar button:not(:disabled):hover {
+  background: linear-gradient(135deg, #9bedbb, #63d68d);
+  box-shadow: 0 12px 28px rgba(92, 203, 132, 0.5);
+  transform: translateY(-1px);
+}
+
+.squad-row-header button:not(:disabled):hover::before,
+.tactical-controls button:first-child:not(:disabled):hover::before,
+.tactic-library-actions .save-button:not(:disabled):hover::before,
+.tactical-timeline .add-frame-button:not(:disabled):hover::before,
+.tactical-timeline button.active:hover::before,
+.lineup-save-bar button:not(:disabled):hover::before {
+  transform: translateX(130%);
+}
+
+/* landing primary buttons get the same sweep for consistency */
+.landing-auth-btn-primary,
+.landing-cta {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.landing-auth-btn-primary::before,
+.landing-cta::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10%;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  transition: transform 650ms ease;
+  pointer-events: none;
+}
+
+.landing-auth-btn-primary:hover::before,
+.landing-cta:hover::before {
+  transform: translateX(130%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .squad-row-header button:not(:disabled)::before,
+  .tactical-controls button:first-child:not(:disabled)::before,
+  .tactic-library-actions .save-button:not(:disabled)::before,
+  .tactical-timeline .add-frame-button:not(:disabled)::before,
+  .tactical-timeline button.active::before,
+  .lineup-save-bar button:not(:disabled)::before,
+  .landing-auth-btn-primary::before,
+  .landing-cta::before {
+    transition: none;
+  }
+}
+
+/* =====================================================================
+   Active timeline step — a distinct "selected" look, NOT the solid
+   primary-button gradient, so a chosen frame reads differently from
+   action buttons.
+   ===================================================================== */
+.tactical-timeline button.active,
+.tactical-timeline button.active:hover {
+  background: rgba(92, 203, 132, 0.14);
+  color: #eafff1;
+  border: 1px solid rgba(92, 203, 132, 0.85);
+  box-shadow:
+    inset 3px 0 0 #5ccb84,
+    0 0 0 1px rgba(92, 203, 132, 0.22);
+  transform: none;
+}
+
+/* drop the sweep sheen on the active step */
+.tactical-timeline button.active::before {
+  content: none;
+}
+
+/* number badge stays vivid green to mark the active frame */
+.tactical-timeline button.active span {
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+/* =====================================================================
+   Lineup layout — give the pitch diagram the maximum possible size.
+   The pitch is portrait (7:10), so the only real lever is height: make
+   the stage row fill all available height and trim the surrounding
+   overhead so the pitch grows as large as the viewport allows.
+   ===================================================================== */
+
+/* tighter outer padding + a slimmer squad column → more room for the pitch */
+@media (min-width: 1025px) {
+  .content-grid {
+    gap: 14px;
+    padding: 16px;
+    grid-template-columns: minmax(240px, 300px) minmax(360px, 1fr);
+  }
+
+  /* the stage row now fills the column height so height:100% resolves */
+  .lineup-stage {
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    justify-items: center;
+    padding: 8px;
+  }
+
+  .sandbox-canvas-stage.show-marker-tray {
+    align-items: stretch;
+    align-content: stretch;
+  }
+
+  .sandbox-canvas-stage .custom-side-tray {
+    align-self: stretch;
+    height: auto;
+  }
+
+  /* pitch fills the full available height (no 700px cap) */
+  .lineup-stage .pitch {
+    height: 100%;
+    max-height: 100%;
+    width: auto;
+    max-width: 100%;
+    margin-bottom: 0;
+  }
+
+  .sandbox-canvas-stage.show-marker-tray .pitch,
+  .sandbox-canvas-stage.show-animation-panel .pitch {
+    height: 100%;
+    max-height: 100%;
+  }
+
+  .sandbox-canvas-stage > .pitch,
+  .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .sandbox-canvas-stage.show-animation-panel > .pitch {
+    height: clamp(380px, calc(100vh - 310px), 600px);
+    max-height: 100%;
+    width: auto;
+    justify-self: center;
+    align-self: center;
+  }
+}
+
+.formation-switch {
+  padding: 8px 12px;
+}
+
+.lineup-footer-actions {
+  padding: 8px 12px 10px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* formation templates now live on the left of the footer row */
+.footer-formation-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-formation-switch button {
+  min-height: 32px;
+  border: 1px solid rgba(232, 245, 233, 0.2);
+  border-radius: 999px;
+  padding: 6px 13px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8f5e9;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.footer-formation-switch button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(92, 203, 132, 0.6);
+}
+
+.footer-formation-switch button.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7fe0a3, #5ccb84);
+  color: #07100c;
+}
+
+.footer-formation-switch .draw-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* =====================================================================
+   Toast notifications — bottom-right, slide up from below, auto-dismiss
+   after 3s. Unified feedback for saved / deleted / copied / downloaded…
+   ===================================================================== */
+.toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 12000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(360px, 86vw);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 245, 233, 0.16);
+  border-left: 3px solid #5ccb84;
+  background: linear-gradient(160deg, #163a30, #0c1a15);
+  color: #e8f5e9;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  animation: toast-life 3000ms ease forwards;
+}
+
+.toast svg {
+  flex: 0 0 auto;
+  color: #5ccb84;
+}
+
+.toast-error {
+  border-left-color: #ff6b6b;
+  color: #ffe1e1;
+}
+
+@keyframes toast-life {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  9% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  86% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: toast-fade 3000ms ease forwards;
+  }
+
+  @keyframes toast-fade {
+    0% { opacity: 0; }
+    9% { opacity: 1; }
+    86% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}
+
+/* =====================================================================
+   RESPONSIVE — tablet & mobile.
+   These rules are intentionally placed LAST so they override the desktop
+   layout overrides above (which are not wrapped in media queries and were
+   clobbering the older mobile breakpoints — e.g. forcing the content grid
+   back to two columns and the pitch to height:100% on small screens).
+   Desktop (> 1024px) is untouched.
+   ===================================================================== */
+@media (max-width: 1024px) {
+  /* Let non-lineup tabs scroll; lineup uses the zero-scroll block below. */
+  body:not(:has(.lineup-column)) .match-bg {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  body:not(:has(.lineup-column)) .dashboard-shell,
+  .tactics-dashboard {
+    min-height: 0;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  /* ---------- Tactics tab: stack the three panels (pitch first) -------- */
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    height: auto;
+    padding: 16px;
+    overflow: visible;
+  }
+
+  .stats-column {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    order: 2;
+  }
+
+  /* ---------- Tactics tab: stack the three panels (pitch first) -------- */
+  .tactical-shell {
+    grid-template-columns: 1fr;
+    grid-auto-rows: min-content;
+    gap: 14px;
+    height: auto;
+    padding: 14px;
+    overflow: visible;
+  }
+
+  .tactical-stage {
+    order: 1;
+  }
+
+  .tactical-panel {
+    order: 2;
+  }
+
+  .tactic-library-panel {
+    order: 3;
+  }
+
+  .tactical-panel,
+  .tactic-library-panel,
+  .tactical-stage {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .tactical-pitch {
+    height: auto;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  /* The frame timeline can grow tall when stacked; cap it and scroll. */
+  .tactical-timeline {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+}
+
+/* Tablet portrait: keep the squad editor compact above the pitch. */
+@media (max-width: 1024px) and (min-width: 641px) {
+  /* Only show the lightweight mobile editor on phones; on tablets the full
+     squad column is shown above the pitch, so avoid duplicating inputs. */
+  .mobile-player-editor {
+    display: none;
+  }
+}
+
+/* Phones: tighten spacing and shrink the tactics side tray. */
+@media (max-width: 640px) {
+  body:not(:has(.lineup-column)) .content-grid {
+    padding: 12px;
+  }
+
+  /* Retheme the legacy bright-green mobile editor to the dark theme. */
+  .mobile-player-editor {
+    background: rgba(9, 20, 15, 0.6);
+    border: 1px solid rgba(232, 245, 233, 0.1);
+    border-radius: 14px;
+  }
+
+  .tactical-shell {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .tactical-stage {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .tactical-side-tray .tactical-tray {
+    padding: 7px;
+  }
+
+  .tactical-pitch {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --lf-mobile-tray: clamp(100px, 18dvh, 118px);
+  }
+
+  .content-grid {
+    gap: 10px;
+    padding: 8px;
+  }
+
+  .lineup-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lineup-actions button {
+    min-height: 48px;
+    padding: 0 18px;
+  }
+
+  .sandbox-canvas-stage > .pitch,
+  .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .sandbox-canvas-stage.show-animation-panel > .pitch,
+  .custom-side-tray,
+  .sandbox-canvas-stage > .workspace-timeline,
+  .workspace-timeline {
+    max-width: 100%;
+  }
+
+  body:not(:has(.lineup-column)) .workspace-timeline-controls {
+    grid-template-columns: repeat(3, minmax(44px, 1fr)) minmax(88px, 1.4fr);
+  }
+
+  body:not(:has(.lineup-column)) .workspace-frame-list {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+}
+
+/* Mobile/tablet zero-scroll workspace with one bottom command dock. */
+@media (max-width: 1024px) {
+  :root {
+    --lf-mobile-dock: 48px;
+    --lf-mobile-tray: clamp(108px, 19dvh, 128px);
+    --lf-mobile-marker-tray: clamp(148px, 26dvh, 176px);
+    --lf-mobile-animation-tray: clamp(176px, 30dvh, 212px);
+    --lf-mobile-edge: 12px;
+    --lf-mobile-sheet-padding: 12px;
+    --lf-mobile-sheet-max-width: 440px;
+    --lf-mobile-gap: 12px;
+    --lf-mobile-sheet-bottom: calc(
+      env(safe-area-inset-bottom, 0px) + var(--lf-mobile-edge) + var(--lf-mobile-dock) +
+        var(--lf-mobile-gap)
+    );
+    /* Pitch only clears the bottom dock; sheets overlay on top when opened. */
+    --lf-pitch-reserved-bottom: calc(
+      var(--lf-mobile-edge) + var(--lf-mobile-dock) + var(--lf-mobile-gap)
+    );
+  }
+
+  @keyframes mobile-sheet-rise {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(32px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  body:has(.lineup-column) {
+    overflow: hidden;
+  }
+
+  .match-bg {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    max-width: 100vw;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .match-bg > header {
+    flex: 0 0 auto;
+  }
+
+  .dashboard-shell {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+    max-width: 100vw;
+  }
+
+  .content-grid {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .lineup-column {
+    flex: 1 1 auto;
+  }
+
+  .stats-column,
+  .mobile-player-editor {
+    display: none !important;
+  }
+
+  .lineup-column {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    max-width: 100vw;
+    background:
+      radial-gradient(circle at 50% 18%, rgba(127, 224, 163, 0.16), transparent 34%),
+      linear-gradient(180deg, #41ac5b, #2f954c);
+  }
+
+  .lineup-stage {
+    position: static;
+    display: block;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    overflow-x: clip;
+    overflow-y: hidden;
+    background: transparent;
+  }
+
+  .lineup-column > .lineup-column-header {
+    position: fixed;
+    z-index: 90;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .lineup-column > .lineup-column-header > * {
+    pointer-events: auto;
+  }
+
+  .sandbox-canvas-stage,
+  .sandbox-canvas-stage.show-marker-tray,
+  .sandbox-canvas-stage.show-animation-panel,
+  .sandbox-canvas-stage.show-marker-tray.show-animation-panel {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sandbox-canvas-stage > .pitch,
+  .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .sandbox-canvas-stage.show-animation-panel > .pitch {
+    position: absolute;
+    z-index: 20;
+    top: var(--lf-mobile-edge);
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: min(420px, calc(100% - var(--lf-mobile-edge) * 2));
+    height: auto;
+    max-height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge));
+    min-height: 0;
+    margin-inline: 0;
+    transform: translateX(-50%);
+    box-sizing: border-box;
+    aspect-ratio: 7 / 10;
+  }
+
+  .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
+  .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
+    max-height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge));
+  }
+
+  .lineup-footer-actions,
+  .custom-side-tray,
+  .sandbox-canvas-stage > .workspace-timeline,
+  .lineup-column.tool-draw .footer-formation-switch:not(:empty) {
+    position: fixed;
+    z-index: 85;
+  }
+
+  .custom-side-tray,
+  .sandbox-canvas-stage > .workspace-timeline,
+  .lineup-column.tool-draw .footer-formation-switch:not(:empty) {
+    left: 50%;
+    right: auto;
+    bottom: var(--lf-mobile-sheet-bottom);
+    width: min(var(--lf-mobile-sheet-max-width), calc(100% - var(--lf-mobile-edge) * 2));
+    max-width: var(--lf-mobile-sheet-max-width);
+    transform: translateX(-50%);
+    box-sizing: border-box;
+  }
+
+  .lineup-footer-actions button {
+    display: inline-grid;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    place-items: center;
+    border-radius: 999px;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+    color: #ffffff;
+    box-shadow:
+      0 12px 22px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  .lineup-footer-actions button {
+    align-items: center;
+    justify-items: center;
+  }
+
+  .lineup-footer-actions button svg {
+    display: block;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+    margin: 0;
+    vertical-align: middle;
+  }
+
+  .lineup-footer-actions button > :not(svg):not(.button-spinner) {
+    display: none;
+  }
+
+  .lineup-footer-actions {
+    right: var(--lf-mobile-edge);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--lf-mobile-edge));
+    left: auto;
+    display: flex;
+    height: var(--lf-mobile-dock);
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    pointer-events: none;
+    z-index: 90;
+  }
+
+  .lineup-footer-actions button {
+    pointer-events: auto;
+  }
+
+  .custom-side-tray {
+    display: grid;
+    height: auto;
+    min-height: 0;
+    max-height: var(--lf-mobile-marker-tray);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(40px, 0.48fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 6px;
+    padding: var(--lf-mobile-sheet-padding);
+    border: 1px solid rgba(232, 245, 233, 0.14);
+    border-radius: 22px 22px 18px 18px;
+    background:
+      linear-gradient(180deg, rgba(8, 41, 24, 0.96), rgba(5, 24, 16, 0.94));
+    box-shadow:
+      0 -22px 44px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(18px);
+    overflow: hidden;
+    animation: mobile-sheet-rise 0.22s ease both;
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease,
+      filter 0.16s ease;
+  }
+
+  .lineup-stage.dock-dimmed .custom-side-tray {
+    opacity: 0.18;
+    filter: blur(1px);
+    pointer-events: none;
+    transform: translateX(-50%) translateY(10px);
+  }
+
+  .custom-player-tray,
+  .opponent-tray,
+  .ball-tray {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    gap: 3px;
+    padding: 5px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .custom-player-tray > span,
+  .opponent-tray > span,
+  .ball-tray > span {
+    display: block;
+    flex: 0 0 auto;
+    width: 100%;
+    font-size: 7px;
+    font-weight: 950;
+    letter-spacing: 0.06em;
+    line-height: 1.1;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .custom-player-dot-list,
+  .opponent-dot-list {
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    grid-template-columns: repeat(auto-fill, minmax(19px, 1fr));
+    gap: 4px;
+    width: 100%;
+    align-content: start;
+    justify-items: center;
+  }
+
+  .custom-player-dot,
+  .opponent-dot,
+  .tactical-ball-tray-dot {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 22px;
+    height: auto;
+    aspect-ratio: 1;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    justify-self: center;
+  }
+
+  .custom-player-dot {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    justify-content: center;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f8fafc 0%, #d7dee7 100%);
+    color: #111827;
+    font-size: 8px;
+    font-weight: 950;
+    line-height: 1;
+    text-align: center;
+    appearance: none;
+  }
+
+  .opponent-dot {
+    max-width: 20px;
+    padding: 0;
+  }
+
+  .ball-tray {
+    min-height: 0;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .ball-tray .tactical-ball-tray-dot {
+    flex: 0 0 auto;
+    align-self: center;
+    max-width: 24px;
+  }
+
+  .footer-formation-switch {
+    display: none;
+  }
+
+  .lineup-column.tool-draw .footer-formation-switch {
+    z-index: 85;
+    display: flex;
+    justify-content: center;
+    padding: var(--lf-mobile-sheet-padding);
+    border: 1px solid rgba(232, 245, 233, 0.14);
+    border-radius: 26px 26px 20px 20px;
+    background:
+      linear-gradient(180deg, rgba(8, 41, 24, 0.96), rgba(5, 24, 16, 0.94));
+    box-shadow:
+      0 -22px 44px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(18px);
+    animation: mobile-sheet-rise 0.22s ease both;
+    pointer-events: none;
+  }
+
+  .lineup-column.tool-draw .footer-formation-switch:empty {
+    display: none;
+  }
+
+  .lineup-column.tool-draw .draw-history-actions {
+    display: grid;
+    width: min(100%, 430px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 auto;
+    pointer-events: auto;
+  }
+
+  .lineup-column.tool-draw .draw-history-actions button {
+    display: inline-flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 42px;
+    border-radius: 999px;
+    padding: 0 10px;
+    background: rgba(8, 31, 21, 0.9);
+    color: #eaffef;
+    font-size: 9px;
+    line-height: 1.05;
+    box-shadow: 0 12px 22px rgba(0, 0, 0, 0.2);
+  }
+
+  .lineup-column.tool-draw .draw-history-actions button span {
+    display: inline;
+    max-width: 56px;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: normal;
+  }
+
+  .lineup-column.tool-draw .draw-history-actions button svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+
+  .sandbox-canvas-stage > .workspace-timeline {
+    display: grid;
+    height: auto;
+    min-height: 0;
+    max-height: var(--lf-mobile-animation-tray);
+    grid-template-columns: 42px 42px minmax(0, 1fr) 42px 42px;
+    grid-template-rows: auto minmax(44px, auto) minmax(0, 1fr);
+    align-content: start;
+    gap: 8px;
+    padding: var(--lf-mobile-sheet-padding);
+    border: 1px solid rgba(232, 245, 233, 0.14);
+    border-radius: 22px 22px 18px 18px;
+    background:
+      linear-gradient(180deg, rgba(8, 41, 24, 0.96), rgba(5, 24, 16, 0.94));
+    overflow: hidden;
+    box-sizing: border-box;
+    animation: mobile-sheet-rise 0.22s ease both;
+    box-shadow:
+      0 -22px 44px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(18px);
+  }
+
+  .workspace-timeline-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 0;
+    font-size: 10px;
+  }
+
+  .workspace-timeline-controls {
+    display: contents;
+  }
+
+  .workspace-timeline-controls .playback-button {
+    width: 42px;
+    min-height: 44px;
+    border-radius: 999px;
+  }
+
+  .workspace-timeline-controls button:nth-child(1) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .workspace-timeline-controls button:nth-child(2) {
+    grid-column: 4;
+    grid-row: 2;
+  }
+
+  .workspace-timeline-controls button:nth-child(3) {
+    display: inline-flex;
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .workspace-timeline-controls button:nth-child(4) {
+    display: inline-flex;
+    grid-column: 5;
+    grid-row: 2;
+    width: 42px;
+    min-height: 44px;
+    border-radius: 999px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .workspace-timeline-controls button:nth-child(4) span {
+    display: none;
+  }
+
+  .workspace-add-frame-button {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: stretch;
+    min-height: 44px;
+    max-height: 44px;
+    margin: 0;
+    border-radius: 999px;
+    font-size: 10px;
+    line-height: 1.1;
+    padding: 0 8px;
+  }
+
+  .workspace-add-frame-button svg {
+    flex: 0 0 auto;
+  }
+
+  .workspace-frame-list {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    min-height: 0;
+    max-height: none;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    cursor: grab;
+    user-select: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .workspace-frame-list:active {
+    cursor: grabbing;
+  }
+
+  .workspace-frame-list button,
+  .workspace-frame-item,
+  .workspace-frame-empty {
+    flex: 0 0 auto;
+    width: 104px;
+    min-height: 42px;
+    border-radius: 14px;
+  }
+
+  .workspace-frame-empty {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+
+  .workspace-frame-list button {
+    padding: 0 8px 0 12px;
+    font-size: 10px;
+  }
+
+  .workspace-frame-list .workspace-frame-item {
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 12px;
+    font-size: 10px;
+  }
+
+  .workspace-frame-list .workspace-frame-select {
+    width: auto;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: left;
+  }
+
+  .workspace-frame-list .workspace-frame-delete-button {
+    display: inline-grid;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    place-items: center;
+    border: 0;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+    line-height: 0;
+  }
+
+  .workspace-frame-list .workspace-frame-delete-button svg {
+    display: block;
+    width: 13px;
+    height: 13px;
+    margin: 0;
+  }
+
+  .mobile-squad-toggle {
+    position: fixed;
+    z-index: 85;
+    top: 164px;
+    right: 18px;
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 1px solid rgba(232, 245, 233, 0.26);
+    border-radius: 999px;
+    background: rgba(8, 31, 21, 0.9);
+    color: #eaffef;
+    box-shadow:
+      0 14px 26px rgba(0, 0, 0, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-squad-drawer {
+    position: fixed;
+    z-index: 140;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    width: min(88vw, 380px);
+    flex-direction: column;
+    background:
+      linear-gradient(180deg, rgba(8, 31, 21, 0.98), rgba(4, 18, 12, 0.98));
+    box-shadow: -24px 0 44px rgba(0, 0, 0, 0.36);
+    transform: translateX(105%);
+    transition: transform 0.22s ease;
+    pointer-events: none;
+  }
+
+  .mobile-squad-drawer.open {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .mobile-squad-drawer-header {
+    display: flex;
+    min-height: 62px;
+    align-items: center;
+    justify-content: space-between;
+    padding: max(12px, env(safe-area-inset-top)) 14px 12px;
+    border-bottom: 1px solid rgba(232, 245, 233, 0.12);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .mobile-squad-drawer-header button {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(127, 224, 163, 0.18);
+    color: #ffffff;
+  }
+
+  .mobile-squad-drawer-list {
+    display: grid;
+    gap: 10px;
+    overflow-y: auto;
+    padding: 12px 12px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-squad-player-card {
+    display: grid;
+    gap: 8px;
+    border: 1px solid rgba(232, 245, 233, 0.12);
+    border-radius: 18px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .mobile-squad-player-title {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+  }
+
+  .mobile-squad-player-title span {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 12px;
+    font-weight: 950;
+  }
+
+  .mobile-squad-player-title strong {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 950;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .mobile-squad-player-title button,
+  .mobile-squad-extra-input button {
+    display: grid;
+    height: 34px;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: #7fe0a3;
+    color: #082015;
+  }
+
+  .mobile-squad-player-title button:disabled {
+    opacity: 0.35;
+  }
+
+  .mobile-squad-player-card input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid rgba(232, 245, 233, 0.18);
+    border-radius: 12px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    outline: none;
+  }
+
+  .mobile-squad-player-card input::placeholder {
+    color: rgba(232, 245, 233, 0.48);
+  }
+
+  .mobile-squad-extra-input {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 38px;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .lineup-footer-actions button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  :root {
+    --lf-mobile-tray: clamp(112px, 17dvh, 128px);
+    --lf-mobile-animation-tray: clamp(184px, 28dvh, 220px);
+    --lf-mobile-sheet-max-width: 480px;
+  }
+
+  .sandbox-canvas-stage > .pitch,
+  .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .sandbox-canvas-stage.show-animation-panel > .pitch,
+  .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
+  .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
+    width: min(480px, calc(100% - var(--lf-mobile-edge) * 2));
+  }
+
+  .lineup-column.tool-draw .draw-history-actions {
+    width: min(430px, calc(100% - var(--lf-mobile-edge) * 2));
+  }
+}
+
+@media (max-width: 1024px) {
+  .mobile-player-editor input,
+  .mobile-player-editor select,
+  .mobile-squad-drawer input,
+  .mobile-squad-player-card input,
+  .mobile-squad-extra-input input,
+  .squad-input-list input,
+  .extra-player-input input,
+  .lineup-save-bar input,
+  .custom-lineup-control input {
+    font-size: 16px !important;
+  }
+}
+
+/* Keep the lineup pitch inside the viewport on phones/tablets. */
+@media (max-width: 1024px) {
+  .match-bg {
+    padding-left: 0;
+    padding-right: 0;
+    overflow-x: clip;
+  }
+
+  .dashboard-shell,
+  .content-grid,
+  .lineup-column,
+  .lineup-stage,
+  .sandbox-canvas-stage {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .lineup-stage,
+  .lineup-stage.sandbox-canvas-stage,
+  .sandbox-canvas-stage {
+    display: block;
+    overflow-x: clip;
+  }
+}
+
+@media (max-width: 640px) {
+  body:has(.lineup-column) {
+    --lf-mobile-animation-tray: clamp(168px, 32dvh, 204px);
+    --lf-mobile-marker-tray: clamp(156px, 28dvh, 184px);
+  }
+}
+
+@media (max-width: 480px) {
+  body:has(.lineup-column) {
+    --lf-mobile-marker-tray: clamp(164px, 30dvh, 196px);
+  }
+
+  .custom-side-tray {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .ball-tray {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 3px;
+    min-height: 38px;
+    padding: 5px;
+  }
+
+  .ball-tray > span {
+    flex: 0 0 auto;
+    width: 100%;
+    text-align: center;
+  }
+
+  .custom-player-dot-list,
+  .opponent-dot-list {
+    grid-template-columns: repeat(auto-fill, minmax(18px, 1fr));
+    gap: 3px;
+  }
+
+  .custom-player-dot {
+    max-width: 20px;
+    font-size: 7.5px;
+  }
+
+  .opponent-dot {
+    max-width: 18px;
+  }
+
+  .ball-tray .tactical-ball-tray-dot {
+    max-width: 22px;
+  }
+}
+
+@media (max-width: 360px) {
+  body:has(.lineup-column) {
+    --lf-mobile-marker-tray: clamp(172px, 32dvh, 204px);
+  }
+
+  .custom-player-dot-list,
+  .opponent-dot-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .custom-player-dot {
+    max-width: 19px;
+    font-size: 7.5px;
+  }
+
+  .opponent-dot {
+    max-width: 17px;
+  }
+
+  .ball-tray .tactical-ball-tray-dot {
+    max-width: 21px;
+  }
+}

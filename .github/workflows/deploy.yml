@@ -34,6 +34,10 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_CONTENTFUL_SPACE_ID: ${{ vars.VITE_CONTENTFUL_SPACE_ID }}
+          VITE_CONTENTFUL_ACCESS_TOKEN: ${{ secrets.VITE_CONTENTFUL_ACCESS_TOKEN }}
+          VITE_CONTENTFUL_ENVIRONMENT: ${{ vars.VITE_CONTENTFUL_ENVIRONMENT }}
+          VITE_CONTENTFUL_CONTENT_TYPE: ${{ vars.VITE_CONTENTFUL_CONTENT_TYPE }}
         run: npm run build
 
       - name: Upload artifact

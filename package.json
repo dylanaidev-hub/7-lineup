@@ -2,11 +2,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/make-standalone.cjs",
+    "build": "tsc -b && vite build && node scripts/finalize-prerender.cjs && node scripts/make-standalone.cjs && node scripts/verify-prerender.cjs",
     "build:standalone": "npm run build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "@prerenderer/renderer-puppeteer": "^1.2.4",
+    "@prerenderer/rollup-plugin": "^0.3.12",
     "@supabase/supabase-js": "^2.106.2",
     "@vitejs/plugin-react": "latest",
     "autoprefixer": "latest",
@@ -15,6 +18,8 @@
     "postcss": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "react-helmet-async": "^3.0.0",
+    "react-router-dom": "^7.17.0",
     "tailwindcss": "latest",
     "typescript": "latest",
     "vite": "latest",
@@ -24,6 +29,7 @@
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
-    "@types/react-dom": "^19.2.3"
+    "@types/react-dom": "^19.2.3",
+    "sharp": "^0.35.1"
   }
 }

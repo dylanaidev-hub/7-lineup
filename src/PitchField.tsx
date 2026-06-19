@@ -1,0 +1,215 @@
+import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+
+type PitchPlayer = {
+  id: number;
+  position: string;
+  starterName: string;
+  substituteName: string;
+  extraNames: string[];
+  x: number;
+  y: number;
+};
+
+type PitchMarker = {
+  id: number;
+  x: number;
+  y: number;
+};
+
+type PitchBallMarker = {
+  id: string;
+  x: number;
+  y: number;
+  onPitch: boolean;
+};
+
+type AnimationMarker = {
+  x: number;
+  y: number;
+  onPitch: boolean;
+};
+
+type DrawLine = {
+  id: number;
+  points: { x: number; y: number }[];
+};
+
+type PitchFieldProps = {
+  pitchRef: RefObject<HTMLDivElement | null>;
+  drawLayerRef: RefObject<SVGSVGElement | null>;
+  players: PitchPlayer[];
+  opponentMarkers: PitchMarker[];
+  ballMarker: PitchBallMarker | undefined;
+  animationMarkerMap: Map<string, AnimationMarker>;
+  drawLines: DrawLine[];
+  isDrawMode: boolean;
+  showDrawTools: boolean;
+  isAnimationTool: boolean;
+  isPlaying: boolean;
+  showAllCanvasObjects: boolean;
+  draggingPlayerId: number | null;
+  draggingOpponentId: number | null;
+  draggingBallId: string | null;
+  labels: {
+    player: string;
+    dragPlayer: string;
+    dragOpponent: string;
+  };
+  getPositionLabel: (position: string) => string;
+  onStartDrawing: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onContinueDrawing: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onStopDrawing: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onPlayerPointerDown: (event: ReactPointerEvent<HTMLElement>, id: number) => void;
+  onPlayerPointerMove: (event: ReactPointerEvent<HTMLElement>, id: number) => void;
+  onPlayerPointerEnd: (event: ReactPointerEvent<HTMLElement>) => void;
+  onOpponentPointerDown: (event: ReactPointerEvent<HTMLElement>, id: number) => void;
+  onOpponentPointerMove: (event: ReactPointerEvent<HTMLElement>, id: number) => void;
+  onOpponentPointerEnd: (event: ReactPointerEvent<HTMLElement>) => void;
+  onBallPointerDown: (event: ReactPointerEvent<HTMLElement>, id: string) => void;
+  onBallPointerMove: (event: ReactPointerEvent<HTMLElement>, id: string) => void;
+  onBallPointerEnd: (event: ReactPointerEvent<HTMLElement>) => void;
+};
+
+const getBenchNames = (player: PitchPlayer) =>
+  [player.substituteName, ...player.extraNames].map((name) => name.trim()).filter(Boolean);
+
+export function PitchField({
+  pitchRef,
+  drawLayerRef,
+  players,
+  opponentMarkers,
+  ballMarker,
+  animationMarkerMap,
+  drawLines,
+  isDrawMode,
+  showDrawTools,
+  isAnimationTool,
+  isPlaying,
+  showAllCanvasObjects,
+  draggingPlayerId,
+  draggingOpponentId,
+  draggingBallId,
+  labels,
+  getPositionLabel,
+  onStartDrawing,
+  onContinueDrawing,
+  onStopDrawing,
+  onPlayerPointerDown,
+  onPlayerPointerMove,
+  onPlayerPointerEnd,
+  onOpponentPointerDown,
+  onOpponentPointerMove,
+  onOpponentPointerEnd,
+  onBallPointerDown,
+  onBallPointerMove,
+  onBallPointerEnd,
+}: PitchFieldProps) {
+  return (
+    <div
+      ref={pitchRef}
+      className={`pitch relative mx-auto aspect-[7/10] w-auto max-w-full min-w-0 border-[4px] border-white/80 touch-none select-none ${
+        isDrawMode ? "draw-mode" : ""
+      } ${isPlaying && isAnimationTool ? "playback-mode" : ""}`}
+    >
+      <div className="absolute inset-[4%] border-[3px] border-white/90" />
+      <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
+      <div className="absolute left-1/2 top-1/2 h-[22%] w-[31%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white/90" />
+      <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
+      <div className="absolute left-1/2 top-[4%] h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+      <div className="absolute left-1/2 top-[4%] h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+      <div className="absolute bottom-[4%] left-1/2 h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+      <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+
+      <svg ref={drawLayerRef} className="draw-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        {showAllCanvasObjects
+          ? drawLines.map((line) => (
+              <polyline
+                key={line.id}
+                points={line.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                fill="none"
+                stroke="#facc15"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.15"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))
+          : null}
+      </svg>
+      {isDrawMode && showDrawTools ? (
+        <div
+          className="draw-hit-layer"
+          onPointerDown={onStartDrawing}
+          onPointerMove={onContinueDrawing}
+          onPointerUp={onStopDrawing}
+          onPointerCancel={onStopDrawing}
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {players.map((player) => {
+        const animationMarker = isAnimationTool ? animationMarkerMap.get(`p${player.id}`) : null;
+        if (animationMarker && !animationMarker.onPitch) return null;
+        const starterName = player.starterName.trim() || `${labels.player} ${player.id}`;
+        const benchNames = getBenchNames(player);
+
+        return (
+          <div
+            key={player.id}
+            data-player-id={player.id}
+            onPointerDown={(event) => onPlayerPointerDown(event, player.id)}
+            onPointerMove={(event) => onPlayerPointerMove(event, player.id)}
+            onPointerUp={onPlayerPointerEnd}
+            onPointerCancel={onPlayerPointerEnd}
+            className={`player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none ${
+              draggingPlayerId === player.id ? "dragging" : ""
+            }`}
+            style={{ left: `${animationMarker?.x ?? player.x}%`, top: `${animationMarker?.y ?? player.y}%` }}
+            role="button"
+            tabIndex={0}
+            aria-label={`${labels.dragPlayer} ${getPositionLabel(player.position)}`}
+          >
+            <span className={`kit-disc transition group-active:scale-110 ${draggingPlayerId === player.id ? "ring-4 ring-emerald-200" : ""}`}>
+              <span className="kit-number">{player.id}</span>
+            </span>
+            <span className="token-name">{starterName}</span>
+            {benchNames.length > 0 ? (
+              <span className="bench-list">
+                {benchNames.slice(0, 2).map((name, index) => (
+                  <small key={`${name}-${index}`}>{name}</small>
+                ))}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+      {showAllCanvasObjects
+        ? opponentMarkers.map((marker) => (
+            <button
+              key={`opponent-${marker.id}`}
+              type="button"
+              className={`opponent-pitch-dot ${draggingOpponentId === marker.id ? "dragging" : ""}`}
+              style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+              onPointerDown={(event) => onOpponentPointerDown(event, marker.id)}
+              onPointerMove={(event) => onOpponentPointerMove(event, marker.id)}
+              onPointerUp={onOpponentPointerEnd}
+              onPointerCancel={onOpponentPointerEnd}
+              aria-label={`${labels.dragOpponent} ${marker.id}`}
+            />
+          ))
+        : null}
+      {ballMarker?.onPitch ? (
+        <button
+          type="button"
+          className={`tactical-ball-marker ${draggingBallId === ballMarker.id ? "dragging" : ""}`}
+          style={{ left: `${ballMarker.x}%`, top: `${ballMarker.y}%` }}
+          onPointerDown={(event) => onBallPointerDown(event, ballMarker.id)}
+          onPointerMove={(event) => onBallPointerMove(event, ballMarker.id)}
+          onPointerUp={onBallPointerEnd}
+          onPointerCancel={onBallPointerEnd}
+          aria-label="Drag ball marker"
+        />
+      ) : null}
+    </div>
+  );
+}

@@ -1,0 +1,11 @@
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  color: #edf8f0;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(92, 203, 132, 0.14), transparent 42%),
+    radial-gradient(circle at 86% 4%, rgba(46, 120, 78, 0.12), transparent 36%),
+    linear-gradient(180deg, #0d1b18 0%, #0a1410 120px, #091a12 320px, #091a12 100%);
+}
