@@ -2,12 +2,13 @@
   position: relative;
   z-index: 20;
   width: min(1200px, calc(100% - 40px));
-  min-height: 76px;
+  min-height: 132px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+  background: transparent;
 }
 
 .brand {
@@ -21,7 +22,14 @@
   white-space: nowrap;
 }
 
-.logo { width: 34px; height: 34px; }
+.logo {
+  display: block;
+  height: 120px;
+  width: auto;
+  max-width: min(560px, 72vw);
+  object-fit: contain;
+  background: transparent;
+}
 .panel { display: flex; align-items: center; gap: 28px; }
 .navigation { display: flex; align-items: center; gap: 24px; }
 .navigation a,
@@ -87,7 +95,18 @@
 .primaryButton { border-color: transparent; background: linear-gradient(135deg, #7fe0a3, #5ccb84); color: #07100c; box-shadow: 0 8px 20px rgba(92, 203, 132, 0.28); }
 .button:hover { border-color: rgba(139, 226, 166, 0.7); }
 .primaryButton:hover { background: linear-gradient(135deg, #9bedbb, #63d68d); transform: translateY(-1px); }
-.languageButton { width: 42px; border-radius: 999px; }
+.languageButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 42px;
+  padding: 0 12px;
+  border-radius: 999px;
+}
+.languageButton span {
+  font-size: 14px;
+  line-height: 1;
+}
 .email { max-width: 170px; overflow: hidden; text-overflow: ellipsis; color: rgba(235, 248, 237, 0.72); font-size: 12px; }
 .menuButton { display: none; width: 40px; padding: 0; place-items: center; border-radius: 6px; }
 
@@ -132,7 +151,6 @@
 }
 
 @media (max-width: 480px) {
-  .brand { font-size: 14px; }
-  .logo { width: 30px; height: 30px; }
+  .logo { height: 84px; max-width: min(420px, 88vw); }
   .actions .button, .actions .primaryButton { flex: 1; padding: 0 10px; }
 }

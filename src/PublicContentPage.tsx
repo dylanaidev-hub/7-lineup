@@ -1,6 +1,9 @@
-import { ArrowRight, Check, ClipboardList, Clapperboard, PencilRuler, ShieldCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { SealCheck } from "@phosphor-icons/react";
+import { ArrowRight } from "lucide-react";
 import { AboutPage } from "./AboutPage";
+import { FeatureHeroVisual } from "./FeatureHeroVisual";
+import { HeroAnimatedTitle } from "./HeroAnimatedTitle";
+import { SiteIcon } from "./SiteIcon";
 import { SeoHead, seoSiteUrl } from "./SeoHead";
 import { usePrerenderReady } from "./hooks/usePrerenderReady";
 import styles from "./PublicContentPage.module.css";
@@ -18,7 +21,6 @@ const content = {
       ["Quản lý tên và vai trò", "Mỗi vị trí hỗ trợ cầu thủ đá chính, dự bị và nhãn vị trí rõ ràng để đội trưởng chốt danh sách nhanh hơn."],
       ["Lưu và chia sẻ", "Lưu đội hình vào tài khoản, tải ảnh hoặc gửi link để đồng đội xem đúng trạng thái đã sắp xếp."],
     ],
-    icon: ClipboardList,
     path: "/tinh-nang/tao-doi-hinh",
   },
   tactics: {
@@ -31,7 +33,6 @@ const content = {
       ["Player, đối thủ và bóng", "Bố trí đồng thời ba nhóm marker trên cùng một canvas để mô tả đúng bối cảnh của tình huống thi đấu."],
       ["Chia sẻ phương án", "Tải hình ảnh hoặc gửi đường link để cả đội cùng xem một phương án chiến thuật thống nhất."],
     ],
-    icon: PencilRuler,
     path: "/tinh-nang/ve-sa-ban",
   },
   animation: {
@@ -44,7 +45,6 @@ const content = {
       ["Playback rõ ràng", "Phát, dừng hoặc lặp lại animation để phân tích bài chạy nhiều lần mà không phải sắp xếp lại đội hình."],
       ["Giữ đúng bối cảnh trận đấu", "Cầu thủ, đối thủ và bóng cùng chuyển động trên một sân, giúp mô phỏng cả tình huống tấn công lẫn phòng ngự."],
     ],
-    icon: Clapperboard,
     path: "/tinh-nang/tao-chuyen-dong",
   },
 } as const;
@@ -56,7 +56,6 @@ export function PublicContentPage({ kind, onExplore }: { kind: PublicPageKind; o
 
 function FeatureContentPage({ kind, onExplore }: { kind: Exclude<PublicPageKind, "about">; onExplore: () => void }) {
   const page = content[kind];
-  const Icon = page.icon;
   usePrerenderReady(true);
 
   const structuredData = { "@context": "https://schema.org", "@type": "SoftwareApplication", name: page.title, applicationCategory: "SportsApplication", operatingSystem: "Web", description: page.description, url: `${seoSiteUrl}${page.path}`, offers: { "@type": "Offer", price: "0", priceCurrency: "VND" } };
@@ -67,27 +66,27 @@ function FeatureContentPage({ kind, onExplore }: { kind: Exclude<PublicPageKind,
       <section className={styles.hero}>
         <div>
           <p className={styles.eyebrow}>{page.eyebrow}</p>
-          <h1>{page.title}</h1>
+          <HeroAnimatedTitle title={page.title} className={styles.heroTitle} />
           <p className={styles.intro}>{page.intro}</p>
           <button type="button" onClick={onExplore}>Dùng thử miễn phí <ArrowRight size={18} /></button>
         </div>
-        <div className={styles.visual} aria-hidden="true"><Icon size={88} strokeWidth={1.3} /><ShieldCheck size={28} /></div>
+        <FeatureHeroVisual kind={kind} />
       </section>
 
       <section className={styles.sections}>
         {page.sections.map(([heading, body]) => (
           <article key={heading}>
-            <span><Check size={18} /></span>
+            <SiteIcon icon={SealCheck} variant="check" />
             <div><h2>{heading}</h2><p>{body}</p></div>
           </article>
         ))}
       </section>
 
       <section className={styles.cta}>
-        <h2>Sẵn sàng đưa ý tưởng lên sân?</h2>
-        <p>Tạo sơ đồ đầu tiên ngay trên trình duyệt, không cần cài đặt.</p>
-        <button type="button" onClick={onExplore}>Mở không gian chiến thuật <ArrowRight size={18} /></button>
-        <Link to="/tin-tuc">Xem kiến thức bóng đá</Link>
+        <button type="button" onClick={onExplore}>
+          Khám phá
+          <ArrowRight size={18} />
+        </button>
       </section>
     </main>
   );

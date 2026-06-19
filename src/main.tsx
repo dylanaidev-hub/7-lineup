@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useMemo, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import ReactDOM, { type Root } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -7,19 +7,18 @@ import { AuthDialog } from "./AuthDialog";
 import { LandingPage } from "./LandingPage";
 import { NewsKnowledgePage } from "./NewsKnowledgePage";
 import { NewsArticleDetailPage } from "./NewsArticleDetailPage";
-import { PublicSiteHeader } from "./PublicSiteHeader";
-import { PublicSiteFooter } from "./PublicSiteFooter";
+import { PublicSiteShell } from "./PublicSiteShell";
 import { PublicContentPage, type PublicPageKind } from "./PublicContentPage";
 import { SeoHead } from "./SeoHead";
+import { LanguageProvider, useLanguage } from "./LanguageContext";
 import { useAuth } from "./hooks/useAuth";
 import "./styles.css";
 
-type Language = "vi" | "en";
 type AuthDialogMode = "sign_in" | "sign_up";
 
 const CanvasApp = lazy(() => import("./App"));
 
-const routeCopy: Record<Language, { signIn: string; signUp: string; signOut: string; loading: string }> = {
+const routeCopy = {
   vi: {
     signIn: "Đăng nhập",
     signUp: "Đăng ký",
@@ -32,7 +31,7 @@ const routeCopy: Record<Language, { signIn: string; signUp: string; signOut: str
     signOut: "Sign out",
     loading: "Loading pitch...",
   },
-};
+} as const;
 
 const hasLegacyAppRoute = (search: string, hash: string) => {
   const params = new URLSearchParams(search);
@@ -73,15 +72,10 @@ function TacticsRouteRedirect() {
   return <Navigate to={`/app/lineup${nextSearch ? `?${nextSearch}` : "?pitch=7"}`} replace />;
 }
 
-function LandingRoute({
-  language,
-  setLanguage,
-}: {
-  language: Language;
-  setLanguage: (language: Language) => void;
-}) {
+function LandingRoute() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
   const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode | null>(null);
   const { user, isAuthLoading, signOut } = useAuth();
   const shouldRedirectLegacyUrl = useMemo(
@@ -101,7 +95,7 @@ function LandingRoute({
     <>
       <LandingPage
         language={language}
-        onChangeLanguage={setLanguage}
+        onChangeLanguage={toggleLanguage}
         onExplore={enterWorkspace}
         onSignIn={() => setAuthDialogMode("sign_in")}
         onSignUp={() => setAuthDialogMode("sign_up")}
@@ -132,43 +126,37 @@ function LandingRoute({
   );
 }
 
-function NewsRoute({
-  language,
-  setLanguage,
-}: {
-  language: Language;
-  setLanguage: (language: Language) => void;
-}) {
+function NewsRoute() {
   const navigate = useNavigate();
   const { slug } = useParams();
+  const { language, toggleLanguage } = useLanguage();
   const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode | null>(null);
   const { user, isAuthLoading, signOut } = useAuth();
   const enterWorkspace = () => navigate("/app/lineup?pitch=7");
+  const authLabels = {
+    signIn: routeCopy[language].signIn,
+    signUp: routeCopy[language].signUp,
+    signOut: routeCopy[language].signOut,
+  };
 
   return (
     <>
-      <div style={{ background: "#091a12" }}>
-        <PublicSiteHeader
-          language={language}
-          onChangeLanguage={setLanguage}
-          onExplore={enterWorkspace}
-          onSignIn={() => setAuthDialogMode("sign_in")}
-          onSignUp={() => setAuthDialogMode("sign_up")}
-          user={user}
-          isAuthLoading={isAuthLoading}
-          onSignOut={async () => {
-            await signOut();
-            navigate("/");
-          }}
-          authLabels={{
-            signIn: routeCopy[language].signIn,
-            signUp: routeCopy[language].signUp,
-            signOut: routeCopy[language].signOut,
-          }}
-        />
+      <PublicSiteShell
+        language={language}
+        onChangeLanguage={toggleLanguage}
+        onExplore={enterWorkspace}
+        onSignIn={() => setAuthDialogMode("sign_in")}
+        onSignUp={() => setAuthDialogMode("sign_up")}
+        user={user}
+        isAuthLoading={isAuthLoading}
+        onSignOut={async () => {
+          await signOut();
+          navigate("/");
+        }}
+        authLabels={authLabels}
+      >
         {slug ? <NewsArticleDetailPage language={language} slug={slug} /> : <NewsKnowledgePage language={language} />}
-        <PublicSiteFooter language={language} onExplore={enterWorkspace} />
-      </div>
+      </PublicSiteShell>
       {authDialogMode ? (
         <AuthDialog
           language={language}
@@ -184,30 +172,50 @@ function NewsRoute({
   );
 }
 
-function PublicContentRoute({
-  language,
-  setLanguage,
-  kind,
-}: {
-  language: Language;
-  setLanguage: (language: Language) => void;
-  kind: PublicPageKind;
-}) {
+function PublicContentRoute({ kind }: { kind: PublicPageKind }) {
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
   const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode | null>(null);
   const { user, isAuthLoading, signOut } = useAuth();
   const enterWorkspace = () => {
     const tool = kind === "tactics" ? "draw" : kind === "animation" ? "animation" : null;
     navigate(`/app/lineup?pitch=7${tool ? `&tool=${tool}` : ""}`);
   };
+  const authLabels = {
+    signIn: routeCopy[language].signIn,
+    signUp: routeCopy[language].signUp,
+    signOut: routeCopy[language].signOut,
+  };
+
   return (
     <>
-      <div style={{ background: "#091a12" }}>
-        <PublicSiteHeader language={language} onChangeLanguage={setLanguage} onExplore={enterWorkspace} onSignIn={() => setAuthDialogMode("sign_in")} onSignUp={() => setAuthDialogMode("sign_up")} user={user} isAuthLoading={isAuthLoading} onSignOut={async () => { await signOut(); navigate("/"); }} authLabels={{ signIn: routeCopy[language].signIn, signUp: routeCopy[language].signUp, signOut: routeCopy[language].signOut }} />
+      <PublicSiteShell
+        language={language}
+        onChangeLanguage={toggleLanguage}
+        onExplore={enterWorkspace}
+        onSignIn={() => setAuthDialogMode("sign_in")}
+        onSignUp={() => setAuthDialogMode("sign_up")}
+        user={user}
+        isAuthLoading={isAuthLoading}
+        onSignOut={async () => {
+          await signOut();
+          navigate("/");
+        }}
+        authLabels={authLabels}
+      >
         <PublicContentPage kind={kind} onExplore={enterWorkspace} />
-        <PublicSiteFooter language={language} onExplore={enterWorkspace} />
-      </div>
-      {authDialogMode ? <AuthDialog language={language} initialMode={authDialogMode} onClose={() => setAuthDialogMode(null)} onAuthenticated={() => { setAuthDialogMode(null); enterWorkspace(); }} /> : null}
+      </PublicSiteShell>
+      {authDialogMode ? (
+        <AuthDialog
+          language={language}
+          initialMode={authDialogMode}
+          onClose={() => setAuthDialogMode(null)}
+          onAuthenticated={() => {
+            setAuthDialogMode(null);
+            enterWorkspace();
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -217,37 +225,46 @@ function LegacyNewsRedirect() {
   return <Navigate to={slug ? `/tin-tuc/${slug}` : "/tin-tuc"} replace />;
 }
 
-function CanvasRoute({ language }: { language: Language }) {
+function CanvasRoute() {
+  const { language } = useLanguage();
   return (
     <>
       <SeoHead title="Không gian chiến thuật | Đội Hình Sân Cỏ" description="Không gian tạo đội hình và sa bàn chiến thuật." path="/app/lineup" robots="noindex,nofollow" />
       <Suspense fallback={<AppLoadingScreen message={routeCopy[language].loading} />}>
-        <CanvasApp initialLanguage={language} />
+        <CanvasApp />
       </Suspense>
     </>
   );
 }
 
-function RootRouter() {
-  const [language, setLanguage] = useState<Language>("vi");
+function ScrollToTop() {
+  const { pathname } = useLocation();
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
+function RootRouter() {
   return (
     <Routes>
-      <Route path="/" element={<LandingRoute language={language} setLanguage={setLanguage} />} />
-      <Route path="/__prerender-home" element={<LandingRoute language={language} setLanguage={setLanguage} />} />
-      <Route path="/tin-tuc" element={<NewsRoute language={language} setLanguage={setLanguage} />} />
-      <Route path="/tin-tuc/:slug" element={<NewsRoute language={language} setLanguage={setLanguage} />} />
+      <Route path="/" element={<LandingRoute />} />
+      <Route path="/__prerender-home" element={<LandingRoute />} />
+      <Route path="/tin-tuc" element={<NewsRoute />} />
+      <Route path="/tin-tuc/:slug" element={<NewsRoute />} />
       <Route path="/tin-tuc-kien-thuc" element={<LegacyNewsRedirect />} />
       <Route path="/tin-tuc-kien-thuc/:slug" element={<LegacyNewsRedirect />} />
-      <Route path="/ve-chung-toi" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="about" />} />
-      <Route path="/tinh-nang/tao-doi-hinh" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="lineup" />} />
-      <Route path="/tinh-nang/ve-sa-ban" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="tactics" />} />
-      <Route path="/tinh-nang/tao-chuyen-dong" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="animation" />} />
+      <Route path="/ve-chung-toi" element={<PublicContentRoute kind="about" />} />
+      <Route path="/tinh-nang/tao-doi-hinh" element={<PublicContentRoute kind="lineup" />} />
+      <Route path="/tinh-nang/ve-sa-ban" element={<PublicContentRoute kind="tactics" />} />
+      <Route path="/tinh-nang/tao-chuyen-dong" element={<PublicContentRoute kind="animation" />} />
       <Route path="/app" element={<Navigate to="/app/lineup?pitch=7" replace />} />
-      <Route path="/app/lineup" element={<CanvasRoute language={language} />} />
+      <Route path="/app/lineup" element={<CanvasRoute />} />
       <Route path="/app/tactics" element={<TacticsRouteRedirect />} />
-      <Route path="/app/profile" element={<CanvasRoute language={language} />} />
-      <Route path="/app/locker" element={<CanvasRoute language={language} />} />
+      <Route path="/app/profile" element={<CanvasRoute />} />
+      <Route path="/app/locker" element={<CanvasRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -272,7 +289,10 @@ root.render(
   <React.StrictMode>
     <HelmetProvider>
       <BrowserRouter>
-        <RootRouter />
+        <LanguageProvider>
+          <ScrollToTop />
+          <RootRouter />
+        </LanguageProvider>
       </BrowserRouter>
     </HelmetProvider>
   </React.StrictMode>,

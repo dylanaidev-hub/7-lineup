@@ -1,15 +1,20 @@
 import type { User } from "@supabase/supabase-js";
+import type { Icon } from "@phosphor-icons/react";
+import { FilmSlate, Lockers, ShareNetwork, SoccerBall } from "@phosphor-icons/react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { FeedbackSection } from "./FeedbackSection";
 import { PublicSiteFooter } from "./PublicSiteFooter";
 import { PublicSiteHeader } from "./PublicSiteHeader";
+import { HeroAnimatedTitle } from "./HeroAnimatedTitle";
+import { SiteIcon } from "./SiteIcon";
 import { SeoHead, seoSiteUrl } from "./SeoHead";
 import { usePrerenderReady } from "./hooks/usePrerenderReady";
 import styles from "./LandingPage.module.css";
 
 export type LandingLanguage = "vi" | "en";
 
-type LandingFeature = { icon: string; title: string; desc: string };
+type LandingFeature = { icon: Icon; title: string; desc: string };
 type LandingStep = { title: string; desc: string };
 type LandingMode = { label: string; title: string; desc: string; href: string };
 
@@ -42,10 +47,10 @@ const landingCopy: Record<LandingLanguage, LandingCopy> = {
     explore: "Khám phá",
     featuresTitle: "Mọi thứ bạn cần cho ngày ra sân",
     features: [
-      { icon: "⚽", title: "Đội hình linh hoạt", desc: "Sân 5, 7, 11 hoặc tuỳ chỉnh. Kéo thả cầu thủ, đặt tên và đổi sơ đồ tức thì." },
-      { icon: "🎬", title: "Bảng chiến thuật động", desc: "Dựng từng bước di chuyển rồi chạy hoạt ảnh để xem bài phối hợp." },
-      { icon: "🗄️", title: "Phòng thay đồ", desc: "Lưu đội hình & chiến thuật theo tài khoản, mở lại bất cứ lúc nào." },
-      { icon: "🔗", title: "Chia sẻ tức thì", desc: "Tạo link hoặc ảnh đội hình để gửi nhanh cho cả đội." },
+      { icon: SoccerBall, title: "Đội hình linh hoạt", desc: "Sân 5, 7, 11 hoặc tuỳ chỉnh. Kéo thả cầu thủ, đặt tên và đổi sơ đồ tức thì." },
+      { icon: FilmSlate, title: "Bảng chiến thuật động", desc: "Dựng từng bước di chuyển rồi chạy hoạt ảnh để xem bài phối hợp." },
+      { icon: Lockers, title: "Phòng thay đồ", desc: "Lưu đội hình & chiến thuật theo tài khoản, mở lại bất cứ lúc nào." },
+      { icon: ShareNetwork, title: "Chia sẻ tức thì", desc: "Tạo link hoặc ảnh đội hình để gửi nhanh cho cả đội." },
     ],
     workflowEyebrow: "Một quy trình liền mạch",
     workflowTitle: "Từ danh sách cầu thủ đến kế hoạch thi đấu trong ba bước",
@@ -74,10 +79,10 @@ const landingCopy: Record<LandingLanguage, LandingCopy> = {
     explore: "Explore",
     featuresTitle: "Everything you need for match day",
     features: [
-      { icon: "⚽", title: "Flexible line-ups", desc: "5, 7, 11-a-side or custom. Drag players, name them and switch formations instantly." },
-      { icon: "🎬", title: "Animated tactics board", desc: "Build movement step by step then play the animation to review your plays." },
-      { icon: "🗄️", title: "Locker room", desc: "Save line-ups & tactics to your account and reopen them anytime." },
-      { icon: "🔗", title: "Instant sharing", desc: "Generate a link or image of your line-up to send to the team." },
+      { icon: SoccerBall, title: "Flexible line-ups", desc: "5, 7, 11-a-side or custom. Drag players, name them and switch formations instantly." },
+      { icon: FilmSlate, title: "Animated tactics board", desc: "Build movement step by step then play the animation to review your plays." },
+      { icon: Lockers, title: "Locker room", desc: "Save line-ups & tactics to your account and reopen them anytime." },
+      { icon: ShareNetwork, title: "Instant sharing", desc: "Generate a link or image of your line-up to send to the team." },
     ],
     workflowEyebrow: "One connected workflow",
     workflowTitle: "From player list to match plan in three steps",
@@ -101,7 +106,7 @@ const landingCopy: Record<LandingLanguage, LandingCopy> = {
 
 type LandingPageProps = {
   language: LandingLanguage;
-  onChangeLanguage: (language: LandingLanguage) => void;
+  onChangeLanguage: () => void;
   onExplore: () => void;
   onSignIn: () => void;
   onSignUp: () => void;
@@ -156,7 +161,7 @@ export function LandingPage({
       <section className={styles["landing-hero"]}>
         <div className={styles["landing-hero-content"]}>
           <p className={styles["landing-eyebrow"]}>{c.eyebrow}</p>
-          <h1 className={styles["landing-title"]}>{c.heroTitle}</h1>
+          <HeroAnimatedTitle title={c.heroTitle} className={styles["landing-title"]} gradient />
           <p className={styles["landing-subtitle"]}>{c.heroSubtitle}</p>
           <button type="button" className={styles["landing-cta"]} onClick={onExplore}>
             {c.explore}
@@ -196,9 +201,7 @@ export function LandingPage({
         <div className={styles["landing-feature-grid"]}>
           {c.features.map((feature) => (
             <article key={feature.title} className={styles["landing-feature-card"]}>
-              <span className={styles["landing-feature-icon"]} aria-hidden="true">
-                {feature.icon}
-              </span>
+              <SiteIcon icon={feature.icon} variant="feature" />
               <h3>{feature.title}</h3>
               <p>{feature.desc}</p>
             </article>
@@ -241,6 +244,15 @@ export function LandingPage({
           ))}
         </div>
       </section>
+
+      <section className={styles["landing-cta-banner"]} aria-label={c.explore}>
+        <button type="button" className={styles["landing-cta-banner-button"]} onClick={onExplore}>
+          {c.explore}
+          <ArrowRight size={18} />
+        </button>
+      </section>
+
+      <FeedbackSection language={language} />
 
       <PublicSiteFooter language={language} onExplore={onExplore} />
     </main>

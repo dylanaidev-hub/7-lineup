@@ -3,11 +3,13 @@ import { ChevronDown, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import type { LandingLanguage } from "./LandingPage";
+import { copyByLanguage } from "./appI18n";
+import { getLanguageMeta } from "./languagePreference";
 import styles from "./PublicSiteHeader.module.css";
 
 type PublicSiteHeaderProps = {
   language: LandingLanguage;
-  onChangeLanguage: (language: LandingLanguage) => void;
+  onChangeLanguage: () => void;
   onExplore: () => void;
   onSignIn: () => void;
   onSignUp: () => void;
@@ -28,6 +30,8 @@ export function PublicSiteHeader(props: PublicSiteHeaderProps) {
   const featureMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const c = copy[props.language];
+  const languageMeta = getLanguageMeta(props.language);
+  const switchLanguageLabel = copyByLanguage[props.language].switchLanguage;
   const closeMenu = () => {
     setMenuOpen(false);
     setFeaturesOpen(false);
@@ -46,8 +50,7 @@ export function PublicSiteHeader(props: PublicSiteHeaderProps) {
   return (
     <header className={styles.header}>
       <NavLink to="/" className={styles.brand} onClick={closeMenu}>
-        <img src="/favicon.svg" alt="" className={styles.logo} />
-        <span>{c.brand}</span>
+        <img src="/site-logo.png?v=2" alt={c.brand} className={styles.logo} />
       </NavLink>
 
       <button
@@ -120,10 +123,11 @@ export function PublicSiteHeader(props: PublicSiteHeaderProps) {
           <button
             type="button"
             className={styles.languageButton}
-            onClick={() => props.onChangeLanguage(props.language === "vi" ? "en" : "vi")}
-            aria-label="Change language"
+            onClick={props.onChangeLanguage}
+            aria-label={switchLanguageLabel}
           >
-            {props.language === "vi" ? "VI" : "EN"}
+            <span aria-hidden="true">{languageMeta.flag}</span>
+            {languageMeta.label}
           </button>
         </div>
       </div>

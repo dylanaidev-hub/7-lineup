@@ -1,11 +1,8 @@
 .sidebar {
   display: grid;
-  grid-column: 1;
-  grid-row: 1;
   align-self: center;
   align-content: center;
   gap: 8px;
-  height: clamp(380px, calc(100vh - 310px), 600px);
   min-height: 0;
   padding: 6px;
   border: 1px solid rgba(232, 245, 233, 0.16);
@@ -15,6 +12,14 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 18px 34px rgba(7, 16, 12, 0.22);
   backdrop-filter: blur(10px);
+}
+
+@media (min-width: 1025px) {
+  .sidebar {
+    grid-column: 1;
+    grid-row: 1;
+    height: clamp(380px, calc(100vh - 310px), 600px);
+  }
 }
 
 .button {
@@ -70,62 +75,16 @@
   text-transform: uppercase;
 }
 
-@media (max-width: 900px) {
-  .sidebar {
-    grid-column: auto;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    order: 2;
-    align-content: stretch;
-    border-radius: 18px;
-  }
-
-  .button {
-    min-height: 48px;
-  }
-}
-
 @media (max-width: 1024px) {
   .sidebar {
-    grid-column: 1;
-    grid-row: auto;
-    order: 2;
-    width: min(100%, 440px);
-    height: auto;
-    min-height: 0;
-    justify-self: center;
-    align-self: stretch;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-content: stretch;
-    padding: 6px;
-    border-radius: 18px;
-  }
-
-  .button {
-    min-height: 54px;
-    gap: 5px;
-    padding: 8px 6px;
-  }
-
-  .button svg {
-    width: 19px;
-    height: 19px;
-  }
-
-  .button span {
-    font-size: 10px;
-  }
-}
-
-@media (max-width: 640px) {
-  .sidebar {
     position: fixed;
-    z-index: 80;
+    z-index: 90;
     right: auto;
-    bottom: calc(env(safe-area-inset-bottom) + 10px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--lf-mobile-edge, 12px));
     left: 50%;
     display: grid;
-    width: min(46vw, 292px);
-    height: 46px;
+    width: min(46vw, 240px);
+    height: 48px;
     min-height: 0;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
@@ -173,6 +132,17 @@
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    width: min(46vw, 292px);
+    height: 46px;
+  }
+
+  .button {
+    min-height: 42px;
   }
 }
 

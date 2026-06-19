@@ -6,6 +6,7 @@
   width: auto;
   max-width: 100%;
   min-height: 0;
+  box-sizing: border-box;
   touch-action: pan-y;
   background:
     repeating-linear-gradient(
@@ -223,7 +224,7 @@
 }
 
 @media (max-width: 900px) {
-  .match-bg {
+  body:not(:has(.lineup-column)) .match-bg {
     height: auto;
     min-height: 100vh;
     min-height: 100dvh;
@@ -231,13 +232,13 @@
     overflow-y: visible;
   }
 
-  .dashboard-shell {
+  body:not(:has(.lineup-column)) .dashboard-shell {
     min-height: 0;
     overflow-x: clip;
     overflow-y: visible;
   }
 
-  .content-grid {
+  body:not(:has(.lineup-column)) .content-grid {
     grid-template-columns: 1fr;
     gap: 14px;
     height: auto;
@@ -245,53 +246,10 @@
     overflow-y: visible;
   }
 
-  .stats-column,
-  .lineup-column {
+  .stats-column {
     height: auto;
     max-height: none;
     overflow-y: visible;
-  }
-
-  .lineup-column {
-    position: static;
-    order: 1;
-    overflow-x: clip;
-    padding-bottom: 24px;
-  }
-
-  .sandbox-canvas-stage,
-  .sandbox-canvas-stage.show-marker-tray,
-  .sandbox-canvas-stage.show-animation-panel,
-  .sandbox-canvas-stage.show-marker-tray.show-animation-panel {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .custom-side-tray {
-    grid-column: auto;
-    order: 3;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-content: stretch;
-  }
-
-  .workspace-timeline {
-    grid-column: auto;
-    order: 4;
-    max-height: none;
-  }
-
-  .sandbox-canvas-stage > .pitch {
-    grid-column: auto;
-    order: 1;
-  }
-
-  .workspace-timeline-controls {
-    justify-content: center;
-  }
-
-  .stats-column {
-    order: 2;
-    overflow-x: hidden;
   }
 
   .mobile-player-editor {
@@ -361,61 +319,15 @@
   .mobile-add-player {
     grid-column: 1 / -1;
   }
-
-  .lineup-footer-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 12px;
-    background: #43ad5e;
-  }
-
-  .lineup-footer-actions button {
-    display: inline-flex;
-    min-width: 0;
-    min-height: 38px;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border: 0;
-    border-radius: 999px;
-    padding: 0 10px;
-    background: rgba(255, 255, 255, 0.22);
-    color: #ffffff;
-    font-size: 10px;
-    font-weight: 900;
-    text-transform: uppercase;
-  }
-
-  .formation-switch,
-  .custom-side-tray,
-  .custom-player-tray,
-  .opponent-tray {
-    max-width: 100%;
-    min-width: 0;
-    overflow: visible;
-  }
-
-  .formation-switch {
-    flex-wrap: wrap;
-  }
-
-  .formation-switch button {
-    flex: 0 1 auto;
-  }
-
-  .pitch {
-    width: min(calc(100% - 96px), 520px);
-    height: auto;
-    margin-bottom: 0;
-    min-height: 520px;
-    max-height: none;
-  }
 }
 
 @media (max-width: 640px) {
-  .match-bg {
+  body:not(:has(.lineup-column)) .match-bg {
     padding: 0;
+  }
+
+  body:not(:has(.lineup-column)) .content-grid {
+    padding: 12px;
   }
 
   .pitch-mode-switch {
@@ -429,15 +341,11 @@
     min-width: 0;
   }
 
-  .content-grid {
-    padding: 12px;
-  }
-
   .panel-heading {
     min-height: 40px;
   }
 
-  .lineup-footer-actions button {
+  body:not(:has(.lineup-column)) .lineup-footer-actions button {
     min-height: 36px;
     padding: 0 8px;
     font-size: 9px;
@@ -447,29 +355,29 @@
     padding: 9px 10px;
   }
 
-  .sandbox-canvas-stage,
-  .sandbox-canvas-stage.show-marker-tray,
-  .sandbox-canvas-stage.show-animation-panel,
-  .sandbox-canvas-stage.show-marker-tray.show-animation-panel {
+  body:not(:has(.lineup-column)) .sandbox-canvas-stage,
+  body:not(:has(.lineup-column)) .sandbox-canvas-stage.show-marker-tray,
+  body:not(:has(.lineup-column)) .sandbox-canvas-stage.show-animation-panel,
+  body:not(:has(.lineup-column)) .sandbox-canvas-stage.show-marker-tray.show-animation-panel {
     grid-template-columns: 1fr;
     gap: 8px;
     padding: 10px;
   }
 
-  .custom-player-tray,
-  .opponent-tray,
-  .ball-tray {
+  body:not(:has(.lineup-column)) .custom-player-tray,
+  body:not(:has(.lineup-column)) .opponent-tray,
+  body:not(:has(.lineup-column)) .ball-tray {
     gap: 6px;
     padding: 8px;
     border-radius: 16px;
   }
 
-  .custom-player-dot-list,
-  .opponent-dot-list {
+  body:not(:has(.lineup-column)) .custom-player-dot-list,
+  body:not(:has(.lineup-column)) .opponent-dot-list {
     gap: 5px;
   }
 
-  .custom-player-dot {
+  body:not(:has(.lineup-column)) .custom-player-dot {
     width: 26px;
     height: 26px;
     min-width: 26px;
@@ -477,16 +385,16 @@
     font-size: 10px;
   }
 
-  .opponent-dot,
-  .opponent-pitch-dot {
+  body:not(:has(.lineup-column)) .opponent-dot,
+  body:not(:has(.lineup-column)) .opponent-pitch-dot {
     width: 22px;
     height: 22px;
     min-width: 22px;
     min-height: 22px;
   }
 
-  .custom-player-dot-list,
-  .opponent-dot-list {
+  body:not(:has(.lineup-column)) .custom-player-dot-list,
+  body:not(:has(.lineup-column)) .opponent-dot-list {
     flex-wrap: wrap;
     width: 100%;
     min-width: 0;
@@ -500,9 +408,10 @@
     display: none;
   }
 
-  .pitch {
-    width: min(calc(100vw - 112px), 420px);
+  body:not(:has(.lineup-column)) .pitch {
+    width: 100%;
     min-height: 0;
+    max-width: 100%;
   }
 }
 
@@ -522,6 +431,7 @@
   }
 
   .pitch {
-    width: min(calc(100vw - 96px), 360px);
+    width: 100%;
+    max-width: 100%;
   }
 }

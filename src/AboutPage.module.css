@@ -3,10 +3,7 @@
   min-height: 100vh;
   overflow-x: clip;
   padding-bottom: 80px;
-  background:
-    radial-gradient(circle at 78% 310px, rgba(121, 223, 155, 0.13), transparent 330px),
-    radial-gradient(circle at 14% 110px, rgba(121, 223, 155, 0.06), transparent 380px),
-    linear-gradient(180deg, #0c2419 0, #091a12 720px, #091a12 100%);
+  background: transparent;
   color: #edf8f0;
 }
 
@@ -44,7 +41,7 @@
 
 .eyebrow,
 .sectionLabel {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   color: #79df9b;
   font-size: 12px;
   font-weight: 900;
@@ -52,7 +49,7 @@
   text-transform: uppercase;
 }
 
-.hero h1 {
+.heroTitle {
   max-width: 780px;
   margin: 0;
   font-size: clamp(44px, 6.5vw, 78px);
@@ -105,7 +102,6 @@
 
 .origin {
   padding: 104px 0;
-  border-bottom: 1px solid rgba(237, 248, 240, 0.13);
 }
 
 .originGrid {
@@ -151,27 +147,18 @@
   margin-bottom: 58px;
 }
 
-.principleList {
-  border-top: 1px solid rgba(237, 248, 240, 0.13);
-}
-
 .principleList article {
   display: grid;
-  grid-template-columns: 54px 42px minmax(0, 1fr);
+  grid-template-columns: 54px 46px minmax(0, 1fr);
   gap: 24px;
   align-items: start;
   padding: 30px 0;
-  border-bottom: 1px solid rgba(237, 248, 240, 0.13);
 }
 
 .principleNumber {
   color: rgba(121, 223, 155, 0.62);
   font-size: 12px;
   font-weight: 900;
-}
-
-.principleList svg {
-  color: #79df9b;
 }
 
 .principleList h3 {
@@ -189,19 +176,10 @@
   gap: 58px;
   align-items: center;
   padding: 74px 0;
-  border-top: 1px solid rgba(121, 223, 155, 0.26);
-  border-bottom: 1px solid rgba(121, 223, 155, 0.26);
 }
 
 .audienceIcon {
-  display: grid;
-  width: 134px;
-  height: 134px;
-  place-items: center;
-  border: 1px solid rgba(121, 223, 155, 0.34);
-  border-radius: 50%;
-  background: rgba(121, 223, 155, 0.08);
-  color: #79df9b;
+  justify-self: center;
 }
 
 .audience h2 {
@@ -215,27 +193,24 @@
 }
 
 .closing {
-  padding: 104px 0 24px;
-  text-align: center;
+  position: relative;
+  overflow: hidden;
+  height: clamp(220px, 28vw, 380px);
+  border-radius: 28px;
+  background: url("/cta-banner.png") center center / cover no-repeat;
 }
 
-.closing h2 {
-  max-width: 760px;
-  margin-inline: auto;
+.closing button {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  z-index: 2;
+  transform: translateX(-50%);
+  margin-top: 0;
 }
 
-.closingActions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 22px;
-  margin-top: 32px;
-}
-
-.closing a {
-  color: #8be2a6;
-  font-size: 13px;
-  font-weight: 800;
+.closing button:hover {
+  transform: translateX(-50%) translateY(-2px);
 }
 
 @media (max-width: 760px) {
@@ -249,16 +224,17 @@
     transform: rotate(-8deg);
   }
   .heroContent { width: min(100% - 28px, 1120px); padding: 64px 0 62px; }
-  .hero h1 { font-size: clamp(39px, 12vw, 56px); }
+  .heroTitle { font-size: clamp(39px, 12vw, 56px); }
   .heroContent > p:not(.eyebrow) { font-size: 16px; }
   .origin, .principles, .audience, .closing { width: min(100% - 28px, 1120px); }
   .origin, .principles { padding: 70px 0; }
   .originGrid { grid-template-columns: 1fr; gap: 28px; }
   .sectionHeading { margin-bottom: 38px; }
-  .principleList article { grid-template-columns: 38px 30px minmax(0, 1fr); gap: 14px; padding: 24px 0; }
+  .principleList article { grid-template-columns: 38px 46px minmax(0, 1fr); gap: 14px; padding: 24px 0; }
   .principleList h3 { font-size: 20px; }
   .audience { grid-template-columns: 1fr; gap: 28px; padding: 58px 0; }
-  .audienceIcon { width: 92px; height: 92px; }
-  .closing { padding-top: 70px; }
-  .closingActions { flex-direction: column; }
+  .closing {
+    height: clamp(200px, 36vw, 280px);
+    border-radius: 22px;
+  }
 }

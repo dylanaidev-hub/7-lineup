@@ -6,8 +6,11 @@ Content model `lineupFootball` supports these optional fields in the frontend:
 - `seoTitle`: Short text, recommended maximum 60 characters.
 - `seoDescription`: Long text, recommended maximum 160 characters.
 
-The existing required fields remain `title`, `slug`, and `content`. Entries without
-all three required fields are excluded from prerendering and the sitemap. The build
+The existing required fields remain `title`, `slug`, and `content`. Optional fields:
+
+- `category`: Reference(s) to entries in the `category` content model. Assign **Bài nổi bật** to show an article in the featured block on `/tin-tuc`. Other categories (e.g. Kiến thức) are used for card labels and filters.
+
+Entries without all three required fields are excluded from prerendering and the sitemap. The build
 uses `sys.updatedAt` for the article `dateModified` value and sitemap `lastmod`.
 
 These fields must be added in Contentful's model editor because the Content Delivery

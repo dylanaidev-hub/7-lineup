@@ -25,7 +25,7 @@ export function LineupHeaderActions({
   onReset,
 }: LineupHeaderActionsProps) {
   return (
-    <div className={styles.header}>
+    <div className={`lineup-column-header ${styles.header}`}>
       <div className={styles.actions}>
         <button type="button" className={`${styles.button} ${styles.saveButton}`} onClick={onSave} disabled={isSaving}>
           {isSaving ? <ButtonSpinner /> : status === savedLabel ? <Check size={14} /> : <Save size={14} />}

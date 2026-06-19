@@ -1,5 +1,5 @@
 import type { PitchSize } from "./appRouting";
-import type { Language } from "./hooks/useUnifiedWorkspaceState";
+import type { Language } from "./languagePreference";
 
 export type AppCopy = {
   lineupTab: string;

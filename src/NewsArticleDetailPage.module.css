@@ -1,13 +1,13 @@
-.page { min-height: 100vh; padding: 64px 0 80px; color: #edf8f0; background: #091a12; }
-.article, .related { width: min(860px, calc(100% - 40px)); margin: 0 auto; }
+.page { min-height: 100vh; padding: 64px 0 80px; color: #edf8f0; background: transparent; }
+.article { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+.related { width: min(1120px, calc(100% - 40px)); margin: 72px auto 0; padding-top: 42px; border-top: 1px solid rgba(237, 248, 240, 0.09); }
 .back { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 52px; color: #8be2a6; font-size: 13px; font-weight: 800; text-decoration: none; }
 .back:hover { color: #b5f0c7; }
 .meta { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; color: #77db97; font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .meta span { display: inline-flex; align-items: center; gap: 6px; }
-.article h1 { max-width: 800px; margin: 0; font-size: clamp(38px, 6vw, 68px); line-height: 1.06; letter-spacing: 0; }
-.lead { max-width: 760px; margin: 26px 0 42px; color: rgba(237, 248, 240, 0.72); font-size: 21px; line-height: 1.6; }
-.cover { width: 100%; aspect-ratio: 16 / 9; margin-bottom: 44px; object-fit: cover; border: 1px solid rgba(139, 226, 166, 0.18); }
-.content { max-width: 720px; }
+.article h1 { margin: 0; font-size: clamp(38px, 6vw, 68px); line-height: 1.06; letter-spacing: 0; }
+.lead { margin: 26px 0 36px; color: rgba(237, 248, 240, 0.72); font-size: 21px; line-height: 1.6; }
+.content { max-width: none; }
 .content p { margin: 0 0 24px; color: rgba(237, 248, 240, 0.82); font-size: 18px; line-height: 1.8; }
 .content h2 { margin: 42px 0 16px; font-size: 30px; line-height: 1.25; }
 .content h3 { margin: 32px 0 12px; font-size: 23px; line-height: 1.3; }
@@ -17,21 +17,13 @@
 .content figure { margin: 36px 0; }
 .content figure img { width: 100%; height: auto; display: block; }
 .content figcaption { margin-top: 8px; color: rgba(237, 248, 240, .5); font-size: 12px; }
-.related { margin-top: 72px; padding-top: 42px; border-top: 1px solid rgba(139, 226, 166, 0.2); }
-.related > h2 { margin: 0 0 24px; font-size: 25px; }
-.relatedGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.relatedCard { min-height: 190px; display: flex; flex-direction: column; padding: 20px; border: 1px solid rgba(237, 248, 240, 0.14); background: rgba(255, 255, 255, 0.03); color: #edf8f0; text-decoration: none; }
-.relatedCard:hover { border-color: rgba(119, 219, 151, 0.55); }
-.relatedCard > span:first-child { color: rgba(237, 248, 240, 0.5); font-size: 11px; font-weight: 700; }
-.relatedCard h3 { margin: 14px 0; font-size: 17px; line-height: 1.35; }
-.readMore { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; color: #8be2a6; font-size: 12px; font-weight: 900; }
+.related > h2 { margin: 0 0 28px; font-size: 28px; line-height: 1.2; }
 
 @media (max-width: 720px) {
   .page { padding-top: 38px; }
-  .article, .related { width: min(100% - 28px, 860px); }
+  .article, .related { width: min(100% - 28px, 1120px); }
   .back { margin-bottom: 36px; }
   .lead { margin-bottom: 32px; font-size: 18px; }
   .content p { font-size: 16px; }
-  .relatedGrid { grid-template-columns: 1fr; }
-  .relatedCard { min-height: 150px; }
+  .related > h2 { margin-bottom: 22px; font-size: 24px; }
 }

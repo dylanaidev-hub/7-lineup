@@ -29,7 +29,8 @@ import { useSquadEditorControls } from "./useSquadEditorControls";
 import { useToasts } from "./useToasts";
 import { useWorkspaceControls } from "./useWorkspaceControls";
 import { useHorizontalDragScroll } from "./useHorizontalDragScroll";
-import { useUnifiedWorkspaceState, type Language } from "./useUnifiedWorkspaceState";
+import { useUnifiedWorkspaceState } from "./useUnifiedWorkspaceState";
+import { useLanguage } from "../LanguageContext";
 import { useTacticalWorkspaceSync } from "./useTacticalWorkspaceSync";
 import { decodeSharePayload } from "../lineupShare";
 import type { SavedLineupRecord } from "../lineupState";
@@ -65,7 +66,8 @@ const getSharedLineupFromUrl = () => {
     : null;
 };
 
-export function useAppController(initialLanguage: Language = "vi") {
+export function useAppController() {
+  const { language, setLanguage, toggleLanguage, languageMeta } = useLanguage();
   const { user, isAuthLoading, signOut, isPasswordRecovery, authHashError, clearPasswordRecovery } = useAuth();
   const navigate = useNavigate();
   const isRecoveryExpiryError = Boolean(
@@ -81,8 +83,8 @@ export function useAppController(initialLanguage: Language = "vi") {
     isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, copyStatus, setCopyStatus,
     selectedMobilePlayerId, setSelectedMobilePlayerId, selectedMobilePlayer, activeTab, setActiveTab,
     currentMode, setCurrentMode, activeTool, setActiveTool, activeBottomSheetTool, setActiveBottomSheetTool,
-    language, setLanguage, activePlayers, benchCount, pitchRef, drawLayerRef, frameListRef,
-  } = useUnifiedWorkspaceState(sharedLineup, initialLanguage);
+    activePlayers, benchCount, pitchRef, drawLayerRef, frameListRef,
+  } = useUnifiedWorkspaceState(sharedLineup);
   const [isLineupMenuOpen, setIsLineupMenuOpen] = useState(false);
   const [authDialogMode, setAuthDialogMode] = useState<"sign_in" | "sign_up" | "reset">("sign_in");
   const [isAuthScreenOpen, setIsAuthScreenOpen] = useState(false);
@@ -94,8 +96,6 @@ export function useAppController(initialLanguage: Language = "vi") {
   const workspaceBallMarkerRef = useRef({ ...defaultBallMarker });
   const workspaceInitialFrameRef = useRef<TacticalFrame | null>(null);
   const copy = copyByLanguage[language];
-  const languageMeta =
-    language === "vi" ? { flag: "🇻🇳", label: "VI", next: "en" as const } : { flag: "🇺🇸", label: "EN", next: "vi" as const };
   const {
     savedLineups,
     setSavedLineups,
@@ -456,6 +456,7 @@ export function useAppController(initialLanguage: Language = "vi") {
     isUserMenuOpen,
     userMenuRef,
     setLanguage,
+    toggleLanguage,
     setAuthDialogMode,
     setIsAuthScreenOpen,
     setIsUserMenuOpen,

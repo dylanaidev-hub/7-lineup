@@ -107,7 +107,7 @@ export function PitchField({
   return (
     <div
       ref={pitchRef}
-      className={`pitch relative mx-auto aspect-[7/10] border-[4px] border-white/80 touch-none select-none ${
+      className={`pitch relative mx-auto aspect-[7/10] w-auto max-w-full min-w-0 border-[4px] border-white/80 touch-none select-none ${
         isDrawMode ? "draw-mode" : ""
       } ${isPlaying && isAnimationTool ? "playback-mode" : ""}`}
     >
@@ -156,6 +156,7 @@ export function PitchField({
         return (
           <div
             key={player.id}
+            data-player-id={player.id}
             onPointerDown={(event) => onPlayerPointerDown(event, player.id)}
             onPointerMove={(event) => onPlayerPointerMove(event, player.id)}
             onPointerUp={onPlayerPointerEnd}

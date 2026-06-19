@@ -1,33 +1,43 @@
 .custom-side-tray {
   display: grid;
-  grid-column: 3;
-  grid-row: 1;
   align-self: center;
   align-content: stretch;
-  grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr) 52px;
   gap: 8px;
-  height: clamp(380px, calc(100vh - 310px), 600px);
   min-height: 0;
-  width: 88px;
-  justify-self: end;
   overflow: hidden;
 }
 
-.sandbox-canvas-stage > .pitch {
-  grid-column: 2;
-  grid-row: 1;
-  width: auto;
-  height: clamp(380px, calc(100vh - 310px), 600px);
-  max-height: 100%;
-  justify-self: center;
-  align-self: center;
+@media (min-width: 1025px) {
+  .custom-side-tray {
+    grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr) 52px;
+  }
 }
 
-.sandbox-canvas-stage > .workspace-timeline {
-  grid-column: 3;
-  grid-row: 1;
-  width: 100%;
-  justify-self: stretch;
+@media (min-width: 1025px) {
+  .custom-side-tray {
+    grid-column: 3;
+    grid-row: 1;
+    height: clamp(380px, calc(100vh - 310px), 600px);
+    width: 88px;
+    justify-self: end;
+  }
+
+  .sandbox-canvas-stage > .pitch {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    height: clamp(380px, calc(100vh - 310px), 600px);
+    max-height: 100%;
+    justify-self: center;
+    align-self: center;
+  }
+
+  .sandbox-canvas-stage > .workspace-timeline {
+    grid-column: 3;
+    grid-row: 1;
+    width: 100%;
+    justify-self: stretch;
+  }
 }
 
 .custom-player-tray,

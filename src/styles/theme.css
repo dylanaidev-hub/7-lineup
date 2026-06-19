@@ -427,53 +427,55 @@
    ===================================================================== */
 
 /* tighter outer padding + a slimmer squad column → more room for the pitch */
-.content-grid {
-  gap: 14px;
-  padding: 16px;
-  grid-template-columns: minmax(240px, 300px) minmax(360px, 1fr);
-}
+@media (min-width: 1025px) {
+  .content-grid {
+    gap: 14px;
+    padding: 16px;
+    grid-template-columns: minmax(240px, 300px) minmax(360px, 1fr);
+  }
 
-/* the stage row now fills the column height so height:100% resolves */
-.lineup-stage {
-  grid-template-rows: minmax(0, 1fr);
-  align-items: stretch;
-  justify-items: center;
-  padding: 8px;
-}
+  /* the stage row now fills the column height so height:100% resolves */
+  .lineup-stage {
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    justify-items: center;
+    padding: 8px;
+  }
 
-.sandbox-canvas-stage.show-marker-tray {
-  align-items: stretch;
-  align-content: stretch;
-}
+  .sandbox-canvas-stage.show-marker-tray {
+    align-items: stretch;
+    align-content: stretch;
+  }
 
-.sandbox-canvas-stage .custom-side-tray {
-  align-self: stretch;
-  height: auto;
-}
+  .sandbox-canvas-stage .custom-side-tray {
+    align-self: stretch;
+    height: auto;
+  }
 
-/* pitch fills the full available height (no 700px cap) */
-.lineup-stage .pitch {
-  height: 100%;
-  max-height: 100%;
-  width: auto;
-  max-width: 100%;
-  margin-bottom: 0;
-}
+  /* pitch fills the full available height (no 700px cap) */
+  .lineup-stage .pitch {
+    height: 100%;
+    max-height: 100%;
+    width: auto;
+    max-width: 100%;
+    margin-bottom: 0;
+  }
 
-.sandbox-canvas-stage.show-marker-tray .pitch,
-.sandbox-canvas-stage.show-animation-panel .pitch {
-  height: 100%;
-  max-height: 100%;
-}
+  .sandbox-canvas-stage.show-marker-tray .pitch,
+  .sandbox-canvas-stage.show-animation-panel .pitch {
+    height: 100%;
+    max-height: 100%;
+  }
 
-.sandbox-canvas-stage > .pitch,
-.sandbox-canvas-stage.show-marker-tray > .pitch,
-.sandbox-canvas-stage.show-animation-panel > .pitch {
-  height: clamp(380px, calc(100vh - 310px), 600px);
-  max-height: 100%;
-  width: auto;
-  justify-self: center;
-  align-self: center;
+  .sandbox-canvas-stage > .pitch,
+  .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .sandbox-canvas-stage.show-animation-panel > .pitch {
+    height: clamp(380px, calc(100vh - 310px), 600px);
+    max-height: 100%;
+    width: auto;
+    justify-self: center;
+    align-self: center;
+  }
 }
 
 .formation-switch {
@@ -611,8 +613,8 @@
    Desktop (> 1024px) is untouched.
    ===================================================================== */
 @media (max-width: 1024px) {
-  /* Let the whole app scroll instead of being locked to the viewport. */
-  .match-bg {
+  /* Let non-lineup tabs scroll; lineup uses the zero-scroll block below. */
+  body:not(:has(.lineup-column)) .match-bg {
     height: auto;
     min-height: 100vh;
     min-height: 100dvh;
@@ -620,14 +622,14 @@
     overflow-y: visible;
   }
 
-  .dashboard-shell,
+  body:not(:has(.lineup-column)) .dashboard-shell,
   .tactics-dashboard {
     min-height: 0;
     max-width: 100%;
     overflow: visible;
   }
 
-  /* ---------- Lineup tab: single column, pitch sized by width ---------- */
+  /* ---------- Tactics tab: stack the three panels (pitch first) -------- */
   .content-grid {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -636,47 +638,11 @@
     overflow: visible;
   }
 
-  .stats-column,
-  .lineup-column {
+  .stats-column {
     height: auto;
     max-height: none;
     overflow: visible;
-  }
-
-  .lineup-column {
-    order: 1;
-  }
-
-  .stats-column {
     order: 2;
-  }
-
-  .lineup-stage {
-    grid-template-rows: auto;
-    align-items: center;
-  }
-
-  .lineup-stage .pitch,
-  .sandbox-canvas-stage.show-marker-tray .pitch,
-  .sandbox-canvas-stage.show-animation-panel .pitch {
-    height: auto;
-    min-height: 0;
-    max-height: none;
-    width: min(100%, 460px);
-    max-width: 100%;
-    margin: 0 auto;
-  }
-
-  /* Footer: stack the formation chips above the share/download row. */
-  .lineup-footer-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .footer-formation-switch {
-    justify-content: center;
   }
 
   /* ---------- Tactics tab: stack the three panels (pitch first) -------- */
@@ -734,7 +700,7 @@
 
 /* Phones: tighten spacing and shrink the tactics side tray. */
 @media (max-width: 640px) {
-  .content-grid {
+  body:not(:has(.lineup-column)) .content-grid {
     padding: 12px;
   }
 
@@ -765,86 +731,11 @@
   }
 }
 
-/* Mobile/tablet lineup workspace: stack tools instead of squeezing them beside the pitch. */
-@media (max-width: 1024px) {
-  .lineup-stage {
-    align-items: stretch;
-    justify-items: stretch;
-    overflow-x: clip;
-    overflow-y: visible;
-    padding: 10px;
-  }
-
-  .sandbox-canvas-stage,
-  .sandbox-canvas-stage.show-marker-tray,
-  .sandbox-canvas-stage.show-animation-panel,
-  .sandbox-canvas-stage.show-marker-tray.show-animation-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto;
-    grid-auto-rows: auto;
-    gap: 12px;
-    align-items: stretch;
-    justify-items: stretch;
-    width: 100%;
-    min-width: 0;
-    overflow: visible;
-  }
-
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch {
-    grid-column: 1;
-    grid-row: auto;
-    order: 1;
-    width: min(100%, 440px);
-    height: auto;
-    max-height: none;
-    justify-self: center;
-    align-self: start;
-  }
-
-  .custom-side-tray {
-    grid-column: 1;
-    grid-row: auto;
-    order: 3;
-    width: min(100%, 440px);
-    height: auto;
-    min-height: 0;
-    justify-self: center;
-    align-self: stretch;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: auto;
-    gap: 8px;
-    overflow: visible;
-  }
-
-  .custom-player-tray,
-  .opponent-tray,
-  .ball-tray {
-    min-height: 0;
-    align-content: start;
-    justify-content: center;
-  }
-
-  .ball-tray {
-    min-height: 74px;
-  }
-
-  .sandbox-canvas-stage > .workspace-timeline,
-  .workspace-timeline {
-    grid-column: 1;
-    grid-row: auto;
-    order: 3;
-    width: min(100%, 440px);
-    max-height: none;
-    justify-self: center;
-    align-self: stretch;
-    overflow: visible;
-  }
-}
-
 @media (max-width: 640px) {
+  :root {
+    --lf-mobile-tray: clamp(100px, 18dvh, 118px);
+  }
+
   .content-grid {
     gap: 10px;
     padding: 8px;
@@ -866,43 +757,14 @@
   .custom-side-tray,
   .sandbox-canvas-stage > .workspace-timeline,
   .workspace-timeline {
-    width: 100%;
+    max-width: 100%;
   }
 
-  .custom-side-tray {
-    grid-template-columns: 1fr;
-  }
-
-  .custom-player-tray,
-  .opponent-tray {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 7px;
-    padding: 10px;
-  }
-
-  .custom-player-dot-list,
-  .opponent-dot-list {
-    grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
-    gap: 7px;
-    width: 100%;
-  }
-
-  .ball-tray {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 10px;
-  }
-
-  .custom-player-tray > span,
-  .opponent-tray > span,
-  .ball-tray > span {
-    grid-column: 1 / -1;
-  }
-
-  .workspace-timeline-controls {
+  body:not(:has(.lineup-column)) .workspace-timeline-controls {
     grid-template-columns: repeat(3, minmax(44px, 1fr)) minmax(88px, 1.4fr);
   }
 
-  .workspace-frame-list {
+  body:not(:has(.lineup-column)) .workspace-frame-list {
     max-height: 280px;
     overflow-y: auto;
   }
@@ -910,15 +772,34 @@
 
 /* Mobile/tablet zero-scroll workspace with one bottom command dock. */
 @media (max-width: 1024px) {
+  :root {
+    --lf-mobile-dock: 48px;
+    --lf-mobile-tray: clamp(108px, 19dvh, 128px);
+    --lf-mobile-marker-tray: clamp(148px, 26dvh, 176px);
+    --lf-mobile-animation-tray: clamp(176px, 30dvh, 212px);
+    --lf-mobile-edge: 12px;
+    --lf-mobile-sheet-padding: 12px;
+    --lf-mobile-sheet-max-width: 440px;
+    --lf-mobile-gap: 12px;
+    --lf-mobile-sheet-bottom: calc(
+      env(safe-area-inset-bottom, 0px) + var(--lf-mobile-edge) + var(--lf-mobile-dock) +
+        var(--lf-mobile-gap)
+    );
+    /* Pitch only clears the bottom dock; sheets overlay on top when opened. */
+    --lf-pitch-reserved-bottom: calc(
+      var(--lf-mobile-edge) + var(--lf-mobile-dock) + var(--lf-mobile-gap)
+    );
+  }
+
   @keyframes mobile-sheet-rise {
     from {
       opacity: 0;
-      transform: translateY(32px);
+      transform: translateX(-50%) translateY(32px);
     }
 
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(-50%) translateY(0);
     }
   }
 
@@ -932,19 +813,37 @@
     min-height: 100vh;
     min-height: 100dvh;
     overflow: hidden;
+    max-width: 100vw;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .match-bg > header {
+    flex: 0 0 auto;
   }
 
   .dashboard-shell {
-    height: 100%;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    height: auto;
     min-height: 0;
     overflow: hidden;
+    max-width: 100vw;
   }
 
   .content-grid {
-    height: 100%;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: auto;
     min-height: 0;
     overflow: hidden;
     padding: 0;
+  }
+
+  .lineup-column {
+    flex: 1 1 auto;
   }
 
   .stats-column,
@@ -957,6 +856,7 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    max-width: 100vw;
     background:
       radial-gradient(circle at 50% 18%, rgba(127, 224, 163, 0.16), transparent 34%),
       linear-gradient(180deg, #41ac5b, #2f954c);
@@ -968,45 +868,76 @@
     height: 100%;
     min-height: 0;
     padding: 0;
-    overflow: hidden;
+    overflow-x: clip;
+    overflow-y: hidden;
     background: transparent;
+  }
+
+  .lineup-column > .lineup-column-header {
+    position: fixed;
+    z-index: 90;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .lineup-column > .lineup-column-header > * {
+    pointer-events: auto;
   }
 
   .sandbox-canvas-stage,
   .sandbox-canvas-stage.show-marker-tray,
   .sandbox-canvas-stage.show-animation-panel,
   .sandbox-canvas-stage.show-marker-tray.show-animation-panel {
+    position: relative;
     display: block;
     width: 100%;
     height: 100%;
+    min-height: 0;
     overflow: hidden;
   }
 
   .sandbox-canvas-stage > .pitch,
   .sandbox-canvas-stage.show-marker-tray > .pitch,
   .sandbox-canvas-stage.show-animation-panel > .pitch {
-    position: fixed;
+    position: absolute;
     z-index: 20;
-    top: 124px;
+    top: var(--lf-mobile-edge);
     left: 50%;
-    width: min(calc(100vw - 24px), calc((100dvh - 245px) * 0.7));
+    right: auto;
+    bottom: auto;
+    width: min(420px, calc(100% - var(--lf-mobile-edge) * 2));
     height: auto;
-    max-width: 520px;
-    max-height: none;
+    max-height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge));
+    min-height: 0;
+    margin-inline: 0;
     transform: translateX(-50%);
-    margin: 0;
+    box-sizing: border-box;
+    aspect-ratio: 7 / 10;
   }
 
   .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
   .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
-    width: min(calc(100vw - 24px), calc((100dvh - 245px) * 0.7));
+    max-height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge));
   }
 
   .lineup-footer-actions,
   .custom-side-tray,
-  .sandbox-canvas-stage > .workspace-timeline {
+  .sandbox-canvas-stage > .workspace-timeline,
+  .lineup-column.tool-draw .footer-formation-switch:not(:empty) {
     position: fixed;
-    z-index: 80;
+    z-index: 85;
+  }
+
+  .custom-side-tray,
+  .sandbox-canvas-stage > .workspace-timeline,
+  .lineup-column.tool-draw .footer-formation-switch:not(:empty) {
+    left: 50%;
+    right: auto;
+    bottom: var(--lf-mobile-sheet-bottom);
+    width: min(var(--lf-mobile-sheet-max-width), calc(100% - var(--lf-mobile-edge) * 2));
+    max-width: var(--lf-mobile-sheet-max-width);
+    transform: translateX(-50%);
+    box-sizing: border-box;
   }
 
   .lineup-footer-actions button {
@@ -1045,39 +976,41 @@
   }
 
   .lineup-footer-actions {
-    right: 12px;
-    bottom: calc(env(safe-area-inset-bottom) + 10px);
+    right: var(--lf-mobile-edge);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--lf-mobile-edge));
     left: auto;
     display: flex;
-    height: 48px;
+    height: var(--lf-mobile-dock);
     align-items: center;
     margin: 0;
     padding: 0;
     background: transparent;
     pointer-events: none;
+    z-index: 90;
+  }
+
+  .lineup-footer-actions button {
+    pointer-events: auto;
   }
 
   .custom-side-tray {
-    right: 10px;
-    bottom: calc(env(safe-area-inset-bottom) + 68px);
-    left: 10px;
     display: grid;
-    width: calc(100vw - 20px);
-    height: 142px;
+    height: auto;
     min-height: 0;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.15fr) minmax(66px, 0.7fr);
+    max-height: var(--lf-mobile-marker-tray);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(40px, 0.48fr);
     grid-template-rows: minmax(0, 1fr);
-    gap: 8px;
-    padding: 12px;
+    gap: 6px;
+    padding: var(--lf-mobile-sheet-padding);
     border: 1px solid rgba(232, 245, 233, 0.14);
-    border-radius: 26px 26px 20px 20px;
+    border-radius: 22px 22px 18px 18px;
     background:
-      linear-gradient(180deg, rgba(8, 41, 24, 0.92), rgba(5, 24, 16, 0.9));
+      linear-gradient(180deg, rgba(8, 41, 24, 0.96), rgba(5, 24, 16, 0.94));
     box-shadow:
-      0 -18px 36px rgba(0, 0, 0, 0.22),
+      0 -22px 44px rgba(0, 0, 0, 0.34),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(18px);
-    overflow: visible;
+    overflow: hidden;
     animation: mobile-sheet-rise 0.22s ease both;
     transition:
       opacity 0.16s ease,
@@ -1089,54 +1022,99 @@
     opacity: 0.18;
     filter: blur(1px);
     pointer-events: none;
-    transform: translateY(10px);
+    transform: translateX(-50%) translateY(10px);
   }
 
   .custom-player-tray,
   .opponent-tray,
   .ball-tray {
-    display: grid;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     min-height: 0;
-    grid-template-columns: minmax(0, 1fr);
-    align-content: start;
-    gap: 5px;
-    padding: 8px;
-    border-radius: 18px;
+    overflow: hidden;
+    gap: 3px;
+    padding: 5px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.045);
   }
 
   .custom-player-tray > span,
   .opponent-tray > span,
   .ball-tray > span {
-    font-size: 8px;
-    letter-spacing: 0.08em;
+    display: block;
+    flex: 0 0 auto;
+    width: 100%;
+    font-size: 7px;
+    font-weight: 950;
+    letter-spacing: 0.06em;
+    line-height: 1.1;
+    text-align: center;
+    text-transform: uppercase;
   }
 
   .custom-player-dot-list,
   .opponent-dot-list {
-    grid-template-columns: repeat(auto-fit, minmax(22px, 1fr));
-    gap: 5px;
-    width: 100%;
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
     min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    grid-template-columns: repeat(auto-fill, minmax(19px, 1fr));
+    gap: 4px;
+    width: 100%;
+    align-content: start;
+    justify-items: center;
   }
 
   .custom-player-dot,
   .opponent-dot,
   .tactical-ball-tray-dot {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 22px;
+    height: auto;
+    aspect-ratio: 1;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
     justify-self: center;
   }
 
   .custom-player-dot {
-    font-size: 9px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    justify-content: center;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f8fafc 0%, #d7dee7 100%);
+    color: #111827;
+    font-size: 8px;
+    font-weight: 950;
+    line-height: 1;
+    text-align: center;
+    appearance: none;
+  }
+
+  .opponent-dot {
+    max-width: 20px;
+    padding: 0;
   }
 
   .ball-tray {
     min-height: 0;
-    place-content: start center;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .ball-tray .tactical-ball-tray-dot {
+    flex: 0 0 auto;
+    align-self: center;
+    max-width: 24px;
   }
 
   .footer-formation-switch {
@@ -1144,20 +1122,16 @@
   }
 
   .lineup-column.tool-draw .footer-formation-switch {
-    position: fixed;
-    right: 10px;
-    bottom: calc(env(safe-area-inset-bottom) + 68px);
-    left: 10px;
-    z-index: 82;
+    z-index: 85;
     display: flex;
     justify-content: center;
-    padding: 12px;
+    padding: var(--lf-mobile-sheet-padding);
     border: 1px solid rgba(232, 245, 233, 0.14);
     border-radius: 26px 26px 20px 20px;
     background:
-      linear-gradient(180deg, rgba(8, 41, 24, 0.92), rgba(5, 24, 16, 0.9));
+      linear-gradient(180deg, rgba(8, 41, 24, 0.96), rgba(5, 24, 16, 0.94));
     box-shadow:
-      0 -18px 36px rgba(0, 0, 0, 0.22),
+      0 -22px 44px rgba(0, 0, 0, 0.34),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(18px);
     animation: mobile-sheet-rise 0.22s ease both;
@@ -1211,30 +1185,32 @@
   }
 
   .sandbox-canvas-stage > .workspace-timeline {
-    right: 10px;
-    bottom: calc(env(safe-area-inset-bottom) + 68px);
-    left: 10px;
     display: grid;
-    width: calc(100vw - 20px);
-    height: 140px;
-    max-height: none;
+    height: auto;
+    min-height: 0;
+    max-height: var(--lf-mobile-animation-tray);
     grid-template-columns: 42px 42px minmax(0, 1fr) 42px 42px;
-    grid-template-rows: auto 44px 44px;
+    grid-template-rows: auto minmax(44px, auto) minmax(0, 1fr);
+    align-content: start;
     gap: 8px;
-    padding: 12px;
-    border-radius: 20px;
+    padding: var(--lf-mobile-sheet-padding);
+    border: 1px solid rgba(232, 245, 233, 0.14);
+    border-radius: 22px 22px 18px 18px;
     background:
-      linear-gradient(180deg, rgba(8, 41, 24, 0.94), rgba(7, 30, 20, 0.88));
+      linear-gradient(180deg, rgba(8, 41, 24, 0.96), rgba(5, 24, 16, 0.94));
     overflow: hidden;
+    box-sizing: border-box;
     animation: mobile-sheet-rise 0.22s ease both;
     box-shadow:
-      0 20px 36px rgba(0, 0, 0, 0.28),
+      0 -22px 44px rgba(0, 0, 0, 0.34),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(18px);
   }
 
   .workspace-timeline-title {
     grid-column: 1 / -1;
     grid-row: 1;
+    min-height: 0;
     font-size: 10px;
   }
 
@@ -1282,15 +1258,26 @@
   .workspace-add-frame-button {
     grid-column: 3;
     grid-row: 2;
+    align-self: stretch;
     min-height: 44px;
+    max-height: 44px;
+    margin: 0;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1.1;
+    padding: 0 8px;
+  }
+
+  .workspace-add-frame-button svg {
+    flex: 0 0 auto;
   }
 
   .workspace-frame-list {
     grid-column: 1 / -1;
     grid-row: 3;
     display: flex;
+    min-height: 0;
+    max-height: none;
     gap: 8px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -1299,7 +1286,8 @@
     overscroll-behavior-x: contain;
     cursor: grab;
     user-select: none;
-    padding: 0 0 2px;
+    padding: 0;
+    margin: 0;
   }
 
   .workspace-frame-list:active {
@@ -1527,44 +1515,23 @@
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {
+  :root {
+    --lf-mobile-tray: clamp(112px, 17dvh, 128px);
+    --lf-mobile-animation-tray: clamp(184px, 28dvh, 220px);
+    --lf-mobile-sheet-max-width: 480px;
+  }
+
   .sandbox-canvas-stage > .pitch,
   .sandbox-canvas-stage.show-marker-tray > .pitch,
   .sandbox-canvas-stage.show-animation-panel > .pitch,
   .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
   .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
-    top: 154px;
-    width: min(520px, calc(100vw - 48px), calc((100dvh - 246px) * 0.7));
-  }
-
-  .custom-side-tray,
-  .lineup-column.tool-draw .footer-formation-switch,
-  .sandbox-canvas-stage > .workspace-timeline {
-    left: 50%;
-    right: auto;
-    width: min(calc(100vw - 32px), 620px);
-    translate: -50% 0;
-  }
-
-  .lineup-column.tool-draw .footer-formation-switch {
-    width: fit-content;
-    max-width: calc(100vw - 32px);
+    width: min(480px, calc(100% - var(--lf-mobile-edge) * 2));
   }
 
   .lineup-column.tool-draw .draw-history-actions {
-    width: min(430px, calc(100vw - 56px));
+    width: min(430px, calc(100% - var(--lf-mobile-edge) * 2));
   }
-
-  .custom-side-tray {
-    padding: 12px;
-    height: 116px;
-    min-height: 116px;
-  }
-
-  .sandbox-canvas-stage > .workspace-timeline {
-    height: 140px;
-    padding: 12px;
-  }
-
 }
 
 @media (max-width: 1024px) {
@@ -1578,5 +1545,111 @@
   .lineup-save-bar input,
   .custom-lineup-control input {
     font-size: 16px !important;
+  }
+}
+
+/* Keep the lineup pitch inside the viewport on phones/tablets. */
+@media (max-width: 1024px) {
+  .match-bg {
+    padding-left: 0;
+    padding-right: 0;
+    overflow-x: clip;
+  }
+
+  .dashboard-shell,
+  .content-grid,
+  .lineup-column,
+  .lineup-stage,
+  .sandbox-canvas-stage {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .lineup-stage,
+  .lineup-stage.sandbox-canvas-stage,
+  .sandbox-canvas-stage {
+    display: block;
+    overflow-x: clip;
+  }
+}
+
+@media (max-width: 640px) {
+  body:has(.lineup-column) {
+    --lf-mobile-animation-tray: clamp(168px, 32dvh, 204px);
+    --lf-mobile-marker-tray: clamp(156px, 28dvh, 184px);
+  }
+}
+
+@media (max-width: 480px) {
+  body:has(.lineup-column) {
+    --lf-mobile-marker-tray: clamp(164px, 30dvh, 196px);
+  }
+
+  .custom-side-tray {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .ball-tray {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 3px;
+    min-height: 38px;
+    padding: 5px;
+  }
+
+  .ball-tray > span {
+    flex: 0 0 auto;
+    width: 100%;
+    text-align: center;
+  }
+
+  .custom-player-dot-list,
+  .opponent-dot-list {
+    grid-template-columns: repeat(auto-fill, minmax(18px, 1fr));
+    gap: 3px;
+  }
+
+  .custom-player-dot {
+    max-width: 20px;
+    font-size: 7.5px;
+  }
+
+  .opponent-dot {
+    max-width: 18px;
+  }
+
+  .ball-tray .tactical-ball-tray-dot {
+    max-width: 22px;
+  }
+}
+
+@media (max-width: 360px) {
+  body:has(.lineup-column) {
+    --lf-mobile-marker-tray: clamp(172px, 32dvh, 204px);
+  }
+
+  .custom-player-dot-list,
+  .opponent-dot-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .custom-player-dot {
+    max-width: 19px;
+    font-size: 7.5px;
+  }
+
+  .opponent-dot {
+    max-width: 17px;
+  }
+
+  .ball-tray .tactical-ball-tray-dot {
+    max-width: 21px;
   }
 }

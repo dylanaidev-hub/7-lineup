@@ -16,13 +16,11 @@ import {
 import { getInitialAppTab, getPitchSizeFromUrl, type AppTab, type PitchSize } from "../appRouting";
 import { clampCustomCount, type SharedLineup } from "../lineupShare";
 import type { WorkspaceMode } from "../stores/tacticalStore";
+import type { Language } from "../languagePreference";
 
-export type Language = "vi" | "en";
+export type { Language };
 
-export function useUnifiedWorkspaceState(
-  sharedLineup: SharedLineup<FormationKey> | null,
-  initialLanguage: Language,
-) {
+export function useUnifiedWorkspaceState(sharedLineup: SharedLineup<FormationKey> | null) {
   const initial = useMemo(() => {
     const pitchSize = sharedLineup?.pitchSize ?? getPitchSizeFromUrl() ?? 7;
     const formation = sharedLineup?.formation ?? "2-3-1";
@@ -93,8 +91,10 @@ export function useUnifiedWorkspaceState(
   const [currentMode, setCurrentMode] = useState<WorkspaceMode>(initial.mode);
   const initialTool = initial.tool;
   const [activeTool, setActiveTool] = useState<CanvasTool>(initialTool);
-  const [activeBottomSheetTool, setActiveBottomSheetTool] = useState<CanvasTool | null>(initialTool);
-  const [language, setLanguage] = useState<Language>(initialLanguage);
+  const [activeBottomSheetTool, setActiveBottomSheetTool] = useState<CanvasTool | null>(() => {
+    if (typeof window === "undefined") return initialTool;
+    return window.matchMedia("(max-width: 1024px)").matches ? null : initialTool;
+  });
   const pitchRef = useRef<HTMLDivElement>(null);
   const drawLayerRef = useRef<SVGSVGElement>(null);
   const frameListRef = useRef<HTMLDivElement>(null);
@@ -144,8 +144,6 @@ export function useUnifiedWorkspaceState(
     setActiveTool,
     activeBottomSheetTool,
     setActiveBottomSheetTool,
-    language,
-    setLanguage,
     activePlayers,
     benchCount,
     pitchRef,

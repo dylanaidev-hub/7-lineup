@@ -1,10 +1,13 @@
-import { ArrowRight, BookOpen, Clock, Search, Sparkles, Target, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { BookOpenText } from "@phosphor-icons/react";
+import { ArrowRight, ChevronLeft, ChevronRight, Clock, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { LandingLanguage } from "./LandingPage";
 import { SeoHead, seoSiteUrl } from "./SeoHead";
-import { useContentfulNews, type ContentfulNewsArticle } from "./hooks/useContentfulNews";
+import { SiteIcon } from "./SiteIcon";
+import { useContentfulNews, type ContentfulNewsArticle, articleMatchesCategory, type NewsCategoryOption } from "./hooks/useContentfulNews";
 import { usePrerenderReady } from "./hooks/usePrerenderReady";
+import { NewsArticleCard } from "./NewsArticleCard";
 import styles from "./NewsKnowledgePage.module.css";
 
 type Category = "all" | "tactics" | "skills" | "team" | "news";
@@ -71,33 +74,75 @@ export const newsArticles: NewsArticle[] = [
   },
 ];
 
+const ARTICLES_PER_PAGE = 6;
+
 export const newsPageCopy = {
-  vi: { eyebrow: "Góc chiến thuật sân cỏ", title: "Tin tức & Kiến thức", intro: "Ý tưởng thực tế giúp đội bóng tổ chức tốt hơn, chơi thông minh hơn và chuẩn bị nhanh hơn cho ngày ra sân.", search: "Tìm bài viết...", empty: "Không tìm thấy bài viết phù hợp.", featured: "Bài nổi bật", read: "Đọc bài", minutes: "phút đọc", all: "Tất cả", tactics: "Chiến thuật", skills: "Kỹ năng", team: "Quản lý đội", news: "Tin tức", more: "Các bài viết khác" },
-  en: { eyebrow: "Football learning hub", title: "News & Knowledge", intro: "Practical ideas to help teams organise better, play smarter, and prepare faster for match day.", search: "Search articles...", empty: "No matching articles found.", featured: "Featured", read: "Read article", minutes: "min read", all: "All", tactics: "Tactics", skills: "Skills", team: "Team management", news: "News", more: "More articles" },
+  vi: { eyebrow: "Góc chiến thuật sân cỏ", title: "Tin tức & Kiến thức", intro: "Ý tưởng thực tế giúp đội bóng tổ chức tốt hơn, chơi thông minh hơn và chuẩn bị nhanh hơn cho ngày ra sân.", search: "Tìm bài viết...", empty: "Không tìm thấy bài viết phù hợp.", featured: "Bài nổi bật", read: "Đọc bài", minutes: "phút đọc", all: "Tất cả", tactics: "Chiến thuật", skills: "Kỹ năng", team: "Quản lý đội", news: "Tin tức", more: "Các bài viết khác", pagePrev: "Trước", pageNext: "Sau", pageLabel: (current: number, total: number) => `Trang ${current} / ${total}` },
+  en: { eyebrow: "Football learning hub", title: "News & Knowledge", intro: "Practical ideas to help teams organise better, play smarter, and prepare faster for match day.", search: "Search articles...", empty: "No matching articles found.", featured: "Featured", read: "Read article", minutes: "min read", all: "All", tactics: "Tactics", skills: "Skills", team: "Team management", news: "News", more: "More articles", pagePrev: "Previous", pageNext: "Next", pageLabel: (current: number, total: number) => `Page ${current} of ${total}` },
 };
 
-const categoryIcons = { tactics: Target, skills: Sparkles, team: Users, news: BookOpen };
+type LegacyCategory = Exclude<Category, "all">;
+
+const FALLBACK_FILTER_OPTIONS: Array<{ slug: LegacyCategory; title: Record<LandingLanguage, string> }> = [
+  { slug: "tactics", title: { vi: "Chiến thuật", en: "Tactics" } },
+  { slug: "skills", title: { vi: "Kỹ năng", en: "Skills" } },
+  { slug: "team", title: { vi: "Quản lý đội", en: "Team management" } },
+  { slug: "news", title: { vi: "Tin tức", en: "News" } },
+];
+
+function isFeaturedArticle(article: NewsArticle | ContentfulNewsArticle) {
+  return Boolean((article as ContentfulNewsArticle).isFeatured);
+}
 
 export function NewsKnowledgePage({ language }: { language: LandingLanguage }) {
   const navigate = useNavigate();
-  const [category, setCategory] = useState<Category>("all");
+  const libraryRef = useRef<HTMLElement>(null);
+  const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
-  const { articles, isLoading } = useContentfulNews(newsArticles);
+  const [page, setPage] = useState(1);
+  const { articles, categories, isContentful, isLoading } = useContentfulNews(newsArticles);
   usePrerenderReady(!isLoading);
   const c = newsPageCopy[language];
+  const filterOptions: Array<NewsCategoryOption | { slug: LegacyCategory; title: string }> = isContentful
+    ? categories
+    : FALLBACK_FILTER_OPTIONS.map((option) => ({ slug: option.slug, title: option.title[language] }));
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase(language);
-    return articles.filter((article) => (category === "all" || article.category === category) && (!normalized || `${article.title[language]} ${article.summary[language]}`.toLocaleLowerCase(language).includes(normalized)));
+    return articles.filter((article) => {
+      const matchesCategory = category === "all" || articleMatchesCategory(article, category);
+      const matchesQuery = !normalized || `${article.title[language]} ${article.summary[language]}`.toLocaleLowerCase(language).includes(normalized);
+      return matchesCategory && matchesQuery;
+    });
   }, [articles, category, language, query]);
 
-  const availableCategories = (["tactics", "skills", "team", "news"] as Category[])
-    .filter((value) => articles.some((article) => article.category === value));
-  const featuredArticle = articles[0];
+  const featuredArticle = articles.find((article) => isFeaturedArticle(article));
   const featuredCms = featuredArticle as ContentfulNewsArticle | undefined;
   const isBrowsing = category !== "all" || Boolean(query.trim());
   const listArticles = isBrowsing
     ? filtered
-    : filtered.filter((article) => article.slug !== featuredArticle?.slug);
+    : filtered.filter((article) => !isFeaturedArticle(article));
+
+  const totalPages = Math.max(1, Math.ceil(listArticles.length / ARTICLES_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedArticles = listArticles.slice(
+    (currentPage - 1) * ARTICLES_PER_PAGE,
+    currentPage * ARTICLES_PER_PAGE,
+  );
+  const showPagination = listArticles.length > ARTICLES_PER_PAGE;
+
+  useEffect(() => {
+    setPage(1);
+  }, [category, query]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const goToPage = (nextPage: number) => {
+    setPage(nextPage);
+    libraryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const openArticle = (slug: string) => navigate(`/tin-tuc/${slug}`);
 
@@ -129,7 +174,7 @@ export function NewsKnowledgePage({ language }: { language: LandingLanguage }) {
           <h1>{c.title}</h1>
           <p className={styles.intro}>{c.intro}</p>
         </div>
-        <BookOpen size={84} strokeWidth={1.2} aria-hidden="true" />
+        <SiteIcon icon={BookOpenText} variant="spotlight" size={72} />
       </section>
 
       <section className={styles.controls} aria-label="Article filters">
@@ -138,8 +183,16 @@ export function NewsKnowledgePage({ language }: { language: LandingLanguage }) {
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.search} />
         </label>
         <div className={styles.filters}>
-          {(["all", ...availableCategories] as Category[]).map((value) => (
-            <button key={value} type="button" className={category === value ? styles.filterActive : ""} onClick={() => setCategory(value)}>{c[value]}</button>
+          <button key="all" type="button" className={category === "all" ? styles.filterActive : ""} onClick={() => setCategory("all")}>{c.all}</button>
+          {filterOptions.map((option) => (
+            <button
+              key={option.slug}
+              type="button"
+              className={category === option.slug ? styles.filterActive : ""}
+              onClick={() => setCategory(option.slug)}
+            >
+              {option.title}
+            </button>
           ))}
         </div>
       </section>
@@ -155,23 +208,52 @@ export function NewsKnowledgePage({ language }: { language: LandingLanguage }) {
         </div>
       </section> : null}
 
-      {isBrowsing || listArticles.length ? <section className={styles.library}>
+      {isBrowsing || listArticles.length ? <section ref={libraryRef} className={styles.library}>
         <h2>{c.more}</h2>
         {listArticles.length ? (
+          <>
           <div className={styles.grid}>
-            {listArticles.map((article) => {
-              const Icon = categoryIcons[article.category];
-              return (
-                <article key={article.slug} className={styles.card}>
-                  <span className={styles.cardIcon}><Icon size={22} /></span>
-                  <div className={styles.cardMeta}><span>{c[article.category]}</span><span>{article.readTime} {c.minutes}</span></div>
-                  <h3>{article.title[language]}</h3>
-                  <p>{article.summary[language]}</p>
-                  <button type="button" onClick={() => openArticle(article.slug)}>{c.read}<ArrowRight size={16} /></button>
-                </article>
-              );
-            })}
+            {paginatedArticles.map((article) => (
+              <NewsArticleCard key={article.slug} article={article} language={language} />
+            ))}
           </div>
+          {showPagination ? (
+            <nav className={styles.pagination} aria-label={language === "vi" ? "Phân trang bài viết" : "Article pagination"}>
+              <button
+                type="button"
+                className={styles.pageNav}
+                disabled={currentPage <= 1}
+                onClick={() => goToPage(currentPage - 1)}
+              >
+                <ChevronLeft size={16} aria-hidden="true" />
+                {c.pagePrev}
+              </button>
+              <div className={styles.pageNumbers}>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    className={pageNumber === currentPage ? styles.pageActive : styles.pageNumber}
+                    aria-current={pageNumber === currentPage ? "page" : undefined}
+                    onClick={() => goToPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+              </div>
+              <span className={styles.pageStatus}>{c.pageLabel(currentPage, totalPages)}</span>
+              <button
+                type="button"
+                className={styles.pageNav}
+                disabled={currentPage >= totalPages}
+                onClick={() => goToPage(currentPage + 1)}
+              >
+                {c.pageNext}
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            </nav>
+          ) : null}
+          </>
         ) : <p className={styles.empty}>{c.empty}</p>}
       </section> : null}
 
