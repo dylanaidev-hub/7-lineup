@@ -90,49 +90,16 @@ export function useLineupDragControls({
     );
   };
 
-  const syncPlayerFromAnimation = (id: number, x: number, y: number) => {
-    setPlayers((current) =>
-      current.map((player) =>
-        player.id === id
-          ? {
-              ...player,
-              x,
-              y,
-              position: getZoneName(pitchSize, x, y),
-              onPitch: true,
-            }
-          : player,
-      ),
-    );
-  };
-
-  const syncOpponentFromAnimation = (id: number, x: number, y: number) => {
-    setOpponentMarkers((current) =>
-      current.map((marker) =>
-        marker.id === id
-          ? {
-              ...marker,
-              x,
-              y,
-              onPitch: true,
-            }
-          : marker,
-      ),
-    );
-  };
-
   const updateAnimatedPlayer = (event: ReactPointerEvent<HTMLElement>, id: number) => {
     const position = getPitchPointerPosition(event, { clamp: true });
     if (!position) return;
     updateTacticalMarker(`p${id}`, position.x, position.y, true);
-    syncPlayerFromAnimation(id, position.x, position.y);
   };
 
   const updateAnimatedOpponent = (event: ReactPointerEvent<HTMLElement>, id: number) => {
     const position = getPitchPointerPosition(event, { clamp: true });
     if (!position) return;
     updateTacticalMarker(`o${id}`, position.x, position.y, true);
-    syncOpponentFromAnimation(id, position.x, position.y);
   };
 
   const playerDrag = useMarkerDragSession<number>({

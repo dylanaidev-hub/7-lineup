@@ -1,38 +1,24 @@
-import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useRef } from "react";
-import { getZoneName, type FormationPlayer, type OpponentMarker } from "../formationData";
 import { useTacticalStore } from "../stores/tacticalStore";
 import { cloneTacticalFrame, cloneTacticalFrames, type TacticalFrame } from "../tacticalData";
-import type { PitchSize } from "../appRouting";
 
 type UseAnimationPlaybackControlsOptions = {
   isAnimationTool: boolean;
   isPlaying: boolean;
   currentFrameIndex: number;
-  animationFrames: TacticalFrame[];
-  draftFrame: TacticalFrame;
-  pitchSize: PitchSize;
   nextFrame: () => void;
   commitDraftIfChanged: () => TacticalFrame[];
   stop: () => void;
-  setPlayers: Dispatch<SetStateAction<FormationPlayer[]>>;
-  setOpponentMarkers: Dispatch<SetStateAction<OpponentMarker[]>>;
 };
 
 export function useAnimationPlaybackControls({
   isAnimationTool,
   isPlaying,
   currentFrameIndex,
-  animationFrames,
-  draftFrame,
-  pitchSize,
   nextFrame,
   commitDraftIfChanged,
   stop,
-  setPlayers,
-  setOpponentMarkers,
 }: UseAnimationPlaybackControlsOptions) {
-  const wasAnimationPlayingRef = useRef(false);
   const playbackStartTimerRef = useRef<number | null>(null);
 
   const clearPlaybackStartTimer = () => {
@@ -84,38 +70,6 @@ export function useAnimationPlaybackControls({
       }
     };
   }, []);
-
-  useEffect(() => {
-    const finishedPlayback = wasAnimationPlayingRef.current && !isPlaying && currentFrameIndex >= animationFrames.length;
-    wasAnimationPlayingRef.current = isPlaying;
-    if (!isAnimationTool || !finishedPlayback) return;
-
-    setPlayers((current) =>
-      current.map((player) => {
-        const marker = draftFrame.find((item) => item.id === `p${player.id}`);
-        if (!marker) return player;
-        return {
-          ...player,
-          x: marker.x,
-          y: marker.y,
-          position: getZoneName(pitchSize, marker.x, marker.y),
-          onPitch: marker.onPitch,
-        };
-      }),
-    );
-    setOpponentMarkers((current) =>
-      current.map((marker) => {
-        const frameMarker = draftFrame.find((item) => item.id === `o${marker.id}`);
-        if (!frameMarker) return marker;
-        return {
-          ...marker,
-          x: frameMarker.x,
-          y: frameMarker.y,
-          onPitch: frameMarker.onPitch,
-        };
-      }),
-    );
-  }, [animationFrames.length, currentFrameIndex, draftFrame, isAnimationTool, isPlaying, pitchSize, setOpponentMarkers, setPlayers]);
 
   return { playAnimationFromStart, stopAnimationPlayback };
 }

@@ -1,4 +1,7 @@
 import type { User } from "@supabase/supabase-js";
+import { PublicSiteHeader } from "./PublicSiteHeader";
+import { SeoHead, seoSiteUrl } from "./SeoHead";
+import { usePrerenderReady } from "./hooks/usePrerenderReady";
 import styles from "./LandingPage.module.css";
 
 export type LandingLanguage = "vi" | "en";
@@ -79,45 +82,31 @@ export function LandingPage({
   authLabels,
 }: LandingPageProps) {
   const c = landingCopy[language];
+  usePrerenderReady(true);
   const cx = (...classNames: string[]) => classNames.map((className) => styles[className]).filter(Boolean).join(" ");
 
   return (
     <main className={styles.landing}>
-      <header className={styles["landing-nav"]}>
-        <div className={styles["landing-brand"]}>
-          <span className={styles["landing-logo"]}>⚽</span>
-          <span>{c.brand}</span>
-        </div>
-        <div className={styles["landing-nav-actions"]}>
-          {isAuthLoading ? null : user ? (
-            <div className={styles["landing-user"]}>
-              <span className={styles["landing-user-email"]}>{user.email}</span>
-              <button type="button" className={cx("landing-auth-btn", "landing-auth-btn-primary")} onClick={onExplore}>
-                {c.explore}
-              </button>
-              <button type="button" className={styles["landing-auth-btn"]} onClick={onSignOut}>
-                {authLabels.signOut}
-              </button>
-            </div>
-          ) : (
-            <>
-              <button type="button" className={styles["landing-auth-btn"]} onClick={onSignIn}>
-                {authLabels.signIn}
-              </button>
-              <button type="button" className={cx("landing-auth-btn", "landing-auth-btn-primary")} onClick={onSignUp}>
-                {authLabels.signUp}
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            className={styles["landing-lang"]}
-            onClick={() => onChangeLanguage(language === "vi" ? "en" : "vi")}
-          >
-            {language === "vi" ? "🇻🇳 VI" : "🇺🇸 EN"}
-          </button>
-        </div>
-      </header>
+      <SeoHead
+        title="Đội Hình Sân Cỏ - Tạo đội hình và chiến thuật bóng đá"
+        description="Công cụ miễn phí giúp tạo đội hình sân 5, 7, 11, vẽ sa bàn chiến thuật, mô phỏng chuyển động và chia sẻ với đồng đội."
+        path="/"
+        structuredData={[
+          { "@context": "https://schema.org", "@type": "WebSite", name: "Đội Hình Sân Cỏ", url: seoSiteUrl, inLanguage: "vi-VN" },
+          { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Đội Hình Sân Cỏ", applicationCategory: "SportsApplication", operatingSystem: "Web", url: seoSiteUrl, offers: { "@type": "Offer", price: "0", priceCurrency: "VND" } },
+        ]}
+      />
+      <PublicSiteHeader
+        language={language}
+        onChangeLanguage={onChangeLanguage}
+        onExplore={onExplore}
+        onSignIn={onSignIn}
+        onSignUp={onSignUp}
+        user={user}
+        isAuthLoading={isAuthLoading}
+        onSignOut={onSignOut}
+        authLabels={authLabels}
+      />
 
       <section className={styles["landing-hero"]}>
         <div className={styles["landing-hero-content"]}>

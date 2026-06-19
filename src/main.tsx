@@ -1,9 +1,15 @@
 import React, { Suspense, lazy, useMemo, useState } from "react";
 import ReactDOM, { type Root } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppLoadingScreen } from "./AppLoadingScreen";
 import { AuthDialog } from "./AuthDialog";
 import { LandingPage } from "./LandingPage";
+import { NewsKnowledgePage } from "./NewsKnowledgePage";
+import { NewsArticleDetailPage } from "./NewsArticleDetailPage";
+import { PublicSiteHeader } from "./PublicSiteHeader";
+import { PublicContentPage, type PublicPageKind } from "./PublicContentPage";
+import { SeoHead } from "./SeoHead";
 import { useAuth } from "./hooks/useAuth";
 import "./styles.css";
 
@@ -125,11 +131,94 @@ function LandingRoute({
   );
 }
 
+function NewsRoute({
+  language,
+  setLanguage,
+}: {
+  language: Language;
+  setLanguage: (language: Language) => void;
+}) {
+  const navigate = useNavigate();
+  const { slug } = useParams();
+  const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode | null>(null);
+  const { user, isAuthLoading, signOut } = useAuth();
+  const enterWorkspace = () => navigate("/app/lineup?pitch=7");
+
+  return (
+    <>
+      <div style={{ background: "#091a12" }}>
+        <PublicSiteHeader
+          language={language}
+          onChangeLanguage={setLanguage}
+          onExplore={enterWorkspace}
+          onSignIn={() => setAuthDialogMode("sign_in")}
+          onSignUp={() => setAuthDialogMode("sign_up")}
+          user={user}
+          isAuthLoading={isAuthLoading}
+          onSignOut={async () => {
+            await signOut();
+            navigate("/");
+          }}
+          authLabels={{
+            signIn: routeCopy[language].signIn,
+            signUp: routeCopy[language].signUp,
+            signOut: routeCopy[language].signOut,
+          }}
+        />
+        {slug ? <NewsArticleDetailPage language={language} slug={slug} /> : <NewsKnowledgePage language={language} />}
+      </div>
+      {authDialogMode ? (
+        <AuthDialog
+          language={language}
+          initialMode={authDialogMode}
+          onClose={() => setAuthDialogMode(null)}
+          onAuthenticated={() => {
+            setAuthDialogMode(null);
+            enterWorkspace();
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function PublicContentRoute({
+  language,
+  setLanguage,
+  kind,
+}: {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  kind: PublicPageKind;
+}) {
+  const navigate = useNavigate();
+  const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode | null>(null);
+  const { user, isAuthLoading, signOut } = useAuth();
+  const enterWorkspace = () => navigate("/app/lineup?pitch=7");
+  return (
+    <>
+      <div style={{ background: "#091a12" }}>
+        <PublicSiteHeader language={language} onChangeLanguage={setLanguage} onExplore={enterWorkspace} onSignIn={() => setAuthDialogMode("sign_in")} onSignUp={() => setAuthDialogMode("sign_up")} user={user} isAuthLoading={isAuthLoading} onSignOut={async () => { await signOut(); navigate("/"); }} authLabels={{ signIn: routeCopy[language].signIn, signUp: routeCopy[language].signUp, signOut: routeCopy[language].signOut }} />
+        <PublicContentPage kind={kind} onExplore={enterWorkspace} />
+      </div>
+      {authDialogMode ? <AuthDialog language={language} initialMode={authDialogMode} onClose={() => setAuthDialogMode(null)} onAuthenticated={() => { setAuthDialogMode(null); enterWorkspace(); }} /> : null}
+    </>
+  );
+}
+
+function LegacyNewsRedirect() {
+  const { slug } = useParams();
+  return <Navigate to={slug ? `/tin-tuc/${slug}` : "/tin-tuc"} replace />;
+}
+
 function CanvasRoute({ language }: { language: Language }) {
   return (
-    <Suspense fallback={<AppLoadingScreen message={routeCopy[language].loading} />}>
-      <CanvasApp initialLanguage={language} />
-    </Suspense>
+    <>
+      <SeoHead title="Không gian chiến thuật | Đội Hình Sân Cỏ" description="Không gian tạo đội hình và sa bàn chiến thuật." path="/app/lineup" robots="noindex,nofollow" />
+      <Suspense fallback={<AppLoadingScreen message={routeCopy[language].loading} />}>
+        <CanvasApp initialLanguage={language} />
+      </Suspense>
+    </>
   );
 }
 
@@ -139,6 +228,15 @@ function RootRouter() {
   return (
     <Routes>
       <Route path="/" element={<LandingRoute language={language} setLanguage={setLanguage} />} />
+      <Route path="/__prerender-home" element={<LandingRoute language={language} setLanguage={setLanguage} />} />
+      <Route path="/tin-tuc" element={<NewsRoute language={language} setLanguage={setLanguage} />} />
+      <Route path="/tin-tuc/:slug" element={<NewsRoute language={language} setLanguage={setLanguage} />} />
+      <Route path="/tin-tuc-kien-thuc" element={<LegacyNewsRedirect />} />
+      <Route path="/tin-tuc-kien-thuc/:slug" element={<LegacyNewsRedirect />} />
+      <Route path="/ve-chung-toi" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="about" />} />
+      <Route path="/tinh-nang/tao-doi-hinh" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="lineup" />} />
+      <Route path="/tinh-nang/ve-sa-ban" element={<PublicContentRoute language={language} setLanguage={setLanguage} kind="tactics" />} />
+      <Route path="/app" element={<Navigate to="/app/lineup?pitch=7" replace />} />
       <Route path="/app/lineup" element={<CanvasRoute language={language} />} />
       <Route path="/app/tactics" element={<TacticsRouteRedirect />} />
       <Route path="/app/profile" element={<CanvasRoute language={language} />} />
@@ -165,8 +263,10 @@ window.__LINEUP_ROOT__ = root;
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <RootRouter />
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <RootRouter />
+      </BrowserRouter>
+    </HelmetProvider>
   </React.StrictMode>,
 );

@@ -1,0 +1,91 @@
+.header {
+  position: relative;
+  z-index: 20;
+  width: min(1200px, calc(100% - 40px));
+  min-height: 76px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #f3fff5;
+  font-size: 16px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.logo { width: 34px; height: 34px; }
+.panel { display: flex; align-items: center; gap: 28px; }
+.navigation { display: flex; align-items: center; gap: 24px; }
+.navigation a {
+  position: relative;
+  padding: 10px 0;
+  color: rgba(235, 248, 237, 0.72);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.navigation a:hover, .navigation .active { color: #8be2a6; }
+.navigation .active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 2px;
+  background: #67d68c;
+}
+.actions { display: flex; align-items: center; gap: 8px; }
+.button, .primaryButton, .languageButton, .menuButton {
+  min-height: 38px;
+  border: 1px solid rgba(232, 245, 233, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f3fff5;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.button, .primaryButton { padding: 0 16px; border-radius: 999px; }
+.primaryButton { border-color: #72dc95; background: #72dc95; color: #071b12; }
+.button:hover { border-color: rgba(139, 226, 166, 0.7); }
+.primaryButton:hover { background: #91e8ad; }
+.languageButton { width: 42px; border-radius: 999px; }
+.email { max-width: 170px; overflow: hidden; text-overflow: ellipsis; color: rgba(235, 248, 237, 0.72); font-size: 12px; }
+.menuButton { display: none; width: 40px; padding: 0; place-items: center; border-radius: 6px; }
+
+@media (max-width: 940px) {
+  .header { width: min(100% - 28px, 1200px); min-height: 66px; }
+  .menuButton { display: grid; }
+  .panel {
+    display: none;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    align-items: stretch;
+    padding: 16px;
+    border: 1px solid rgba(139, 226, 166, 0.24);
+    background: #10241a;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  }
+  .panelOpen { display: block; }
+  .navigation { align-items: stretch; flex-direction: column; gap: 2px; }
+  .navigation a { padding: 12px; }
+  .navigation .active::after { left: 12px; right: auto; width: 28px; }
+  .actions { flex-wrap: wrap; padding: 14px 12px 4px; border-top: 1px solid rgba(232, 245, 233, 0.1); }
+  .email { flex-basis: 100%; max-width: 100%; margin-bottom: 4px; }
+}
+
+@media (max-width: 480px) {
+  .brand { font-size: 14px; }
+  .logo { width: 30px; height: 30px; }
+  .actions .button, .actions .primaryButton { flex: 1; padding: 0 10px; }
+}

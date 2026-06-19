@@ -90,6 +90,7 @@ export function useAppController(initialLanguage: Language = "vi") {
   const { toasts, showToast } = useToasts();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const lineupMenuRef = useRef<HTMLDivElement>(null);
+  const workspaceBallMarkerRef = useRef({ ...defaultBallMarker });
   const copy = copyByLanguage[language];
   const languageMeta =
     language === "vi" ? { flag: "🇻🇳", label: "VI", next: "en" as const } : { flag: "🇺🇸", label: "EN", next: "vi" as const };
@@ -176,6 +177,10 @@ export function useAppController(initialLanguage: Language = "vi") {
     opponentMarkers,
   });
   const showAllCanvasObjects = true;
+  useEffect(() => {
+    if (isAnimationTool || isPlaying || !ballMarker) return;
+    workspaceBallMarkerRef.current = { ...ballMarker };
+  }, [ballMarker, isAnimationTool, isPlaying]);
   const {
     redoDrawLines,
     setRedoDrawLines,
@@ -223,14 +228,9 @@ export function useAppController(initialLanguage: Language = "vi") {
     isAnimationTool,
     isPlaying,
     currentFrameIndex,
-    animationFrames,
-    draftFrame,
-    pitchSize,
     nextFrame,
     commitDraftIfChanged,
     stop,
-    setPlayers,
-    setOpponentMarkers,
   });
   const { handleSaveCurrentLineup, shareSavedLineup } = useLineupStorageActions({
     user,
@@ -378,9 +378,19 @@ export function useAppController(initialLanguage: Language = "vi") {
     if (nextTool === "ANIMATION_TOOL") {
       const currentBallMarker =
         useTacticalStore.getState().draftFrame.find((marker) => marker.type === "ball") ?? defaultBallMarker;
+      workspaceBallMarkerRef.current = { ...currentBallMarker };
       const workspaceFrame = createTacticalFrameFromWorkspace(players, opponentMarkers, currentBallMarker);
       useTacticalStore.setState({
         draftFrame: cloneTacticalFrame(workspaceFrame),
+        currentFrameIndex: useTacticalStore.getState().frames.length,
+        isPlaying: false,
+        playbackFrames: null,
+      });
+    } else if (activeTool === "ANIMATION_TOOL") {
+      useTacticalStore.setState({
+        draftFrame: cloneTacticalFrame(
+          createTacticalFrameFromWorkspace(players, opponentMarkers, workspaceBallMarkerRef.current),
+        ),
         currentFrameIndex: useTacticalStore.getState().frames.length,
         isPlaying: false,
         playbackFrames: null,
