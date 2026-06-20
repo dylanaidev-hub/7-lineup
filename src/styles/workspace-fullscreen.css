@@ -3,7 +3,7 @@
 .workspace-fullscreen-shell--active {
   position: fixed;
   inset: 0;
-  top: var(--app-vv-offset-top, 0px);
+  top: 0;
   z-index: 9999;
   display: block;
   width: var(--app-vvw, 100vw);
@@ -120,6 +120,13 @@ body.lineup-portrait-fullscreen .workspace-fullscreen-portrait-rotator {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.workspace-fullscreen-shell--active .pitch,
+.workspace-fullscreen-portrait-rotator .pitch,
+.workspace-fullscreen-pitch-viewport .pitch-bounds > .pitch {
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* Mobile/tablet fullscreen: keep 68×105 aspect ratio via pitch-bounds. */

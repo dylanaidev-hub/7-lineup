@@ -152,7 +152,7 @@ body.app-pseudo-fullscreen-active {
 .app-pseudo-fullscreen {
   position: fixed !important;
   inset: 0 !important;
-  top: var(--app-vv-offset-top, 0px) !important;
+  top: 0 !important;
   z-index: 9999 !important;
   width: var(--app-vvw, 100vw) !important;
   height: var(--app-vvh, 100dvh) !important;

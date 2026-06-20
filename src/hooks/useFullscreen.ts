@@ -49,12 +49,12 @@ const syncVisualViewportVars = () => {
   const viewport = window.visualViewport;
   const width = viewport?.width ?? window.innerWidth;
   const height = viewport?.height ?? window.innerHeight;
-  const offsetTop = viewport?.offsetTop ?? 0;
   const root = document.documentElement;
 
   root.style.setProperty("--app-vvw", `${width}px`);
   root.style.setProperty("--app-vvh", `${height}px`);
-  root.style.setProperty("--app-vv-offset-top", `${offsetTop}px`);
+  // Keep shell pinned to the top; do not follow visualViewport.offsetTop (pull-down chrome).
+  root.style.setProperty("--app-vv-offset-top", "0px");
   root.style.setProperty("--app-lvh", `${window.innerHeight}px`);
 };
 
@@ -118,18 +118,6 @@ const getNativeFullscreenTargets = (workspace: HTMLElement) => {
     return [document.documentElement, root, workspace, document.body].filter(Boolean) as WebkitFullscreenElement[];
   }
   return [workspace, document.documentElement, root, document.body].filter(Boolean) as WebkitFullscreenElement[];
-};
-
-const isViewportLandscape = () => {
-  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
-  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-  if (Math.abs(viewportWidth - viewportHeight) > 1) return viewportWidth > viewportHeight;
-
-  const legacyOrientation = (window as Window & { orientation?: number }).orientation;
-  if (typeof legacyOrientation === "number") return Math.abs(legacyOrientation) === 90;
-
-  return window.screen.orientation?.type.startsWith("landscape")
-    ?? window.matchMedia("(orientation: landscape)").matches;
 };
 
 /** Must be invoked synchronously inside a user gesture (click/touch). */
@@ -266,7 +254,9 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     isTransitioningRef.current = true;
     clearNativeFallbackTimer();
 
-    if (!supportsDomFullscreen(element)) {
+    // Mobile browser tabs: pseudo fullscreen avoids native swipe-down-to-dismiss
+    // and keeps marker drag from conflicting with browser chrome gestures.
+    if (isMobileBrowserTab() || !supportsDomFullscreen(element)) {
       enterPseudoFullscreen();
       isTransitioningRef.current = false;
       return;
@@ -304,55 +294,6 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   const toggleFullscreen = useCallback(() => {
     enterFullscreenFromGesture();
   }, [enterFullscreenFromGesture]);
-
-  const exitFullscreen = useCallback(() => {
-    const element = elementRef.current;
-    clearNativeFallbackTimer();
-
-    if (isPseudoFullscreenRef.current || element?.classList.contains(PSEUDO_FULLSCREEN_CLASS)) {
-      exitPseudoFullscreen();
-      return;
-    }
-
-    if (getFullscreenElement() && belongsToWorkspace(getFullscreenElement(), element)) {
-      void exitNativeFullscreen();
-      return;
-    }
-
-    exitPseudoFullscreen();
-  }, [clearNativeFallbackTimer, elementRef, exitNativeFullscreen, exitPseudoFullscreen]);
-
-  useEffect(() => {
-    if (!isFullscreen) return;
-
-    let wasLandscape = isViewportLandscape();
-
-    const exitIfRotatedToPortrait = () => {
-      const isLandscape = isViewportLandscape();
-      if (wasLandscape && !isLandscape) {
-        exitFullscreen();
-        return;
-      }
-      wasLandscape = isLandscape;
-    };
-
-    const handleOrientationChange = () => {
-      window.requestAnimationFrame(exitIfRotatedToPortrait);
-      window.setTimeout(exitIfRotatedToPortrait, 120);
-      window.setTimeout(exitIfRotatedToPortrait, 320);
-    };
-
-    const portraitQuery = window.matchMedia("(orientation: portrait)");
-    portraitQuery.addEventListener("change", handleOrientationChange);
-    window.addEventListener("orientationchange", handleOrientationChange);
-    window.screen.orientation?.addEventListener("change", handleOrientationChange);
-
-    return () => {
-      portraitQuery.removeEventListener("change", handleOrientationChange);
-      window.removeEventListener("orientationchange", handleOrientationChange);
-      window.screen.orientation?.removeEventListener("change", handleOrientationChange);
-    };
-  }, [exitFullscreen, isFullscreen]);
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -412,13 +353,11 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
 
     syncViewport();
     window.visualViewport?.addEventListener("resize", syncViewport);
-    window.visualViewport?.addEventListener("scroll", syncViewport);
     window.addEventListener("resize", syncViewport);
     window.addEventListener("orientationchange", syncViewport);
 
     return () => {
       window.visualViewport?.removeEventListener("resize", syncViewport);
-      window.visualViewport?.removeEventListener("scroll", syncViewport);
       window.removeEventListener("resize", syncViewport);
       window.removeEventListener("orientationchange", syncViewport);
     };
@@ -430,7 +369,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     const blockRubberBandScroll = (event: TouchEvent) => {
       if (event.touches.length > 1) return;
       const target = event.target;
-      if (target instanceof Element && target.closest(".pitch, input, textarea, select, button, [contenteditable='true']")) {
+      if (target instanceof Element && target.closest(".pitch, input, textarea, select, [contenteditable='true']")) {
         return;
       }
       event.preventDefault();

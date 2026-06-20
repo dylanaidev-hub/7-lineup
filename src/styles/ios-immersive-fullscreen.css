@@ -20,7 +20,7 @@ body.ios-immersive-fullscreen-active .match-bg {
 
 body.ios-immersive-fullscreen-active .app-pseudo-fullscreen,
 body.ios-immersive-fullscreen-active .workspace-fullscreen-shell--active {
-  top: var(--app-vv-offset-top, 0px) !important;
+  top: 0 !important;
   width: var(--app-vvw, 100vw) !important;
   height: var(--app-vvh, 100dvh) !important;
   min-height: var(--app-lvh, 100dvh);
