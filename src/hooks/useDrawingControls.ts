@@ -1,7 +1,7 @@
 import type { Dispatch, PointerEvent as ReactPointerEvent, RefObject, SetStateAction } from "react";
 import { useState } from "react";
 import type { DrawLine } from "../formationData";
-import { displayPointToPitch, type PitchOrientation } from "../pitchPointer";
+import { displayPointToPitch, clientToElementPercent, type PitchOrientation } from "../pitchPointer";
 
 type UseDrawingControlsOptions = {
   drawLayerRef: RefObject<SVGSVGElement | null>;
@@ -23,9 +23,16 @@ export function useDrawingControls({
     const drawLayer = drawLayerRef.current;
     if (!drawLayer) return null;
 
+    const transformed = clientToElementPercent(
+      drawLayer,
+      event.clientX,
+      event.clientY,
+      drawLayer.clientWidth,
+      drawLayer.clientHeight,
+    );
     const rect = drawLayer.getBoundingClientRect();
-    const rawX = ((event.clientX - rect.left) / rect.width) * 100;
-    const rawY = ((event.clientY - rect.top) / rect.height) * 100;
+    const rawX = transformed?.x ?? ((event.clientX - rect.left) / rect.width) * 100;
+    const rawY = transformed?.y ?? ((event.clientY - rect.top) / rect.height) * 100;
     const orientation: PitchOrientation = drawLayer.closest<HTMLElement>(".pitch")?.dataset.orientation === "landscape"
       ? "landscape"
       : "portrait";
