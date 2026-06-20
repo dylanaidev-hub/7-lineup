@@ -120,6 +120,18 @@ const getNativeFullscreenTargets = (workspace: HTMLElement) => {
   return [workspace, document.documentElement, root, document.body].filter(Boolean) as WebkitFullscreenElement[];
 };
 
+const isViewportLandscape = () => {
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  if (Math.abs(viewportWidth - viewportHeight) > 1) return viewportWidth > viewportHeight;
+
+  const legacyOrientation = (window as Window & { orientation?: number }).orientation;
+  if (typeof legacyOrientation === "number") return Math.abs(legacyOrientation) === 90;
+
+  return window.screen.orientation?.type.startsWith("landscape")
+    ?? window.matchMedia("(orientation: landscape)").matches;
+};
+
 /** Must be invoked synchronously inside a user gesture (click/touch). */
 const requestNativeFullscreenSync = (workspace: HTMLElement) => {
   const options: FullscreenOptionsWithNavigation = { navigationUI: "hide" };
@@ -292,6 +304,52 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   const toggleFullscreen = useCallback(() => {
     enterFullscreenFromGesture();
   }, [enterFullscreenFromGesture]);
+
+  const exitFullscreen = useCallback(() => {
+    const element = elementRef.current;
+    clearNativeFallbackTimer();
+
+    if (isPseudoFullscreenRef.current || element?.classList.contains(PSEUDO_FULLSCREEN_CLASS)) {
+      exitPseudoFullscreen();
+      return;
+    }
+
+    if (getFullscreenElement() && belongsToWorkspace(getFullscreenElement(), element)) {
+      void exitNativeFullscreen();
+      return;
+    }
+
+    exitPseudoFullscreen();
+  }, [clearNativeFallbackTimer, elementRef, exitNativeFullscreen, exitPseudoFullscreen]);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const exitIfPortrait = () => {
+      if (!isViewportLandscape()) {
+        exitFullscreen();
+      }
+    };
+
+    const handleOrientationChange = () => {
+      window.requestAnimationFrame(exitIfPortrait);
+      window.setTimeout(exitIfPortrait, 120);
+      window.setTimeout(exitIfPortrait, 320);
+    };
+
+    const portraitQuery = window.matchMedia("(orientation: portrait)");
+    portraitQuery.addEventListener("change", handleOrientationChange);
+    window.addEventListener("orientationchange", handleOrientationChange);
+    window.screen.orientation?.addEventListener("change", handleOrientationChange);
+    window.visualViewport?.addEventListener("resize", exitIfPortrait);
+
+    return () => {
+      portraitQuery.removeEventListener("change", handleOrientationChange);
+      window.removeEventListener("orientationchange", handleOrientationChange);
+      window.screen.orientation?.removeEventListener("change", handleOrientationChange);
+      window.visualViewport?.removeEventListener("resize", exitIfPortrait);
+    };
+  }, [exitFullscreen, isFullscreen]);
 
   useEffect(() => {
     const syncFullscreenState = () => {

@@ -56,7 +56,7 @@ const isViewportLandscape = () => {
 export function AppView({ model }: AppViewProps) {
   const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showAllCanvasObjects } = model;
   const workspaceRef = useRef<HTMLDivElement>(null);
-  const { isFullscreen, isPseudoFullscreen, enterFullscreenFromGesture, toggleFullscreen } = useFullscreen(workspaceRef);
+  const { isFullscreen, enterFullscreenFromGesture, toggleFullscreen } = useFullscreen(workspaceRef);
   const [prefersLandscapePitch, setPrefersLandscapePitch] = useState(false);
   const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
     typeof window === "undefined" ? true : window.matchMedia("(min-width: 1025px)").matches,
@@ -68,11 +68,9 @@ export function AppView({ model }: AppViewProps) {
   const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
   const wasLandscapeViewportRef = useRef(isLandscapeViewport);
   const isPitchLandscape = isFullscreen || (prefersLandscapePitch && isDesktopViewport);
-  const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
   const workspaceShellClassName = [
     "workspace-fullscreen-shell",
     isFullscreen ? "workspace-fullscreen-shell--active" : "",
-    isPortraitFullscreen ? "workspace-fullscreen-shell--portrait" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -88,12 +86,10 @@ export function AppView({ model }: AppViewProps) {
       setPrefersLandscapePitch(true);
     }
     document.body.classList.toggle("lineup-mobile-dock", isFullscreen);
-    document.body.classList.toggle("lineup-portrait-fullscreen", isPortraitFullscreen && isPseudoFullscreen);
     return () => {
       document.body.classList.remove("lineup-mobile-dock");
-      document.body.classList.remove("lineup-portrait-fullscreen");
     };
-  }, [isFullscreen, isPortraitFullscreen, isPseudoFullscreen]);
+  }, [isFullscreen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1025px)");
@@ -190,7 +186,6 @@ export function AppView({ model }: AppViewProps) {
         onAuthenticated={() => setIsAuthScreenOpen(false)}
       />
       {isPortableViewport &&
-      !isPortraitFullscreen &&
       isLandscapeViewport &&
       !isFullscreen &&
       !isLandscapePromptDismissed &&

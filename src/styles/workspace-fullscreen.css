@@ -92,23 +92,3 @@
   aspect-ratio: auto;
   border-radius: 0;
 }
-
-/* Portrait fallback: rotate the entire workspace (pitch + toolbars) into landscape layout. */
-@media (orientation: portrait) {
-  .workspace-fullscreen-shell--active.workspace-fullscreen-shell--portrait {
-    top: 50%;
-    left: 50%;
-    right: auto;
-    bottom: auto;
-    width: var(--app-vvh, 100dvh);
-    height: var(--app-vvw, 100vw);
-    transform: translate(-50%, -50%) rotate(90deg);
-    transform-origin: center center;
-  }
-
-  .workspace-fullscreen-shell--active.workspace-fullscreen-shell--portrait .workspace-fullscreen-pitch-viewport > .pitch {
-    width: 100% !important;
-    height: 100% !important;
-    transform: none;
-  }
-}
