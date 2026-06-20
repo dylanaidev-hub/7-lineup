@@ -101,25 +101,56 @@
   position: absolute;
   inset: 0;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
   pointer-events: none;
-  container-type: size;
-  --pitch-area-w: 100cqw;
-  --pitch-area-h: 100cqh;
 }
 
-.workspace-fullscreen-pitch-viewport > .pitch {
-  pointer-events: auto;
-  position: relative;
-  flex: none;
-  width: min(100cqw, calc(100cqh * var(--pitch-length) / var(--pitch-width)));
-  height: auto;
-  max-height: 100cqh;
-  min-width: 0;
-  margin: 0;
-  aspect-ratio: var(--pitch-length) / var(--pitch-width);
-  border-radius: 0;
+/* Mobile/tablet fullscreen: preserve real pitch proportions. */
+@media (max-width: 1024px) {
+  .workspace-fullscreen-pitch-viewport {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    container-type: size;
+    --pitch-area-w: 100cqw;
+    --pitch-area-h: 100cqh;
+  }
+
+  .workspace-fullscreen-pitch-viewport > .pitch {
+    pointer-events: auto;
+    position: relative;
+    flex: none;
+    width: min(100cqw, calc(100cqh * var(--pitch-length) / var(--pitch-width)));
+    height: auto;
+    max-height: 100cqh;
+    min-width: 0;
+    margin: 0;
+    aspect-ratio: var(--pitch-length) / var(--pitch-width);
+    border-radius: 0;
+  }
+}
+
+/* Desktop fullscreen: pitch fills the entire viewport. */
+@media (min-width: 1025px) {
+  .workspace-fullscreen-pitch-viewport {
+    display: block;
+  }
+
+  .workspace-fullscreen-pitch-viewport > .pitch {
+    pointer-events: auto;
+    position: absolute;
+    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    transform: none !important;
+    aspect-ratio: auto !important;
+    border-radius: 0;
+  }
 }
