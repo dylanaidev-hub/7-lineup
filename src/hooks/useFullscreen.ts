@@ -254,9 +254,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     isTransitioningRef.current = true;
     clearNativeFallbackTimer();
 
-    // Mobile browser tabs: pseudo fullscreen avoids native swipe-down-to-dismiss
-    // and keeps marker drag from conflicting with browser chrome gestures.
-    if (isMobileBrowserTab() || !supportsDomFullscreen(element)) {
+    if (!supportsDomFullscreen(element)) {
       enterPseudoFullscreen();
       isTransitioningRef.current = false;
       return;
