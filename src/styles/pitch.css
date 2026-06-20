@@ -29,32 +29,68 @@
   aspect-ratio: var(--pitch-length) / var(--pitch-width);
 }
 
-/* Scale pitch to the largest size that fits its container while keeping aspect ratio. */
+/* Responsive pitch bounds: container query box + single-axis sizing keeps aspect ratio exact. */
+.pitch-bounds {
+  container-type: size;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pitch-bounds > .pitch {
+  pointer-events: auto;
+  flex: none;
+  position: relative;
+  margin: 0;
+  box-sizing: border-box;
+  /* Portrait: height-first — fill optimal device height, derive width from ratio. */
+  height: min(100cqh, calc(100cqw * var(--pitch-length) / var(--pitch-width)));
+  width: auto;
+  max-width: 100cqw;
+  aspect-ratio: var(--pitch-width) / var(--pitch-length);
+}
+
+.pitch-bounds > .pitch.landscape {
+  height: auto;
+  max-height: 100cqh;
+  width: min(100cqw, calc(100cqh * var(--pitch-length) / var(--pitch-width)));
+  max-width: 100cqw;
+  aspect-ratio: var(--pitch-length) / var(--pitch-width);
+}
+
 .pitch-fit-contain {
   box-sizing: border-box;
 }
 
 .pitch-fit-contain--portrait {
   aspect-ratio: var(--pitch-width) / var(--pitch-length);
-  width: min(var(--pitch-area-w, 100%), calc(var(--pitch-area-h, 100%) * var(--pitch-width) / var(--pitch-length)));
   height: min(var(--pitch-area-h, 100%), calc(var(--pitch-area-w, 100%) * var(--pitch-length) / var(--pitch-width)));
+  width: auto;
+  max-width: var(--pitch-area-w, 100%);
 }
 
 .pitch-fit-contain--landscape {
   aspect-ratio: var(--pitch-length) / var(--pitch-width);
   width: min(var(--pitch-area-w, 100%), calc(var(--pitch-area-h, 100%) * var(--pitch-length) / var(--pitch-width)));
-  height: min(var(--pitch-area-h, 100%), calc(var(--pitch-area-w, 100%) * var(--pitch-width) / var(--pitch-length)));
+  height: auto;
+  max-height: var(--pitch-area-h, 100%);
 }
 
-.lineup-stage .pitch {
-  height: min(100%, 760px);
-  width: auto;
-  justify-self: center;
-  margin-bottom: 0;
-}
+@media (min-width: 1025px) {
+  .lineup-stage .pitch {
+    height: min(100%, 760px);
+    width: auto;
+    justify-self: center;
+    margin-bottom: 0;
+  }
 
-.sandbox-canvas-stage.show-marker-tray .pitch {
-  height: min(100%, 720px);
+  .sandbox-canvas-stage.show-marker-tray .pitch {
+    height: min(100%, 720px);
+  }
 }
 
 .pitch::after {

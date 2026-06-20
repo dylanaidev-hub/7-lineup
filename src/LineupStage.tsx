@@ -33,7 +33,12 @@ export function LineupStage({
   animationTimeline,
 }: LineupStageProps) {
   const modeClass = mode === "animation" ? "tool-animation" : mode === "draw" ? "tool-draw" : "tool-personnel";
-  const pitchNode = isFullscreen ? <div className="workspace-fullscreen-pitch-viewport">{pitch}</div> : pitch;
+  const pitchBounds = <div className="pitch-bounds">{pitch}</div>;
+  const pitchNode = isFullscreen ? (
+    <div className="workspace-fullscreen-pitch-viewport">{pitchBounds}</div>
+  ) : (
+    pitchBounds
+  );
 
   return (
     <div

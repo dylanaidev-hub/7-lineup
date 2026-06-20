@@ -461,30 +461,31 @@
     margin-bottom: 0;
   }
 
-  .sandbox-canvas-stage.show-marker-tray .pitch,
-  .sandbox-canvas-stage.show-animation-panel .pitch {
+  .sandbox-canvas-stage.show-marker-tray .pitch-bounds > .pitch,
+  .sandbox-canvas-stage.show-animation-panel .pitch-bounds > .pitch {
     height: 100%;
     max-height: 100%;
   }
 
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch {
+  .sandbox-canvas-stage > .pitch-bounds,
+  .sandbox-canvas-stage.show-marker-tray > .pitch-bounds,
+  .sandbox-canvas-stage.show-animation-panel > .pitch-bounds {
+    position: relative;
+    inset: auto;
     height: 100%;
     max-height: 100%;
-    width: auto;
+    width: 100%;
     justify-self: center;
     align-self: center;
   }
 
-  .sandbox-canvas-stage > .pitch.landscape,
-  .sandbox-canvas-stage.show-marker-tray > .pitch.landscape,
-  .sandbox-canvas-stage.show-animation-panel > .pitch.landscape {
-    width: min(100%, 760px);
+  .sandbox-canvas-stage .pitch-bounds > .pitch.landscape,
+  .sandbox-canvas-stage.show-marker-tray .pitch-bounds > .pitch.landscape,
+  .sandbox-canvas-stage.show-animation-panel .pitch-bounds > .pitch.landscape {
+    width: min(100cqw, calc(100cqh * var(--pitch-length) / var(--pitch-width)));
     height: auto !important;
-    max-height: calc(100% - 20px);
+    max-height: 100cqh;
     aspect-ratio: var(--pitch-length) / var(--pitch-width);
-    align-self: center;
   }
 
   .pitch.landscape {
@@ -773,9 +774,9 @@
     padding: 0 18px;
   }
 
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch,
+  .sandbox-canvas-stage > .pitch-bounds,
+  .sandbox-canvas-stage.show-marker-tray > .pitch-bounds,
+  .sandbox-canvas-stage.show-animation-panel > .pitch-bounds,
   .custom-side-tray,
   .sandbox-canvas-stage > .workspace-timeline,
   .workspace-timeline {
@@ -916,33 +917,16 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    --pitch-area-w: calc(100% - var(--lf-mobile-edge) * 2);
-    --pitch-area-h: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge));
   }
 
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch {
-    position: absolute;
-    z-index: 20;
-    top: 50%;
-    left: 50%;
-    width: min(var(--pitch-area-w), calc(var(--pitch-area-h) * var(--pitch-width) / var(--pitch-length)));
-    height: min(var(--pitch-area-h), calc(var(--pitch-area-w) * var(--pitch-length) / var(--pitch-width)));
-    min-width: 0;
-    min-height: 0;
-    margin: 0;
-    transform: translate(-50%, calc(-50% - (var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge)) / 2));
-    box-sizing: border-box;
-    aspect-ratio: var(--pitch-width) / var(--pitch-length);
+  .sandbox-canvas-stage .pitch-bounds {
+    top: var(--lf-mobile-edge);
+    right: var(--lf-mobile-edge);
+    bottom: var(--lf-pitch-reserved-bottom);
+    left: var(--lf-mobile-edge);
   }
 
-  .sandbox-canvas-stage > .pitch.landscape,
-  .sandbox-canvas-stage.show-marker-tray > .pitch.landscape,
-  .sandbox-canvas-stage.show-animation-panel > .pitch.landscape {
-    width: min(var(--pitch-area-w), calc(var(--pitch-area-h) * var(--pitch-length) / var(--pitch-width)));
-    height: min(var(--pitch-area-h), calc(var(--pitch-area-w) * var(--pitch-width) / var(--pitch-length)));
-    aspect-ratio: var(--pitch-length) / var(--pitch-width);
+  .sandbox-canvas-stage .pitch-bounds > .pitch.landscape {
     background:
       repeating-linear-gradient(
         90deg,

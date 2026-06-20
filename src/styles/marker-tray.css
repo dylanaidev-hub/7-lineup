@@ -22,14 +22,22 @@
     justify-self: end;
   }
 
-  .sandbox-canvas-stage > .pitch {
+  .sandbox-canvas-stage > .pitch-bounds {
     grid-column: 2;
     grid-row: 1;
-    width: auto;
+    position: relative;
+    inset: auto;
+    width: 100%;
     height: clamp(380px, calc(100vh - 310px), 600px);
     max-height: 100%;
     justify-self: center;
     align-self: center;
+  }
+
+  .sandbox-canvas-stage > .pitch-bounds > .pitch {
+    width: auto;
+    height: min(100cqh, calc(100cqw * var(--pitch-length) / var(--pitch-width)));
+    max-width: 100cqw;
   }
 
   .sandbox-canvas-stage > .workspace-timeline {
