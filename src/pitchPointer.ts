@@ -186,4 +186,38 @@ export function getPitchClientPosition(
     x: shouldClamp ? clampPitchCoordinate(position.x) : position.x,
     y: shouldClamp ? clampPitchCoordinate(position.y) : position.y,
   };
+}
+
+const MOBILE_BOTTOM_SHEET_SELECTORS = [
+  ".custom-side-tray",
+  ".sandbox-canvas-stage > .workspace-timeline",
+  ".lineup-column.tool-draw .footer-formation-switch",
+] as const;
+
+const isVisibleElement = (element: HTMLElement) => {
+  const style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden") return false;
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+};
+
+/** True when pointer is over an open mobile bottom sheet (marker tray, draw, animation). */
+export const isPointerOverMobileBottomSheet = (clientX: number, clientY: number) => {
+  if (typeof document === "undefined") return false;
+
+  for (const selector of MOBILE_BOTTOM_SHEET_SELECTORS) {
+    const element = document.querySelector(selector);
+    if (!(element instanceof HTMLElement) || !isVisibleElement(element)) continue;
+    const rect = element.getBoundingClientRect();
+    if (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 };
