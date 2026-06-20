@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { AnimationTimeline } from "./AnimationTimeline";
 import { AppContent } from "./AppContent";
 import { AppHeader } from "./AppHeader";
@@ -141,9 +141,19 @@ export function AppView({ model }: AppViewProps) {
     enterFullscreenFromGesture();
   };
 
+  const WorkspaceFrame = isFullscreen ? "div" : Fragment;
+  const workspaceFrameProps = isFullscreen
+    ? {
+        className: isPortraitFullscreen
+          ? "workspace-fullscreen-portrait-rotator"
+          : "workspace-fullscreen-inner",
+      }
+    : {};
+
   return (
     <main className="match-bg min-h-screen px-0 py-0 text-slate-900 antialiased sm:px-4 sm:py-6 lg:p-10">
       <div ref={workspaceRef} className={workspaceShellClassName}>
+      <WorkspaceFrame {...workspaceFrameProps}>
       {!isFullscreen ? (
       <AppHeader
         copy={copy}
@@ -446,6 +456,7 @@ export function AppView({ model }: AppViewProps) {
       </DashboardShell>
       <LineupDragPreview preview={activeTab === "lineup" ? dragPreview : null} />
       <ToastStack toasts={toasts} />
+      </WorkspaceFrame>
       </div>
     </main>
   );
