@@ -1,4 +1,4 @@
-import { Check, Clipboard, Download, Maximize, Minimize, RotateCw } from "lucide-react";
+import { Check, Clipboard, Download, Expand, Maximize, Minimize, RotateCw, Shrink } from "lucide-react";
 import styles from "./LineupFooterActions.module.css";
 
 type LineupFooterActionsProps = {
@@ -62,7 +62,7 @@ export function LineupFooterActions({
         aria-pressed={isFullscreen}
       >
         {isPortableViewport ? (
-          <RotateCw size={14} />
+          isFullscreen ? <Shrink size={14} /> : <Expand size={14} />
         ) : isFullscreen ? (
           <Minimize size={14} />
         ) : (
