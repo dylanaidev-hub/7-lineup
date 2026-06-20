@@ -100,7 +100,7 @@ body.lineup-mobile-dock .lineup-footer-actions button {
   pointer-events: auto;
 }
 
-body.lineup-mobile-dock .lineup-footer-actions .fullscreenButton {
+body.lineup-mobile-dock .lineup-footer-actions .rotateButton {
   display: none !important;
 }
 

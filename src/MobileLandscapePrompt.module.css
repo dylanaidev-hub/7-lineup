@@ -26,11 +26,8 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
 }
 
-.icon,
-.actionIcon {
+.icon {
   color: #7ee0a3;
-  transform: rotate(90deg);
-  transform-origin: center;
 }
 
 .panel h2,

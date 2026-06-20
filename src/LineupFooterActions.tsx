@@ -10,7 +10,6 @@ type LineupFooterActionsProps = {
   isCopied: boolean;
   isFullscreen: boolean;
   isLandscape: boolean;
-  showFullscreenButton?: boolean;
   onShare: () => void;
   onDownload: () => void;
   onToggleFullscreen: () => void;
@@ -26,7 +25,6 @@ export function LineupFooterActions({
   isCopied,
   isFullscreen,
   isLandscape,
-  showFullscreenButton = true,
   onShare,
   onDownload,
   onToggleFullscreen,
@@ -50,26 +48,20 @@ export function LineupFooterActions({
         aria-label={rotateLabel}
         aria-pressed={isLandscape}
       >
-        <RotateCw
-          size={14}
-          className={!showFullscreenButton && !isLandscape ? styles.rotateIconMobile : undefined}
-          aria-hidden="true"
-        />
+        <RotateCw size={14} />
         <span>{rotateLabel}</span>
       </button>
-      {showFullscreenButton ? (
-        <button
-          type="button"
-          className={styles.fullscreenButton}
-          onClick={onToggleFullscreen}
-          title={fullscreenLabel}
-          aria-label={fullscreenLabel}
-          aria-pressed={isFullscreen}
-        >
-          {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-          <span>{fullscreenLabel}</span>
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className={styles.fullscreenButton}
+        onClick={onToggleFullscreen}
+        title={fullscreenLabel}
+        aria-label={fullscreenLabel}
+        aria-pressed={isFullscreen}
+      >
+        {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+        <span>{fullscreenLabel}</span>
+      </button>
     </div>
   );
 }

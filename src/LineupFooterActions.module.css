@@ -28,13 +28,8 @@
   color: #173325;
 }
 
-.rotateIconMobile {
-  transform: rotate(90deg);
-  transform-origin: center;
-}
-
 @media (max-width: 1024px) {
-  .fullscreenButton {
+  .rotateButton {
     display: none !important;
   }
 
@@ -65,7 +60,7 @@
   }
 }
 
-:global(body.lineup-mobile-dock) .fullscreenButton {
+:global(body.lineup-mobile-dock) .rotateButton {
   display: none !important;
 }
 
