@@ -110,29 +110,13 @@
 
 .workspace-fullscreen-pitch-viewport > .pitch {
   pointer-events: auto;
-}
-
-.workspace-fullscreen-shell--active .workspace-fullscreen-pitch-viewport > .pitch,
-.workspace-fullscreen-shell--active .sandbox-canvas-stage > .pitch,
-.workspace-fullscreen-shell--active .sandbox-canvas-stage.show-marker-tray > .pitch,
-.workspace-fullscreen-shell--active .sandbox-canvas-stage.show-animation-panel > .pitch,
-.workspace-fullscreen-shell--active .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
-.workspace-fullscreen-shell--active .lineup-column.tool-animation .sandbox-canvas-stage > .pitch,
-.workspace-fullscreen-inner .workspace-fullscreen-pitch-viewport > .pitch,
-.workspace-fullscreen-portrait-rotator .workspace-fullscreen-pitch-viewport > .pitch,
-.workspace-fullscreen-portrait-rotator .sandbox-canvas-stage > .pitch {
-  position: absolute;
-  inset: 0;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
-  max-height: none !important;
-  margin: 0 !important;
-  transform: none !important;
-  aspect-ratio: auto !important;
+  position: relative;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  aspect-ratio: 10 / 7;
   border-radius: 0;
 }

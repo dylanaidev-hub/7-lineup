@@ -67,7 +67,9 @@ export function AppView({ model }: AppViewProps) {
   const [isPortableViewport, setIsPortableViewport] = useState(() => isPortableTouchDevice());
   const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
   const wasLandscapeViewportRef = useRef(isLandscapeViewport);
-  const isPitchLandscape = isFullscreen || (prefersLandscapePitch && isDesktopViewport);
+  const isPitchLandscape = isFullscreen
+    || (isPortableViewport && isLandscapeViewport)
+    || (prefersLandscapePitch && isDesktopViewport);
   const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
   const workspaceShellClassName = [
     "workspace-fullscreen-shell",
