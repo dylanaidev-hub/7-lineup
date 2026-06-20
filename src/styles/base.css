@@ -129,6 +129,18 @@ body.app-pseudo-fullscreen-active {
   .workspace-fullscreen-shell--active .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
     width: min(560px, calc(100% - var(--lf-mobile-edge) * 2)) !important;
   }
+
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage > .pitch.landscape,
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage.show-marker-tray > .pitch.landscape,
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage.show-animation-panel > .pitch.landscape,
+  .workspace-fullscreen-shell--active .lineup-column.tool-draw .sandbox-canvas-stage > .pitch.landscape,
+  .workspace-fullscreen-shell--active .lineup-column.tool-animation .sandbox-canvas-stage > .pitch.landscape {
+    width: auto !important;
+    height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge)) !important;
+    max-width: calc(100% - var(--lf-mobile-edge) * 2) !important;
+    max-height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge)) !important;
+    aspect-ratio: 10 / 7;
+  }
 }
 
 .app-pseudo-fullscreen {

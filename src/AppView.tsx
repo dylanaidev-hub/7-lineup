@@ -26,6 +26,33 @@ import { useFullscreen } from "./hooks/useFullscreen";
 
 type AppViewProps = { model: ReturnType<typeof useAppController> };
 
+const isPortableTouchDevice = () => {
+  if (typeof window === "undefined") return false;
+
+  const userAgent = navigator.userAgent;
+  const isIOSDevice = /iPad|iPhone|iPod/i.test(userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroidDevice = /Android/i.test(userAgent);
+  const hasTouchInput = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+  const shortestScreenSide = Math.min(window.screen.width, window.screen.height);
+
+  return isIOSDevice || isAndroidDevice || (hasTouchInput && shortestScreenSide <= 1024);
+};
+
+const isViewportLandscape = () => {
+  if (typeof window === "undefined") return false;
+
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  if (Math.abs(viewportWidth - viewportHeight) > 1) return viewportWidth > viewportHeight;
+
+  const legacyOrientation = (window as Window & { orientation?: number }).orientation;
+  if (typeof legacyOrientation === "number") return Math.abs(legacyOrientation) === 90;
+
+  return window.screen.orientation?.type.startsWith("landscape")
+    ?? window.matchMedia("(orientation: landscape)").matches;
+};
+
 export function AppView({ model }: AppViewProps) {
   const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showAllCanvasObjects } = model;
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -35,10 +62,12 @@ export function AppView({ model }: AppViewProps) {
     typeof window === "undefined" ? true : window.matchMedia("(min-width: 1025px)").matches,
   );
   const [isLandscapeViewport, setIsLandscapeViewport] = useState(() =>
-    typeof window === "undefined" ? false : window.matchMedia("(orientation: landscape)").matches,
+    isViewportLandscape(),
   );
+  const [isPortableViewport, setIsPortableViewport] = useState(() => isPortableTouchDevice());
   const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
-  const isPitchLandscape = isDesktopViewport && prefersLandscapePitch;
+  const wasLandscapeViewportRef = useRef(isLandscapeViewport);
+  const isPitchLandscape = prefersLandscapePitch && (isDesktopViewport || (isPortableViewport && isFullscreen));
   const fullscreenLabel = language === "vi"
     ? isFullscreen ? "Thoát toàn màn hình (F)" : "Toàn màn hình (F)"
     : isFullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)";
@@ -49,21 +78,46 @@ export function AppView({ model }: AppViewProps) {
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1025px)");
     const landscapeQuery = window.matchMedia("(orientation: landscape)");
+    const pendingSyncs: number[] = [];
     const syncViewport = () => {
+      const nextLandscape = isViewportLandscape();
+
       setIsDesktopViewport(desktopQuery.matches);
-      setIsLandscapeViewport(landscapeQuery.matches);
-      if (!landscapeQuery.matches) setIsLandscapePromptDismissed(false);
+      setIsLandscapeViewport(nextLandscape);
+      setIsPortableViewport(isPortableTouchDevice());
+
+      if (!nextLandscape || (nextLandscape && !wasLandscapeViewportRef.current)) {
+        setIsLandscapePromptDismissed(false);
+      }
+      wasLandscapeViewportRef.current = nextLandscape;
     };
+    const syncAfterOrientationChange = () => {
+      window.requestAnimationFrame(syncViewport);
+      pendingSyncs.push(window.setTimeout(syncViewport, 120));
+      pendingSyncs.push(window.setTimeout(syncViewport, 320));
+      pendingSyncs.push(window.setTimeout(syncViewport, 600));
+    };
+
     syncViewport();
     desktopQuery.addEventListener("change", syncViewport);
     landscapeQuery.addEventListener("change", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", syncAfterOrientationChange);
+    window.screen.orientation?.addEventListener("change", syncAfterOrientationChange);
+    window.visualViewport?.addEventListener("resize", syncViewport);
     return () => {
       desktopQuery.removeEventListener("change", syncViewport);
       landscapeQuery.removeEventListener("change", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", syncAfterOrientationChange);
+      window.screen.orientation?.removeEventListener("change", syncAfterOrientationChange);
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+      pendingSyncs.forEach((timeoutId) => window.clearTimeout(timeoutId));
     };
   }, []);
 
   const openMobileLandscapeFullscreen = async () => {
+    setPrefersLandscapePitch(true);
     await toggleFullscreen();
     const orientation = (window.screen as Screen & {
       orientation?: ScreenOrientation & { lock?: (value: "landscape") => Promise<void> };
@@ -127,7 +181,7 @@ export function AppView({ model }: AppViewProps) {
         onCloseAuth={() => setIsAuthScreenOpen(false)}
         onAuthenticated={() => setIsAuthScreenOpen(false)}
       />
-      {!isDesktopViewport &&
+      {isPortableViewport &&
       isLandscapeViewport &&
       !isFullscreen &&
       !isLandscapePromptDismissed &&

@@ -90,9 +90,3 @@
   color: #ffffff;
   cursor: pointer;
 }
-
-@media (min-width: 1025px), (orientation: portrait) {
-  .overlay {
-    display: none;
-  }
-}
