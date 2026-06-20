@@ -45,7 +45,8 @@ export function AppHeader({
   onSignOut,
 }: AppHeaderProps) {
   return (
-    <header className={`${styles.titleBar} mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-3 shadow-2xl`}>
+    <header className={`${styles.titleBar} mx-auto flex w-full max-w-5xl items-center shadow-2xl`}>
+      <img className={styles.logo} src="/site-logo.png" alt="Đội Hình Sân Cỏ" />
       <div className={styles.actions}>
         <button type="button" className={styles.languageSwitch} onClick={onSwitchLanguage} aria-label={copy.switchLanguage}>
           <span aria-hidden="true">{languageMeta.flag}</span>
@@ -77,7 +78,6 @@ export function AppHeader({
           </div>
         )}
       </div>
-      <h1 className={styles.title}>Line Up Football</h1>
     </header>
   );
 }

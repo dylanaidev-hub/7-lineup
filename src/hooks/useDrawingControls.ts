@@ -1,6 +1,7 @@
 import type { Dispatch, PointerEvent as ReactPointerEvent, RefObject, SetStateAction } from "react";
 import { useState } from "react";
 import type { DrawLine } from "../formationData";
+import { displayPointToPitch, type PitchOrientation } from "../pitchPointer";
 
 type UseDrawingControlsOptions = {
   drawLayerRef: RefObject<SVGSVGElement | null>;
@@ -25,11 +26,15 @@ export function useDrawingControls({
     const rect = drawLayer.getBoundingClientRect();
     const rawX = ((event.clientX - rect.left) / rect.width) * 100;
     const rawY = ((event.clientY - rect.top) / rect.height) * 100;
+    const orientation: PitchOrientation = drawLayer.closest<HTMLElement>(".pitch")?.dataset.orientation === "landscape"
+      ? "landscape"
+      : "portrait";
+    const position = displayPointToPitch(rawX, rawY, orientation);
 
     return {
       isInside: rawX >= 0 && rawX <= 100 && rawY >= 0 && rawY <= 100,
-      x: rawX,
-      y: rawY,
+      x: position.x,
+      y: position.y,
     };
   };
 

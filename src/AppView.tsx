@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { AnimationTimeline } from "./AnimationTimeline";
 import { AppContent } from "./AppContent";
 import { AppHeader } from "./AppHeader";
@@ -12,6 +13,7 @@ import { LineupStage } from "./LineupStage";
 import { LineupWorkspace } from "./LineupWorkspace";
 import { LockerRoom } from "./LockerRoom";
 import { MarkerTray } from "./MarkerTray";
+import { MobileLandscapePrompt } from "./MobileLandscapePrompt";
 import { PitchField } from "./PitchField";
 import { ProfileView } from "./ProfileView";
 import { MobilePlayerEditor, MobileSquadDrawer, SquadEditor } from "./SquadEditor";
@@ -20,13 +22,67 @@ import { getDisplayPosition } from "./formationData";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
 import { localizeError } from "./appI18n";
 import type { useAppController } from "./hooks/useAppController";
+import { useFullscreen } from "./hooks/useFullscreen";
 
 type AppViewProps = { model: ReturnType<typeof useAppController> };
 
 export function AppView({ model }: AppViewProps) {
   const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showAllCanvasObjects } = model;
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggleFullscreen } = useFullscreen(workspaceRef);
+  const [prefersLandscapePitch, setPrefersLandscapePitch] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+    typeof window === "undefined" ? true : window.matchMedia("(min-width: 1025px)").matches,
+  );
+  const [isLandscapeViewport, setIsLandscapeViewport] = useState(() =>
+    typeof window === "undefined" ? false : window.matchMedia("(orientation: landscape)").matches,
+  );
+  const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
+  const isPitchLandscape = isDesktopViewport && prefersLandscapePitch;
+  const fullscreenLabel = language === "vi"
+    ? isFullscreen ? "Thoát toàn màn hình (F)" : "Toàn màn hình (F)"
+    : isFullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)";
+  const rotateLabel = language === "vi"
+    ? isPitchLandscape ? "Sân dọc" : "Sân ngang"
+    : isPitchLandscape ? "Portrait pitch" : "Landscape pitch";
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1025px)");
+    const landscapeQuery = window.matchMedia("(orientation: landscape)");
+    const syncViewport = () => {
+      setIsDesktopViewport(desktopQuery.matches);
+      setIsLandscapeViewport(landscapeQuery.matches);
+      if (!landscapeQuery.matches) setIsLandscapePromptDismissed(false);
+    };
+    syncViewport();
+    desktopQuery.addEventListener("change", syncViewport);
+    landscapeQuery.addEventListener("change", syncViewport);
+    return () => {
+      desktopQuery.removeEventListener("change", syncViewport);
+      landscapeQuery.removeEventListener("change", syncViewport);
+    };
+  }, []);
+
+  const openMobileLandscapeFullscreen = async () => {
+    await toggleFullscreen();
+    const orientation = (window.screen as Screen & {
+      orientation?: ScreenOrientation & { lock?: (value: "landscape") => Promise<void> };
+    }).orientation;
+
+    try {
+      await orientation?.lock?.("landscape");
+    } catch {
+      // iOS and some browsers only support the pseudo-fullscreen fallback.
+    }
+  };
+
   return (
     <main className="match-bg min-h-screen px-0 py-0 text-slate-900 antialiased sm:px-4 sm:py-6 lg:p-10">
+      <div
+        ref={workspaceRef}
+        className={`workspace-fullscreen-shell${isFullscreen ? " workspace-fullscreen-shell--active" : ""}`}
+      >
+      {!isFullscreen ? (
       <AppHeader
         copy={copy}
         user={user}
@@ -46,6 +102,7 @@ export function AppView({ model }: AppViewProps) {
           navigate("/", { replace: true });
         }}
       />
+      ) : null}
       <AppOverlays
         copy={copy}
         language={language}
@@ -70,6 +127,24 @@ export function AppView({ model }: AppViewProps) {
         onCloseAuth={() => setIsAuthScreenOpen(false)}
         onAuthenticated={() => setIsAuthScreenOpen(false)}
       />
+      {!isDesktopViewport &&
+      isLandscapeViewport &&
+      !isFullscreen &&
+      !isLandscapePromptDismissed &&
+      activeTab === "lineup" ? (
+        <MobileLandscapePrompt
+          title={language === "vi" ? "Chế độ màn hình ngang" : "Landscape mode"}
+          description={
+            language === "vi"
+              ? "Mở toàn màn hình để có thêm không gian chỉnh đội hình và thao tác trên sân."
+              : "Open fullscreen for more room to edit the lineup and work on the pitch."
+          }
+          openLabel={language === "vi" ? "Mở toàn màn hình" : "Open fullscreen"}
+          dismissLabel={language === "vi" ? "Để sau" : "Not now"}
+          onOpenFullscreen={() => void openMobileLandscapeFullscreen()}
+          onDismiss={() => setIsLandscapePromptDismissed(true)}
+        />
+      ) : null}
       <DashboardShell isTacticsView={false}>
         <AppContent
           activeTab={activeTab}
@@ -197,6 +272,7 @@ export function AppView({ model }: AppViewProps) {
                       showDrawTools={showDrawTools}
                       isAnimationTool={isAnimationTool}
                       isPlaying={isPlaying}
+                      isLandscape={isPitchLandscape}
                       showAllCanvasObjects={showAllCanvasObjects}
                       draggingPlayerId={draggingId}
                       draggingOpponentId={draggingOpponentId}
@@ -285,9 +361,15 @@ export function AppView({ model }: AppViewProps) {
                   shareLabel={copy.share}
                   copiedLabel={copy.copied}
                   downloadLabel={copy.download}
+                  fullscreenLabel={fullscreenLabel}
+                  rotateLabel={rotateLabel}
                   isCopied={copyStatus === "copied"}
+                  isFullscreen={isFullscreen}
+                  isLandscape={isPitchLandscape}
                   onShare={copyShareLink}
                   onDownload={downloadLineupImage}
+                  onToggleFullscreen={() => void toggleFullscreen()}
+                  onToggleOrientation={() => setPrefersLandscapePitch((current) => !current)}
                 />
               }
               />
@@ -298,6 +380,7 @@ export function AppView({ model }: AppViewProps) {
       </DashboardShell>
       <LineupDragPreview preview={activeTab === "lineup" ? dragPreview : null} />
       <ToastStack toasts={toasts} />
+      </div>
     </main>
   );
 }

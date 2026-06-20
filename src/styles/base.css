@@ -66,6 +66,86 @@ option {
   overflow-x: clip;
 }
 
+html.app-pseudo-fullscreen-active,
+body.app-pseudo-fullscreen-active {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.workspace-fullscreen-shell {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+}
+
+.workspace-fullscreen-shell:fullscreen,
+.workspace-fullscreen-shell:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: #07170f;
+}
+
+.workspace-fullscreen-shell--active .dashboard-shell {
+  width: 100%;
+  max-width: none !important;
+}
+
+@media (min-width: 1025px) {
+  .workspace-fullscreen-shell--active .content-grid {
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .workspace-fullscreen-shell--active .lineup-stage {
+    padding: 4px;
+  }
+
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage > .pitch,
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage.show-animation-panel > .pitch {
+    width: auto !important;
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .workspace-fullscreen-shell--active {
+    --lf-mobile-edge: 6px;
+    --lf-mobile-gap: 8px;
+  }
+
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage > .pitch,
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage.show-marker-tray > .pitch,
+  .workspace-fullscreen-shell--active .sandbox-canvas-stage.show-animation-panel > .pitch,
+  .workspace-fullscreen-shell--active .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
+  .workspace-fullscreen-shell--active .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
+    width: min(560px, calc(100% - var(--lf-mobile-edge) * 2)) !important;
+  }
+}
+
+.app-pseudo-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  background: #07170f;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
 .match-bg {
   display: flex;
   height: 100vh;

@@ -1,5 +1,6 @@
 import { getBenchNames, type DrawLine, type FormationPlayer, type OpponentMarker } from "./formationData";
 import type { TacticalMarker } from "./tacticalData";
+import { pitchPointToDisplay, type PitchOrientation } from "./pitchPointer";
 
 type CanvasRect = {
   x: number;
@@ -79,14 +80,16 @@ function resolvePlayerAnchor(
   exportPadding: number,
   pitchClientWidth: number,
   pitchClientHeight: number,
+  orientation: PitchOrientation,
 ): PlayerAnchor {
   const px = (value: number) => exportPadding + (value / 100) * pitchWidth;
   const py = (value: number) => exportPadding + (value / 100) * pitchHeight;
 
   const token = pitch.querySelector<HTMLElement>(`[data-player-id="${player.id}"]`);
   if (!token) {
-    const x = px(player.x);
-    const y = py(player.y);
+    const position = pitchPointToDisplay(player.x, player.y, orientation);
+    const x = px(position.x);
+    const y = py(position.y);
     const nameHeight = pitchHeight * 0.034;
     const nameWidth = Math.min(pitchWidth * 0.24, Math.max(pitchWidth * 0.14, pitchWidth * 0.05));
     return {
@@ -158,6 +161,7 @@ export function renderLineupCanvas({
   const pitchBounds = pitch.getBoundingClientRect();
   const pitchWidth = Math.round(pitchClientWidth * scale);
   const pitchHeight = Math.round(pitchClientHeight * scale);
+  const orientation: PitchOrientation = pitch.dataset.orientation === "landscape" ? "landscape" : "portrait";
   const css = (value: number) => value * scale;
 
   const tokenRadius = Math.max(css(14), pitchWidth * 0.023);
@@ -199,20 +203,40 @@ export function renderLineupCanvas({
   context.lineWidth = css(3);
   context.strokeRect(px(4), py(4), pw(92), ph(92));
   context.beginPath();
-  context.moveTo(px(4), py(50));
-  context.lineTo(px(96), py(50));
+  if (orientation === "landscape") {
+    context.moveTo(px(50), py(4));
+    context.lineTo(px(50), py(96));
+  } else {
+    context.moveTo(px(4), py(50));
+    context.lineTo(px(96), py(50));
+  }
   context.stroke();
   context.beginPath();
-  context.ellipse(px(50), py(50), pw(15.5), ph(11), 0, 0, Math.PI * 2);
+  context.ellipse(
+    px(50),
+    py(50),
+    orientation === "landscape" ? pw(11) : pw(15.5),
+    orientation === "landscape" ? ph(15.5) : ph(11),
+    0,
+    0,
+    Math.PI * 2,
+  );
   context.stroke();
   context.fillStyle = "#ffffff";
   context.beginPath();
   context.arc(px(50), py(50), css(3), 0, Math.PI * 2);
   context.fill();
-  context.strokeRect(px(26), py(4), pw(48), ph(15));
-  context.strokeRect(px(37), py(4), pw(26), ph(7));
-  context.strokeRect(px(26), py(81), pw(48), ph(15));
-  context.strokeRect(px(37), py(89), pw(26), ph(7));
+  if (orientation === "landscape") {
+    context.strokeRect(px(81), py(26), pw(15), ph(48));
+    context.strokeRect(px(89), py(37), pw(7), ph(26));
+    context.strokeRect(px(4), py(26), pw(15), ph(48));
+    context.strokeRect(px(4), py(37), pw(7), ph(26));
+  } else {
+    context.strokeRect(px(26), py(4), pw(48), ph(15));
+    context.strokeRect(px(37), py(4), pw(26), ph(7));
+    context.strokeRect(px(26), py(81), pw(48), ph(15));
+    context.strokeRect(px(37), py(89), pw(26), ph(7));
+  }
 
   if (showAllCanvasObjects) {
     drawLines.forEach((line) => {
@@ -223,8 +247,12 @@ export function renderLineupCanvas({
       context.lineCap = "round";
       context.lineJoin = "round";
       context.beginPath();
-      context.moveTo(px(line.points[0].x), py(line.points[0].y));
-      line.points.slice(1).forEach((point) => context.lineTo(px(point.x), py(point.y)));
+      const firstPoint = pitchPointToDisplay(line.points[0].x, line.points[0].y, orientation);
+      context.moveTo(px(firstPoint.x), py(firstPoint.y));
+      line.points.slice(1).forEach((point) => {
+        const displayPoint = pitchPointToDisplay(point.x, point.y, orientation);
+        context.lineTo(px(displayPoint.x), py(displayPoint.y));
+      });
       context.stroke();
       context.restore();
     });
@@ -240,6 +268,7 @@ export function renderLineupCanvas({
       exportPadding,
       pitchClientWidth,
       pitchClientHeight,
+      orientation,
     );
     const { x, y, nameRect, benchRect } = anchor;
     const starterName = player.starterName.trim() || `${playerLabel} ${player.id}`;
@@ -322,12 +351,13 @@ export function renderLineupCanvas({
     opponentMarkers
       .filter((marker) => marker.onPitch)
       .forEach((marker) => {
+        const position = pitchPointToDisplay(marker.x, marker.y, orientation);
         context.save();
         context.fillStyle = "#dc2626";
         context.strokeStyle = "#ffffff";
         context.lineWidth = css(2);
         context.beginPath();
-        context.arc(px(marker.x), py(marker.y), Math.max(css(8), pitchWidth * 0.014), 0, Math.PI * 2);
+        context.arc(px(position.x), py(position.y), Math.max(css(8), pitchWidth * 0.014), 0, Math.PI * 2);
         context.fill();
         context.stroke();
         context.restore();
@@ -335,6 +365,7 @@ export function renderLineupCanvas({
   }
 
   if (showAnimationTimeline && ballMarker) {
+    const position = pitchPointToDisplay(ballMarker.x, ballMarker.y, orientation);
     context.save();
     context.fillStyle = "#f8fafc";
     context.strokeStyle = "#94a3b8";
@@ -342,7 +373,7 @@ export function renderLineupCanvas({
     context.shadowColor = "rgba(0,0,0,0.32)";
     context.shadowBlur = css(5);
     context.beginPath();
-    context.arc(px(ballMarker.x), py(ballMarker.y), Math.max(css(8), pitchWidth * 0.014), 0, Math.PI * 2);
+    context.arc(px(position.x), py(position.y), Math.max(css(8), pitchWidth * 0.014), 0, Math.PI * 2);
     context.fill();
     context.stroke();
     context.restore();

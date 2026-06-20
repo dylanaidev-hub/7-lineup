@@ -439,7 +439,7 @@
     grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
     justify-items: center;
-    padding: 8px;
+    padding: 10px;
   }
 
   .sandbox-canvas-stage.show-marker-tray {
@@ -470,11 +470,33 @@
   .sandbox-canvas-stage > .pitch,
   .sandbox-canvas-stage.show-marker-tray > .pitch,
   .sandbox-canvas-stage.show-animation-panel > .pitch {
-    height: clamp(380px, calc(100vh - 310px), 600px);
+    height: 100%;
     max-height: 100%;
     width: auto;
     justify-self: center;
     align-self: center;
+  }
+
+  .sandbox-canvas-stage > .pitch.landscape,
+  .sandbox-canvas-stage.show-marker-tray > .pitch.landscape,
+  .sandbox-canvas-stage.show-animation-panel > .pitch.landscape {
+    width: min(100%, 760px);
+    height: auto !important;
+    max-height: calc(100% - 20px);
+    aspect-ratio: 10 / 7;
+    align-self: center;
+  }
+
+  .pitch.landscape {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.05) 0,
+        rgba(255, 255, 255, 0.05) 11.11%,
+        rgba(255, 255, 255, 0.07) 11.11%,
+        rgba(255, 255, 255, 0.07) 22.22%
+      ),
+      linear-gradient(90deg, #1c5236, #134029);
   }
 }
 
