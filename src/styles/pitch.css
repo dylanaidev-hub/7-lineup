@@ -37,15 +37,13 @@
 .pitch-fit-contain--portrait {
   aspect-ratio: var(--pitch-width) / var(--pitch-length);
   width: min(var(--pitch-area-w, 100%), calc(var(--pitch-area-h, 100%) * var(--pitch-width) / var(--pitch-length)));
-  height: auto;
-  max-height: var(--pitch-area-h, 100%);
+  height: min(var(--pitch-area-h, 100%), calc(var(--pitch-area-w, 100%) * var(--pitch-length) / var(--pitch-width)));
 }
 
 .pitch-fit-contain--landscape {
   aspect-ratio: var(--pitch-length) / var(--pitch-width);
   width: min(var(--pitch-area-w, 100%), calc(var(--pitch-area-h, 100%) * var(--pitch-length) / var(--pitch-width)));
-  height: auto;
-  max-height: var(--pitch-area-h, 100%);
+  height: min(var(--pitch-area-h, 100%), calc(var(--pitch-area-w, 100%) * var(--pitch-width) / var(--pitch-length)));
 }
 
 .lineup-stage .pitch {
