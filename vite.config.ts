@@ -75,7 +75,7 @@ function seoFilesPlugin(routes: string[], articles: ContentfulRoute[]): Plugin {
 
 export default defineConfig(async ({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const skipPrerender = process.env.VERCEL === "1";
+  const skipPrerender = mode === "vercel";
   const contentfulRoutes = command === "build" && !skipPrerender ? await fetchContentfulRoutes(env) : [];
   const routes = [...new Set([...STATIC_ROUTES, ...contentfulRoutes.map(({ slug }) => `/tin-tuc/${slug}`)])];
   const prerenderRoutes = routes.map((route) => route === "/" ? "/__prerender-home" : route);
