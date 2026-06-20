@@ -209,13 +209,13 @@ export function AppView({ model }: AppViewProps) {
       !isLandscapePromptDismissed &&
       activeTab === "lineup" ? (
         <MobileLandscapePrompt
-          title={language === "vi" ? "Chế độ màn hình ngang" : "Landscape mode"}
+          title={language === "vi" ? "Xoay ngang đội hình" : "Rotate lineup to landscape"}
           description={
             language === "vi"
-              ? "Mở toàn màn hình để có thêm không gian chỉnh đội hình và thao tác trên sân."
-              : "Open fullscreen for more room to edit the lineup and work on the pitch."
+              ? "Xoay đội hình sang chiều ngang để có thêm không gian chỉnh sân và sắp xếp cầu thủ."
+              : "Rotate the lineup to landscape for more room to arrange players and work on the pitch."
           }
-          openLabel={language === "vi" ? "Mở toàn màn hình" : "Open fullscreen"}
+          openLabel={language === "vi" ? "Xoay ngang đội hình" : "Rotate lineup to landscape"}
           dismissLabel={language === "vi" ? "Để sau" : "Not now"}
           onOpenFullscreen={openMobileLandscapeFullscreen}
           onDismiss={() => setIsLandscapePromptDismissed(true)}
