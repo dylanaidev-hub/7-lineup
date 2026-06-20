@@ -68,9 +68,11 @@ export function AppView({ model }: AppViewProps) {
   const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
   const wasLandscapeViewportRef = useRef(isLandscapeViewport);
   const isPitchLandscape = isFullscreen || (prefersLandscapePitch && isDesktopViewport);
+  const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
   const workspaceShellClassName = [
     "workspace-fullscreen-shell",
     isFullscreen ? "workspace-fullscreen-shell--active" : "",
+    isPortraitFullscreen ? "workspace-fullscreen-shell--portrait" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -86,10 +88,12 @@ export function AppView({ model }: AppViewProps) {
       setPrefersLandscapePitch(true);
     }
     document.body.classList.toggle("lineup-mobile-dock", isFullscreen);
+    document.body.classList.toggle("lineup-portrait-fullscreen", isPortraitFullscreen);
     return () => {
       document.body.classList.remove("lineup-mobile-dock");
+      document.body.classList.remove("lineup-portrait-fullscreen");
     };
-  }, [isFullscreen]);
+  }, [isFullscreen, isPortraitFullscreen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1025px)");
@@ -186,6 +190,7 @@ export function AppView({ model }: AppViewProps) {
         onAuthenticated={() => setIsAuthScreenOpen(false)}
       />
       {isPortableViewport &&
+      !isPortraitFullscreen &&
       isLandscapeViewport &&
       !isFullscreen &&
       !isLandscapePromptDismissed &&
