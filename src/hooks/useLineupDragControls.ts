@@ -47,23 +47,34 @@ export function useLineupDragControls({
     return getPitchClientPosition(pitchRef, event.clientX, event.clientY, options);
   };
 
-  const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
+  const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number, isDrop = false) => {
     const position = getPitchPointerPosition(event, { clamp: false });
     if (!position) return;
     setPlayers((current) => {
-      const nextPlayers = current.map((player) =>
-        player.id === id
-          ? {
-              ...player,
-              position: position.isInside
-                ? getZoneName(pitchSize, clampPitchCoordinate(position.x), clampPitchCoordinate(position.y))
-                : player.position,
-              x: position.isInside ? clampPitchCoordinate(position.x) : player.x,
-              y: position.isInside ? clampPitchCoordinate(position.y) : player.y,
-              onPitch: position.isInside,
-            }
-          : player,
-      );
+      const nextPlayers = current.map((player) => {
+        if (player.id !== id) return player;
+
+        if (position.isInside) {
+          return {
+            ...player,
+            position: getZoneName(pitchSize, clampPitchCoordinate(position.x), clampPitchCoordinate(position.y)),
+            x: clampPitchCoordinate(position.x),
+            y: clampPitchCoordinate(position.y),
+            onPitch: true,
+          };
+        }
+
+        if (isDrop) {
+          return { ...player, onPitch: false };
+        }
+
+        return {
+          ...player,
+          x: position.x,
+          y: position.y,
+          onPitch: true,
+        };
+      });
 
       if (pitchSize === "custom") {
         setCustomCount(nextPlayers.filter((player) => player.onPitch).length);
@@ -73,20 +84,33 @@ export function useLineupDragControls({
     });
   };
 
-  const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number) => {
+  const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number, isDrop = false) => {
     const position = getPitchPointerPosition(event, { clamp: false });
     if (!position) return;
     setOpponentMarkers((current) =>
-      current.map((marker) =>
-        marker.id === id
-          ? {
-              ...marker,
-              onPitch: position.isInside,
-              x: position.isInside ? clampPitchCoordinate(position.x) : marker.x,
-              y: position.isInside ? clampPitchCoordinate(position.y) : marker.y,
-            }
-          : marker,
-      ),
+      current.map((marker) => {
+        if (marker.id !== id) return marker;
+
+        if (position.isInside) {
+          return {
+            ...marker,
+            onPitch: true,
+            x: clampPitchCoordinate(position.x),
+            y: clampPitchCoordinate(position.y),
+          };
+        }
+
+        if (isDrop) {
+          return { ...marker, onPitch: false };
+        }
+
+        return {
+          ...marker,
+          onPitch: true,
+          x: position.x,
+          y: position.y,
+        };
+      }),
     );
   };
 
@@ -105,15 +129,15 @@ export function useLineupDragControls({
   const playerDrag = useMarkerDragSession<number>({
     canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
     showPreview: false,
-    onMove: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id)),
-    onDrop: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id)),
+    onMove: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id, false)),
+    onDrop: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id, true)),
   });
 
   const opponentDrag = useMarkerDragSession<number>({
     canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
     showPreview: false,
-    onMove: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id)),
-    onDrop: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id)),
+    onMove: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id, false)),
+    onDrop: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id, true)),
   });
 
   const updateBallMarkerFromPoint = (clientX: number, clientY: number, commitDrop = false) => {
