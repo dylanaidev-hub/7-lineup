@@ -67,13 +67,29 @@ export function AppView({ model }: AppViewProps) {
   const [isPortableViewport, setIsPortableViewport] = useState(() => isPortableTouchDevice());
   const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
   const wasLandscapeViewportRef = useRef(isLandscapeViewport);
-  const isPitchLandscape = prefersLandscapePitch && (isDesktopViewport || (isPortableViewport && isFullscreen));
+  const isPitchLandscape = isFullscreen || (prefersLandscapePitch && isDesktopViewport);
+  const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
+  const workspaceShellClassName = [
+    "workspace-fullscreen-shell",
+    isFullscreen ? "workspace-fullscreen-shell--active" : "",
+    isPortraitFullscreen ? "workspace-fullscreen-shell--portrait" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const fullscreenLabel = language === "vi"
     ? isFullscreen ? "Thoát toàn màn hình (F)" : "Toàn màn hình (F)"
     : isFullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)";
   const rotateLabel = language === "vi"
     ? isPitchLandscape ? "Sân dọc" : "Sân ngang"
     : isPitchLandscape ? "Portrait pitch" : "Landscape pitch";
+
+  useEffect(() => {
+    if (isFullscreen) {
+      setPrefersLandscapePitch(true);
+    }
+    document.body.classList.toggle("lineup-mobile-dock", isFullscreen);
+    return () => document.body.classList.remove("lineup-mobile-dock");
+  }, [isFullscreen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1025px)");
@@ -116,26 +132,14 @@ export function AppView({ model }: AppViewProps) {
     };
   }, []);
 
-  const openMobileLandscapeFullscreen = async () => {
+  const openMobileLandscapeFullscreen = () => {
     setPrefersLandscapePitch(true);
-    await toggleFullscreen();
-    const orientation = (window.screen as Screen & {
-      orientation?: ScreenOrientation & { lock?: (value: "landscape") => Promise<void> };
-    }).orientation;
-
-    try {
-      await orientation?.lock?.("landscape");
-    } catch {
-      // iOS and some browsers only support the pseudo-fullscreen fallback.
-    }
+    void toggleFullscreen();
   };
 
   return (
     <main className="match-bg min-h-screen px-0 py-0 text-slate-900 antialiased sm:px-4 sm:py-6 lg:p-10">
-      <div
-        ref={workspaceRef}
-        className={`workspace-fullscreen-shell${isFullscreen ? " workspace-fullscreen-shell--active" : ""}`}
-      >
+      <div ref={workspaceRef} className={workspaceShellClassName}>
       {!isFullscreen ? (
       <AppHeader
         copy={copy}
@@ -195,7 +199,7 @@ export function AppView({ model }: AppViewProps) {
           }
           openLabel={language === "vi" ? "Mở toàn màn hình" : "Open fullscreen"}
           dismissLabel={language === "vi" ? "Để sau" : "Not now"}
-          onOpenFullscreen={() => void openMobileLandscapeFullscreen()}
+          onOpenFullscreen={openMobileLandscapeFullscreen}
           onDismiss={() => setIsLandscapePromptDismissed(true)}
         />
       ) : null}
@@ -260,6 +264,7 @@ export function AppView({ model }: AppViewProps) {
               <LineupColumn
               mode={isAnimationTool ? "animation" : isDrawMode ? "draw" : "personnel"}
               isCustomPitch={pitchSize === "custom"}
+              isFullscreen={isFullscreen}
               header={
                 <LineupHeaderActions
                   saveLabel={copy.save}
@@ -267,6 +272,7 @@ export function AppView({ model }: AppViewProps) {
                   savedLabel={copy.saved}
                   status={lockerStatus}
                   isSaving={isLockerLoading}
+                  isFullscreen={isFullscreen}
                   onSave={handleSaveCurrentLineup}
                   onReset={resetWorkspace}
                 />
@@ -290,6 +296,7 @@ export function AppView({ model }: AppViewProps) {
                   activeTool={activeBottomSheetTool}
                   drawLabel={copy.draw}
                   isDragging={draggingId !== null || draggingOpponentId !== null || draggingTacticalMarkerId !== null}
+                  isFullscreen={isFullscreen}
                   showMarkerTray={showMarkerTray}
                   showAnimationPanel={showAnimationTimeline}
                   onSelectTool={applySandboxTool}

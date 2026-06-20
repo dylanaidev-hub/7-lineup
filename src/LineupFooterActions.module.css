@@ -59,3 +59,22 @@
     gap: 4px;
   }
 }
+
+:global(body.lineup-mobile-dock) .rotateButton {
+  display: none !important;
+}
+
+:global(body.lineup-mobile-dock) .actionsRight {
+  justify-content: center;
+  display: flex;
+  height: 48px;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+:global(body.lineup-mobile-dock) .shareButton {
+  border: 0;
+  background: #173325;
+  color: #ffffff;
+}
