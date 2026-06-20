@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { isIOSDevice, isMobileBrowserTab, supportsDomFullscreen } from "../lib/mobilePlatform";
+import { isIOSDevice, isMobileBrowserTab, mustUsePseudoFullscreen, supportsDomFullscreen } from "../lib/mobilePlatform";
 
 const PSEUDO_FULLSCREEN_ACTIVE_CLASS = "app-pseudo-fullscreen-active";
 const NATIVE_FULLSCREEN_ACTIVE_CLASS = "app-native-fullscreen-active";
@@ -258,7 +258,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     isTransitioningRef.current = true;
     clearNativeFallbackTimer();
 
-    if (!supportsDomFullscreen(element)) {
+    if (mustUsePseudoFullscreen() || !supportsDomFullscreen(element)) {
       enterPseudoFullscreen();
       isTransitioningRef.current = false;
       return;
@@ -318,15 +318,13 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       }
 
       if (!isNativeActive) {
-        const wasInAppFullscreen = shouldLockOrientationRef.current;
-
         if (
-          wasInAppFullscreen
+          shouldLockOrientationRef.current
           && !userRequestedExitRef.current
           && isIOSDevice()
           && isMobileBrowserTab()
+          && !isPseudoFullscreenRef.current
         ) {
-          // Native FS dismissed by swipe while dragging — sustain immersive UI via pseudo.
           applyNativeFullscreenClasses(false);
           isTransitioningRef.current = false;
           pendingNativeTargetRef.current = null;
@@ -391,15 +389,22 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       if (target instanceof Element && target.closest("input, textarea, select, [contenteditable='true']")) {
         return;
       }
-      // iOS: block all touch scroll during fullscreen (marker drag uses pointer events).
       if (!isIOSDevice() && target instanceof Element && target.closest(".pitch")) {
         return;
       }
       event.preventDefault();
     };
 
-    document.addEventListener("touchmove", blockRubberBandScroll, { passive: false });
-    return () => document.removeEventListener("touchmove", blockRubberBandScroll);
+    const pinViewportScroll = () => {
+      window.scrollTo(0, 0);
+    };
+
+    document.addEventListener("touchmove", blockRubberBandScroll, { passive: false, capture: true });
+    window.visualViewport?.addEventListener("scroll", pinViewportScroll);
+    return () => {
+      document.removeEventListener("touchmove", blockRubberBandScroll, { capture: true });
+      window.visualViewport?.removeEventListener("scroll", pinViewportScroll);
+    };
   }, [isFullscreen]);
 
   useEffect(() => {

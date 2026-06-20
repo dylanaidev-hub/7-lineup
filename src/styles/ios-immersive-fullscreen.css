@@ -12,6 +12,25 @@ body.ios-immersive-fullscreen-active {
   touch-action: none;
 }
 
+body.app-pseudo-fullscreen-active .match-bg,
+body.ios-immersive-fullscreen-active .match-bg {
+  position: fixed;
+  inset: 0;
+  min-height: 100%;
+  height: 100%;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+body.app-pseudo-fullscreen-active .app-pseudo-fullscreen,
+body.app-pseudo-fullscreen-active .workspace-fullscreen-shell--active {
+  top: 0 !important;
+  width: var(--app-vvw, 100vw) !important;
+  height: var(--app-lvh, 100dvh) !important;
+  min-height: var(--app-lvh, 100dvh) !important;
+  max-height: var(--app-lvh, 100dvh) !important;
+}
+
 body.ios-immersive-fullscreen-active .match-bg {
   min-height: 100%;
   height: 100%;

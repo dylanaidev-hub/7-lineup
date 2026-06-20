@@ -25,3 +25,9 @@ export const supportsDomFullscreen = (element?: HTMLElement | null) => {
   return typeof sample.requestFullscreen === "function"
     || typeof sample.webkitRequestFullscreen === "function";
 };
+
+/**
+ * iOS Safari always allows swipe-down to dismiss native element fullscreen.
+ * Use CSS pseudo fullscreen instead so the app controls exit (button only).
+ */
+export const mustUsePseudoFullscreen = () => isIOSDevice() && isMobileBrowserTab();
