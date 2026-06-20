@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 
 const PSEUDO_FULLSCREEN_CLASS = "app-pseudo-fullscreen";
 const PSEUDO_FULLSCREEN_ACTIVE_CLASS = "app-pseudo-fullscreen-active";
+const NATIVE_FULLSCREEN_ACTIVE_CLASS = "app-native-fullscreen-active";
 
 type WebkitFullscreenDocument = Document & {
   webkitExitFullscreen?: () => Promise<void> | void;
@@ -9,7 +10,7 @@ type WebkitFullscreenDocument = Document & {
 };
 
 type WebkitFullscreenElement = HTMLElement & {
-  webkitRequestFullscreen?: () => Promise<void> | void;
+  webkitRequestFullscreen?: (options?: unknown) => Promise<void> | void;
 };
 
 type ScreenOrientationWithLock = ScreenOrientation & {
@@ -32,11 +33,14 @@ const isTextEntryTarget = (target: EventTarget | null) => {
   return tagName === "input" || tagName === "textarea" || target.isContentEditable;
 };
 
-const isIOSDevice = () => {
-  if (typeof navigator === "undefined") return false;
+const isPortableTouchDevice = () => {
+  if (typeof window === "undefined") return false;
   const userAgent = navigator.userAgent;
-  return /iPad|iPhone|iPod/i.test(userAgent)
+  const isIOSDevice = /iPad|iPhone|iPod/i.test(userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroidDevice = /Android/i.test(userAgent);
+  const hasTouchInput = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+  return isIOSDevice || isAndroidDevice || hasTouchInput;
 };
 
 const syncVisualViewportVars = () => {
@@ -58,19 +62,12 @@ const clearVisualViewportVars = () => {
   root.style.removeProperty("--app-vv-offset-top");
 };
 
-const minimizeMobileBrowserChrome = () => {
-  window.scrollTo(0, 1);
-  window.requestAnimationFrame(() => {
-    window.scrollTo(0, 0);
-  });
-};
-
 const lockLandscapeOrientation = async () => {
   try {
     const orientation = window.screen.orientation as ScreenOrientationWithLock | undefined;
     await orientation?.lock?.("landscape");
   } catch {
-    // iOS Safari and some desktop browsers reject orientation lock.
+    // Orientation lock requires native fullscreen on many browsers.
   }
 };
 
@@ -88,28 +85,61 @@ const belongsToWorkspace = (activeElement: Element | null, workspace: HTMLElemen
   return activeElement === workspace
     || activeElement === document.documentElement
     || activeElement === document.body
+    || activeElement === document.getElementById("root")
     || workspace.contains(activeElement);
 };
 
-const requestFullscreenOn = async (target: WebkitFullscreenElement) => {
+const getNativeFullscreenTargets = (workspace: HTMLElement) => {
+  const root = document.getElementById("root");
+  if (isPortableTouchDevice()) {
+    return [document.documentElement, root, workspace, document.body].filter(Boolean) as WebkitFullscreenElement[];
+  }
+  return [workspace, document.documentElement, root, document.body].filter(Boolean) as WebkitFullscreenElement[];
+};
+
+/** Must be invoked synchronously inside a user gesture (click/touch). */
+const requestNativeFullscreenSync = (workspace: HTMLElement) => {
   const options: FullscreenOptionsWithNavigation = { navigationUI: "hide" };
 
-  if (target.requestFullscreen) {
-    await target.requestFullscreen(options);
-    return;
+  for (const target of getNativeFullscreenTargets(workspace)) {
+    try {
+      if (typeof target.requestFullscreen === "function") {
+        void target.requestFullscreen(options);
+        return target;
+      }
+      if (typeof target.webkitRequestFullscreen === "function") {
+        void target.webkitRequestFullscreen();
+        return target;
+      }
+    } catch {
+      continue;
+    }
   }
 
-  if (target.webkitRequestFullscreen) {
-    await target.webkitRequestFullscreen();
-  }
+  return null;
 };
 
 export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const isPseudoFullscreenRef = useRef(false);
   const isTransitioningRef = useRef(false);
   const shouldLockOrientationRef = useRef(false);
+  const pendingNativeTargetRef = useRef<WebkitFullscreenElement | null>(null);
+  const nativeFallbackTimerRef = useRef<number | null>(null);
+
+  const clearNativeFallbackTimer = useCallback(() => {
+    if (nativeFallbackTimerRef.current !== null) {
+      window.clearTimeout(nativeFallbackTimerRef.current);
+      nativeFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  const applyNativeFullscreenClasses = useCallback((active: boolean) => {
+    document.documentElement.classList.toggle(NATIVE_FULLSCREEN_ACTIVE_CLASS, active);
+    document.body.classList.toggle(NATIVE_FULLSCREEN_ACTIVE_CLASS, active);
+  }, []);
 
   const exitPseudoFullscreen = useCallback(() => {
     const element = elementRef.current;
@@ -121,25 +151,24 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     clearVisualViewportVars();
     unlockLandscapeOrientation();
     setIsPseudoFullscreen(false);
+    setIsNativeFullscreen(false);
     setIsFullscreen(false);
   }, [elementRef]);
 
-  const enterPseudoFullscreen = useCallback(async () => {
+  const enterPseudoFullscreen = useCallback(() => {
     const element = elementRef.current;
     if (!element) return;
 
     syncVisualViewportVars();
-    minimizeMobileBrowserChrome();
     element.classList.add(PSEUDO_FULLSCREEN_CLASS);
     document.documentElement.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     document.body.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     isPseudoFullscreenRef.current = true;
     shouldLockOrientationRef.current = true;
     setIsPseudoFullscreen(true);
+    setIsNativeFullscreen(false);
     setIsFullscreen(true);
-    await lockLandscapeOrientation();
-    syncVisualViewportVars();
-    minimizeMobileBrowserChrome();
+    void lockLandscapeOrientation();
   }, [elementRef]);
 
   const exitNativeFullscreen = useCallback(async () => {
@@ -151,92 +180,116 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       await fullscreenDocument.webkitExitFullscreen();
     }
 
+    applyNativeFullscreenClasses(false);
     unlockLandscapeOrientation();
     shouldLockOrientationRef.current = false;
     clearVisualViewportVars();
+    pendingNativeTargetRef.current = null;
     setIsPseudoFullscreen(false);
-  }, []);
+    setIsNativeFullscreen(false);
+    setIsFullscreen(false);
+  }, [applyNativeFullscreenClasses]);
 
-  const enterNativeFullscreen = useCallback(async (workspace: WebkitFullscreenElement) => {
-    const candidates = [workspace, document.documentElement, document.body] as WebkitFullscreenElement[];
+  const handleNativeFullscreenEntered = useCallback((workspace: HTMLElement) => {
+    applyNativeFullscreenClasses(true);
+    syncVisualViewportVars();
+    shouldLockOrientationRef.current = true;
+    isPseudoFullscreenRef.current = false;
+    workspace.classList.remove(PSEUDO_FULLSCREEN_CLASS);
+    document.documentElement.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
+    document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
+    setIsPseudoFullscreen(false);
+    setIsNativeFullscreen(true);
+    setIsFullscreen(true);
+    void lockLandscapeOrientation();
+  }, [applyNativeFullscreenClasses]);
 
-    for (const target of candidates) {
-      try {
-        await requestFullscreenOn(target);
-      } catch {
-        continue;
-      }
-
-      if (!belongsToWorkspace(getFullscreenElement(), workspace)) continue;
-
-      syncVisualViewportVars();
-      shouldLockOrientationRef.current = true;
-      await lockLandscapeOrientation();
-      setIsPseudoFullscreen(false);
-      return true;
-    }
-
-    return false;
-  }, []);
-
-  const toggleFullscreen = useCallback(async () => {
-    const element = elementRef.current as WebkitFullscreenElement | null;
+  const enterFullscreenFromGesture = useCallback(() => {
+    const element = elementRef.current;
     if (!element || isTransitioningRef.current) return;
 
-    isTransitioningRef.current = true;
-
-    try {
-      if (isPseudoFullscreenRef.current || element.classList.contains(PSEUDO_FULLSCREEN_CLASS)) {
-        exitPseudoFullscreen();
-        return;
-      }
-
-      if (getFullscreenElement() && belongsToWorkspace(getFullscreenElement(), element)) {
-        await exitNativeFullscreen();
-        return;
-      }
-
-      if (isIOSDevice()) {
-        await enterPseudoFullscreen();
-        return;
-      }
-
-      try {
-        const enteredNative = await enterNativeFullscreen(element);
-        if (!enteredNative) {
-          await enterPseudoFullscreen();
-        }
-      } catch {
-        await enterPseudoFullscreen();
-      }
-    } finally {
-      isTransitioningRef.current = false;
+    if (isPseudoFullscreenRef.current || element.classList.contains(PSEUDO_FULLSCREEN_CLASS)) {
+      exitPseudoFullscreen();
+      return;
     }
-  }, [elementRef, enterNativeFullscreen, enterPseudoFullscreen, exitNativeFullscreen, exitPseudoFullscreen]);
+
+    if (getFullscreenElement() && belongsToWorkspace(getFullscreenElement(), element)) {
+      void exitNativeFullscreen();
+      return;
+    }
+
+    isTransitioningRef.current = true;
+    clearNativeFallbackTimer();
+    const requestedTarget = requestNativeFullscreenSync(element);
+    pendingNativeTargetRef.current = requestedTarget;
+
+    if (!requestedTarget) {
+      enterPseudoFullscreen();
+      isTransitioningRef.current = false;
+      return;
+    }
+
+    setIsFullscreen(true);
+    nativeFallbackTimerRef.current = window.setTimeout(() => {
+      nativeFallbackTimerRef.current = null;
+      if (getFullscreenElement() && belongsToWorkspace(getFullscreenElement(), element)) {
+        isTransitioningRef.current = false;
+        pendingNativeTargetRef.current = null;
+        return;
+      }
+      enterPseudoFullscreen();
+      isTransitioningRef.current = false;
+      pendingNativeTargetRef.current = null;
+    }, 450);
+  }, [
+    clearNativeFallbackTimer,
+    elementRef,
+    enterPseudoFullscreen,
+    exitNativeFullscreen,
+    exitPseudoFullscreen,
+  ]);
+
+  const toggleFullscreen = useCallback(() => {
+    enterFullscreenFromGesture();
+  }, [enterFullscreenFromGesture]);
 
   useEffect(() => {
     const syncFullscreenState = () => {
       const element = elementRef.current;
       const activeElement = getFullscreenElement();
-      const isNativeFullscreen = belongsToWorkspace(activeElement, element);
-      const isPseudoFullscreenActive = Boolean(
+      const isNativeActive = belongsToWorkspace(activeElement, element);
+      const isPseudoActive = Boolean(
         element &&
           isPseudoFullscreenRef.current &&
           element.classList.contains(PSEUDO_FULLSCREEN_CLASS),
       );
 
-      if (!isNativeFullscreen && !isPseudoFullscreenActive && shouldLockOrientationRef.current) {
-        shouldLockOrientationRef.current = false;
-        unlockLandscapeOrientation();
-        clearVisualViewportVars();
+      if (isNativeActive && element) {
+        clearNativeFallbackTimer();
+        handleNativeFullscreenEntered(element);
+        isTransitioningRef.current = false;
+        pendingNativeTargetRef.current = null;
+        return;
       }
 
-      if (isNativeFullscreen) {
-        syncVisualViewportVars();
+      if (!isNativeActive && !isPseudoActive) {
+        applyNativeFullscreenClasses(false);
+        if (shouldLockOrientationRef.current) {
+          shouldLockOrientationRef.current = false;
+          unlockLandscapeOrientation();
+          clearVisualViewportVars();
+        }
+        setIsNativeFullscreen(false);
+        setIsPseudoFullscreen(false);
+        setIsFullscreen(false);
+        isTransitioningRef.current = false;
+        pendingNativeTargetRef.current = null;
+        return;
       }
 
-      setIsPseudoFullscreen(isPseudoFullscreenActive);
-      setIsFullscreen(isNativeFullscreen || isPseudoFullscreenActive);
+      setIsNativeFullscreen(isNativeActive);
+      setIsPseudoFullscreen(isPseudoActive);
+      setIsFullscreen(isNativeActive || isPseudoActive);
     };
 
     document.addEventListener("fullscreenchange", syncFullscreenState);
@@ -246,7 +299,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       document.removeEventListener("fullscreenchange", syncFullscreenState);
       document.removeEventListener("webkitfullscreenchange", syncFullscreenState);
     };
-  }, [elementRef]);
+  }, [applyNativeFullscreenClasses, clearNativeFallbackTimer, elementRef, handleNativeFullscreenEntered]);
 
   useEffect(() => {
     if (!isFullscreen) return;
@@ -270,12 +323,28 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   }, [isFullscreen]);
 
   useEffect(() => {
+    if (!isNativeFullscreen) return;
+
+    const blockRubberBandScroll = (event: TouchEvent) => {
+      if (event.touches.length > 1) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest(".pitch, input, textarea, select, button, [contenteditable='true']")) {
+        return;
+      }
+      event.preventDefault();
+    };
+
+    document.addEventListener("touchmove", blockRubberBandScroll, { passive: false });
+    return () => document.removeEventListener("touchmove", blockRubberBandScroll);
+  }, [isNativeFullscreen]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isTextEntryTarget(event.target) || event.repeat) return;
 
       if (event.key.toLowerCase() === "f") {
         event.preventDefault();
-        void toggleFullscreen();
+        enterFullscreenFromGesture();
         return;
       }
 
@@ -286,7 +355,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [exitPseudoFullscreen, toggleFullscreen]);
+  }, [enterFullscreenFromGesture, exitPseudoFullscreen]);
 
   useEffect(
     () => () => {
@@ -294,13 +363,22 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       element?.classList.remove(PSEUDO_FULLSCREEN_CLASS);
       document.documentElement.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
       document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
+      applyNativeFullscreenClasses(false);
+      clearNativeFallbackTimer();
       isPseudoFullscreenRef.current = false;
       shouldLockOrientationRef.current = false;
+      pendingNativeTargetRef.current = null;
       clearVisualViewportVars();
       unlockLandscapeOrientation();
     },
-    [elementRef],
+    [applyNativeFullscreenClasses, clearNativeFallbackTimer, elementRef],
   );
 
-  return { isFullscreen, isPseudoFullscreen, toggleFullscreen };
+  return {
+    isFullscreen,
+    isPseudoFullscreen,
+    isNativeFullscreen,
+    enterFullscreenFromGesture,
+    toggleFullscreen,
+  };
 }
