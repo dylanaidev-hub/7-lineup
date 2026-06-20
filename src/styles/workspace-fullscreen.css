@@ -3,11 +3,11 @@
 .workspace-fullscreen-shell--active {
   position: fixed;
   inset: 0;
+  top: var(--app-vv-offset-top, 0px);
   z-index: 9999;
   display: flex;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
+  width: var(--app-vvw, 100vw);
+  height: var(--app-vvh, 100dvh);
   max-width: none;
   max-height: none;
   margin: 0;
@@ -93,23 +93,22 @@
   border-radius: 0;
 }
 
-/* CSS fallback: rotate pitch viewport when fullscreen + portrait + orientation.lock unavailable */
+/* Portrait fallback: rotate the entire workspace (pitch + toolbars) into landscape layout. */
 @media (orientation: portrait) {
-  .workspace-fullscreen-shell--active.workspace-fullscreen-shell--portrait .workspace-fullscreen-pitch-viewport {
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
+  .workspace-fullscreen-shell--active.workspace-fullscreen-shell--portrait {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: var(--app-vvh, 100dvh);
+    height: var(--app-vvw, 100vw);
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
   }
 
   .workspace-fullscreen-shell--active.workspace-fullscreen-shell--portrait .workspace-fullscreen-pitch-viewport > .pitch {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100vh !important;
-    height: 100vw !important;
-    max-width: none !important;
-    max-height: none !important;
-    transform-origin: center center;
-    transform: translate(-50%, -50%) rotate(-90deg);
+    width: 100% !important;
+    height: 100% !important;
+    transform: none;
   }
 }

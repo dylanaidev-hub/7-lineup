@@ -17,6 +17,10 @@ type ScreenOrientationWithLock = ScreenOrientation & {
   unlock?: () => void;
 };
 
+type FullscreenOptionsWithNavigation = FullscreenOptions & {
+  navigationUI?: "auto" | "hide" | "show";
+};
+
 const getFullscreenElement = () => {
   const fullscreenDocument = document as WebkitFullscreenDocument;
   return document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement ?? null;
@@ -26,6 +30,39 @@ const isTextEntryTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false;
   const tagName = target.tagName.toLowerCase();
   return tagName === "input" || tagName === "textarea" || target.isContentEditable;
+};
+
+const isIOSDevice = () => {
+  if (typeof navigator === "undefined") return false;
+  const userAgent = navigator.userAgent;
+  return /iPad|iPhone|iPod/i.test(userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+};
+
+const syncVisualViewportVars = () => {
+  const viewport = window.visualViewport;
+  const width = viewport?.width ?? window.innerWidth;
+  const height = viewport?.height ?? window.innerHeight;
+  const offsetTop = viewport?.offsetTop ?? 0;
+  const root = document.documentElement;
+
+  root.style.setProperty("--app-vvw", `${width}px`);
+  root.style.setProperty("--app-vvh", `${height}px`);
+  root.style.setProperty("--app-vv-offset-top", `${offsetTop}px`);
+};
+
+const clearVisualViewportVars = () => {
+  const root = document.documentElement;
+  root.style.removeProperty("--app-vvw");
+  root.style.removeProperty("--app-vvh");
+  root.style.removeProperty("--app-vv-offset-top");
+};
+
+const minimizeMobileBrowserChrome = () => {
+  window.scrollTo(0, 1);
+  window.requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+  });
 };
 
 const lockLandscapeOrientation = async () => {
@@ -46,8 +83,30 @@ const unlockLandscapeOrientation = () => {
   }
 };
 
+const belongsToWorkspace = (activeElement: Element | null, workspace: HTMLElement | null) => {
+  if (!activeElement || !workspace) return false;
+  return activeElement === workspace
+    || activeElement === document.documentElement
+    || activeElement === document.body
+    || workspace.contains(activeElement);
+};
+
+const requestFullscreenOn = async (target: WebkitFullscreenElement) => {
+  const options: FullscreenOptionsWithNavigation = { navigationUI: "hide" };
+
+  if (target.requestFullscreen) {
+    await target.requestFullscreen(options);
+    return;
+  }
+
+  if (target.webkitRequestFullscreen) {
+    await target.webkitRequestFullscreen();
+  }
+};
+
 export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
   const isPseudoFullscreenRef = useRef(false);
   const isTransitioningRef = useRef(false);
   const shouldLockOrientationRef = useRef(false);
@@ -59,7 +118,9 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     isPseudoFullscreenRef.current = false;
     shouldLockOrientationRef.current = false;
+    clearVisualViewportVars();
     unlockLandscapeOrientation();
+    setIsPseudoFullscreen(false);
     setIsFullscreen(false);
   }, [elementRef]);
 
@@ -67,13 +128,18 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     const element = elementRef.current;
     if (!element) return;
 
+    syncVisualViewportVars();
+    minimizeMobileBrowserChrome();
     element.classList.add(PSEUDO_FULLSCREEN_CLASS);
     document.documentElement.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     document.body.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     isPseudoFullscreenRef.current = true;
     shouldLockOrientationRef.current = true;
+    setIsPseudoFullscreen(true);
     setIsFullscreen(true);
     await lockLandscapeOrientation();
+    syncVisualViewportVars();
+    minimizeMobileBrowserChrome();
   }, [elementRef]);
 
   const exitNativeFullscreen = useCallback(async () => {
@@ -87,22 +153,30 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
 
     unlockLandscapeOrientation();
     shouldLockOrientationRef.current = false;
+    clearVisualViewportVars();
+    setIsPseudoFullscreen(false);
   }, []);
 
-  const enterNativeFullscreen = useCallback(async (element: WebkitFullscreenElement) => {
-    if (element.requestFullscreen) {
-      await element.requestFullscreen();
-    } else if (element.webkitRequestFullscreen) {
-      await element.webkitRequestFullscreen();
-    } else {
-      return false;
+  const enterNativeFullscreen = useCallback(async (workspace: WebkitFullscreenElement) => {
+    const candidates = [workspace, document.documentElement, document.body] as WebkitFullscreenElement[];
+
+    for (const target of candidates) {
+      try {
+        await requestFullscreenOn(target);
+      } catch {
+        continue;
+      }
+
+      if (!belongsToWorkspace(getFullscreenElement(), workspace)) continue;
+
+      syncVisualViewportVars();
+      shouldLockOrientationRef.current = true;
+      await lockLandscapeOrientation();
+      setIsPseudoFullscreen(false);
+      return true;
     }
 
-    if (getFullscreenElement() !== element) return false;
-
-    shouldLockOrientationRef.current = true;
-    await lockLandscapeOrientation();
-    return true;
+    return false;
   }, []);
 
   const toggleFullscreen = useCallback(async () => {
@@ -117,9 +191,13 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
         return;
       }
 
-      const activeFullscreenElement = getFullscreenElement();
-      if (activeFullscreenElement) {
+      if (getFullscreenElement() && belongsToWorkspace(getFullscreenElement(), element)) {
         await exitNativeFullscreen();
+        return;
+      }
+
+      if (isIOSDevice()) {
+        await enterPseudoFullscreen();
         return;
       }
 
@@ -129,7 +207,6 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
           await enterPseudoFullscreen();
         }
       } catch {
-        // iOS Safari and restricted browser contexts can expose the API but reject it.
         await enterPseudoFullscreen();
       }
     } finally {
@@ -140,19 +217,26 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const syncFullscreenState = () => {
       const element = elementRef.current;
-      const isNativeFullscreen = Boolean(element && getFullscreenElement() === element);
-      const isPseudoFullscreen = Boolean(
+      const activeElement = getFullscreenElement();
+      const isNativeFullscreen = belongsToWorkspace(activeElement, element);
+      const isPseudoFullscreenActive = Boolean(
         element &&
           isPseudoFullscreenRef.current &&
           element.classList.contains(PSEUDO_FULLSCREEN_CLASS),
       );
 
-      if (!isNativeFullscreen && !isPseudoFullscreen && shouldLockOrientationRef.current) {
+      if (!isNativeFullscreen && !isPseudoFullscreenActive && shouldLockOrientationRef.current) {
         shouldLockOrientationRef.current = false;
         unlockLandscapeOrientation();
+        clearVisualViewportVars();
       }
 
-      setIsFullscreen(isNativeFullscreen || isPseudoFullscreen);
+      if (isNativeFullscreen) {
+        syncVisualViewportVars();
+      }
+
+      setIsPseudoFullscreen(isPseudoFullscreenActive);
+      setIsFullscreen(isNativeFullscreen || isPseudoFullscreenActive);
     };
 
     document.addEventListener("fullscreenchange", syncFullscreenState);
@@ -163,6 +247,27 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       document.removeEventListener("webkitfullscreenchange", syncFullscreenState);
     };
   }, [elementRef]);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const syncViewport = () => {
+      syncVisualViewportVars();
+    };
+
+    syncViewport();
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("scroll", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", syncViewport);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("scroll", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", syncViewport);
+    };
+  }, [isFullscreen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -191,10 +296,11 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
       isPseudoFullscreenRef.current = false;
       shouldLockOrientationRef.current = false;
+      clearVisualViewportVars();
       unlockLandscapeOrientation();
     },
     [elementRef],
   );
 
-  return { isFullscreen, toggleFullscreen };
+  return { isFullscreen, isPseudoFullscreen, toggleFullscreen };
 }

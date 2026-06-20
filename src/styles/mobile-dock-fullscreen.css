@@ -717,3 +717,14 @@ body.lineup-mobile-dock .mobile-squad-extra-input {
     --lf-mobile-sheet-max-width: 480px;
   }
 }
+
+/* When portrait pseudo-fullscreen rotates the shell, keep floating UI inside the rotated canvas. */
+body.lineup-mobile-dock.lineup-portrait-fullscreen .lineup-column > .lineup-column-header,
+body.lineup-mobile-dock.lineup-portrait-fullscreen .lineup-footer-actions,
+body.lineup-mobile-dock.lineup-portrait-fullscreen .custom-side-tray,
+body.lineup-mobile-dock.lineup-portrait-fullscreen .sandbox-canvas-stage > .workspace-timeline,
+body.lineup-mobile-dock.lineup-portrait-fullscreen .lineup-column.tool-draw .footer-formation-switch:not(:empty),
+body.lineup-mobile-dock.lineup-portrait-fullscreen .mobile-squad-toggle,
+body.lineup-mobile-dock.lineup-portrait-fullscreen .mobile-squad-drawer {
+  position: absolute !important;
+}
