@@ -284,7 +284,7 @@
 
 .tactical-pitch {
   position: relative;
-  aspect-ratio: 7 / 10;
+  aspect-ratio: var(--pitch-width) / var(--pitch-length);
   height: min(100%, 640px);
   max-width: 100%;
   justify-self: center;

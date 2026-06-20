@@ -110,7 +110,7 @@
 
 .thumbnail {
   width: 74px;
-  aspect-ratio: 7 / 10;
+  aspect-ratio: var(--pitch-width) / var(--pitch-length);
   border-radius: 10px;
   object-fit: cover;
   background: #2e9849;

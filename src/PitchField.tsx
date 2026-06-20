@@ -115,7 +115,7 @@ export function PitchField({
     <div
       ref={pitchRef}
       data-orientation={orientation}
-      className={`pitch relative mx-auto aspect-[7/10] w-auto max-w-full min-w-0 border-[4px] border-white/80 touch-none select-none ${
+      className={`pitch relative mx-auto w-auto max-w-full min-w-0 border-[4px] border-white/80 touch-none select-none ${
         isLandscape ? "landscape" : ""
       } ${
         isDrawMode ? "draw-mode" : ""

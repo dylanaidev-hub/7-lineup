@@ -115,11 +115,11 @@
   pointer-events: auto;
   position: relative;
   flex: none;
-  width: min(100cqw, calc(100cqh * 10 / 7));
-  height: min(100cqh, calc(100cqw * 7 / 10));
+  width: min(100cqw, calc(100cqh * var(--pitch-length) / var(--pitch-width)));
+  height: auto;
+  max-height: 100cqh;
   min-width: 0;
-  min-height: 0;
   margin: 0;
-  aspect-ratio: 10 / 7;
+  aspect-ratio: var(--pitch-length) / var(--pitch-width);
   border-radius: 0;
 }
