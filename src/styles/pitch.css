@@ -21,11 +21,19 @@
 
 /* Scale pitch to the largest size that fits its container while keeping aspect ratio. */
 .pitch-fit-contain {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  margin: auto;
+  box-sizing: border-box;
+}
+
+.pitch-fit-contain--portrait {
+  aspect-ratio: 7 / 10;
+  width: min(var(--pitch-area-w, 100%), calc(var(--pitch-area-h, 100%) * 7 / 10));
+  height: min(var(--pitch-area-h, 100%), calc(var(--pitch-area-w, 100%) * 10 / 7));
+}
+
+.pitch-fit-contain--landscape {
+  aspect-ratio: 10 / 7;
+  width: min(var(--pitch-area-w, 100%), calc(var(--pitch-area-h, 100%) * 10 / 7));
+  height: min(var(--pitch-area-h, 100%), calc(var(--pitch-area-w, 100%) * 7 / 10));
 }
 
 .lineup-stage .pitch {
