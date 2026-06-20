@@ -25,6 +25,3 @@ export const supportsDomFullscreen = (element?: HTMLElement | null) => {
   return typeof sample.requestFullscreen === "function"
     || typeof sample.webkitRequestFullscreen === "function";
 };
-
-/** iOS Safari dismisses native element fullscreen on swipe-down; pseudo + immersive CSS avoids that. */
-export const prefersPseudoFullscreen = () => isIOSDevice() && isMobileBrowserTab();

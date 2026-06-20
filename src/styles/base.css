@@ -74,6 +74,7 @@ body:-webkit-full-screen {
   height: 100% !important;
   overflow: hidden !important;
   overscroll-behavior: none;
+  touch-action: none;
   background: #0a0a0a;
 }
 
