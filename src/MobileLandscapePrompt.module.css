@@ -26,8 +26,11 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
 }
 
-.icon {
+.icon,
+.actionIcon {
   color: #7ee0a3;
+  transform: rotate(90deg);
+  transform-origin: center;
 }
 
 .panel h2,
@@ -50,7 +53,7 @@
   line-height: 1.5;
 }
 
-.actionButton {
+.fullscreenButton {
   display: inline-flex;
   min-width: 220px;
   min-height: 48px;
@@ -68,11 +71,11 @@
   cursor: pointer;
 }
 
-.actionButton:hover {
+.fullscreenButton:hover {
   background: #82e3a5;
 }
 
-.actionButton:active {
+.fullscreenButton:active {
   transform: translateY(1px);
 }
 

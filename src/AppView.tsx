@@ -83,8 +83,8 @@ export function AppView({ model }: AppViewProps) {
     ? isFullscreen ? "Thoát toàn màn hình (F)" : "Toàn màn hình (F)"
     : isFullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)";
   const rotateLabel = language === "vi"
-    ? isPitchLandscape ? "Xoay dọc (90°)" : "Xoay ngang (90°)"
-    : isPitchLandscape ? "Rotate portrait (90°)" : "Rotate landscape (90°)";
+    ? isPitchLandscape ? "Sân dọc" : isPortableViewport ? "Xoay sân ngang" : "Sân ngang"
+    : isPitchLandscape ? "Portrait pitch" : isPortableViewport ? "Rotate to landscape" : "Landscape pitch";
 
   useEffect(() => {
     if (isFullscreen) {
@@ -203,19 +203,21 @@ export function AppView({ model }: AppViewProps) {
         onAuthenticated={() => setIsAuthScreenOpen(false)}
       />
       {isPortableViewport &&
-      !isPitchLandscape &&
+      !isPortraitFullscreen &&
+      isLandscapeViewport &&
+      !isFullscreen &&
       !isLandscapePromptDismissed &&
       activeTab === "lineup" ? (
         <MobileLandscapePrompt
           title={language === "vi" ? "Xoay sân ngang" : "Landscape pitch"}
           description={
             language === "vi"
-              ? "Bấm nút xoay 90° ở góc dưới để xem sân theo chiều ngang, thuận tiện hơn khi chỉnh đội hình."
-              : "Tap the 90° rotate button at the bottom to view the pitch in landscape orientation."
+              ? "Xoay sân sang chiều ngang để có thêm không gian chỉnh đội hình và thao tác trên sân."
+              : "Rotate the pitch to landscape for more room to edit the lineup and work on the pitch."
           }
-          openLabel={language === "vi" ? "Xoay ngang" : "Rotate landscape"}
+          openLabel={language === "vi" ? "Xoay sân ngang" : "Rotate to landscape"}
           dismissLabel={language === "vi" ? "Để sau" : "Not now"}
-          onRotatePitch={openMobileLandscapePitch}
+          onOpenLandscapePitch={openMobileLandscapePitch}
           onDismiss={() => setIsLandscapePromptDismissed(true)}
         />
       ) : null}

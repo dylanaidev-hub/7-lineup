@@ -6,7 +6,7 @@ type MobileLandscapePromptProps = {
   description: string;
   openLabel: string;
   dismissLabel: string;
-  onRotatePitch: () => void;
+  onOpenLandscapePitch: () => void;
   onDismiss: () => void;
 };
 
@@ -15,7 +15,7 @@ export function MobileLandscapePrompt({
   description,
   openLabel,
   dismissLabel,
-  onRotatePitch,
+  onOpenLandscapePitch,
   onDismiss,
 }: MobileLandscapePromptProps) {
   return (
@@ -27,8 +27,8 @@ export function MobileLandscapePrompt({
         <RotateCw className={styles.icon} size={32} aria-hidden="true" />
         <h2 id="landscape-pitch-title">{title}</h2>
         <p>{description}</p>
-        <button type="button" className={styles.actionButton} onClick={onRotatePitch}>
-          <RotateCw size={20} />
+        <button type="button" className={styles.fullscreenButton} onClick={onOpenLandscapePitch}>
+          <RotateCw className={styles.actionIcon} size={20} aria-hidden="true" />
           <span>{openLabel}</span>
         </button>
       </div>

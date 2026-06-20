@@ -50,7 +50,11 @@ export function LineupFooterActions({
         aria-label={rotateLabel}
         aria-pressed={isLandscape}
       >
-        <RotateCw size={14} />
+        <RotateCw
+          size={14}
+          className={!showFullscreenButton && !isLandscape ? styles.rotateIconMobile : undefined}
+          aria-hidden="true"
+        />
         <span>{rotateLabel}</span>
       </button>
       {showFullscreenButton ? (

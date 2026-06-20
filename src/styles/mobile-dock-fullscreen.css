@@ -100,6 +100,10 @@ body.lineup-mobile-dock .lineup-footer-actions button {
   pointer-events: auto;
 }
 
+body.lineup-mobile-dock .lineup-footer-actions .fullscreenButton {
+  display: none !important;
+}
+
 body.lineup-mobile-dock .custom-side-tray {
   display: grid;
   height: auto;
