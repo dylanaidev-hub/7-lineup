@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { isIOSDevice, isMobileBrowserTab, mustUsePseudoFullscreen, supportsDomFullscreen } from "../lib/mobilePlatform";
+import {
+  isDeviceLandscape,
+  isIOSDevice,
+  isMobileBrowserTab,
+  isPortableTouchDevice,
+  mustUsePseudoFullscreen,
+  supportsDomFullscreen,
+} from "../lib/mobilePlatform";
 
 const PSEUDO_FULLSCREEN_ACTIVE_CLASS = "app-pseudo-fullscreen-active";
 const NATIVE_FULLSCREEN_ACTIVE_CLASS = "app-native-fullscreen-active";
@@ -32,16 +39,6 @@ const isTextEntryTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false;
   const tagName = target.tagName.toLowerCase();
   return tagName === "input" || tagName === "textarea" || target.isContentEditable;
-};
-
-const isPortableTouchDevice = () => {
-  if (typeof window === "undefined") return false;
-  const userAgent = navigator.userAgent;
-  const isIOSDevice = /iPad|iPhone|iPod/i.test(userAgent)
-    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const isAndroidDevice = /Android/i.test(userAgent);
-  const hasTouchInput = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
-  return isIOSDevice || isAndroidDevice || hasTouchInput;
 };
 
 const syncVisualViewportVars = () => {
@@ -296,6 +293,56 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   const toggleFullscreen = useCallback(() => {
     enterFullscreenFromGesture();
   }, [enterFullscreenFromGesture]);
+
+  const exitFullscreen = useCallback(() => {
+    const element = elementRef.current;
+    userRequestedExitRef.current = true;
+    clearNativeFallbackTimer();
+
+    if (isPseudoFullscreenRef.current) {
+      exitPseudoFullscreen();
+      return;
+    }
+
+    if (getFullscreenElement() && belongsToWorkspace(getFullscreenElement(), element)) {
+      void exitNativeFullscreen();
+      return;
+    }
+
+    exitPseudoFullscreen();
+  }, [clearNativeFallbackTimer, elementRef, exitNativeFullscreen, exitPseudoFullscreen]);
+
+  useEffect(() => {
+    if (!isFullscreen || !isPortableTouchDevice()) return;
+
+    let wasLandscape = isDeviceLandscape();
+
+    const exitIfRotatedToPortrait = () => {
+      const isLandscape = isDeviceLandscape();
+      if (wasLandscape && !isLandscape) {
+        exitFullscreen();
+        return;
+      }
+      wasLandscape = isLandscape;
+    };
+
+    const handleOrientationChange = () => {
+      window.requestAnimationFrame(exitIfRotatedToPortrait);
+      window.setTimeout(exitIfRotatedToPortrait, 120);
+      window.setTimeout(exitIfRotatedToPortrait, 320);
+    };
+
+    const landscapeQuery = window.matchMedia("(orientation: landscape)");
+    landscapeQuery.addEventListener("change", handleOrientationChange);
+    window.addEventListener("orientationchange", handleOrientationChange);
+    window.screen.orientation?.addEventListener("change", handleOrientationChange);
+
+    return () => {
+      landscapeQuery.removeEventListener("change", handleOrientationChange);
+      window.removeEventListener("orientationchange", handleOrientationChange);
+      window.screen.orientation?.removeEventListener("change", handleOrientationChange);
+    };
+  }, [exitFullscreen, isFullscreen]);
 
   useEffect(() => {
     const syncFullscreenState = () => {

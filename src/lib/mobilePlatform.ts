@@ -18,6 +18,26 @@ export const isMobileBrowserTab = () => {
   return hasTouchInput && shortestSide <= 1024 && !isStandaloneApp();
 };
 
+/** Physical device orientation — ignores visualViewport shrink from pull-down gestures. */
+export const isDeviceLandscape = () => {
+  if (typeof window === "undefined") return false;
+
+  const legacyOrientation = (window as Window & { orientation?: number }).orientation;
+  if (typeof legacyOrientation === "number") return Math.abs(legacyOrientation) === 90;
+
+  const screenType = window.screen.orientation?.type;
+  if (screenType) return screenType.startsWith("landscape");
+
+  return window.matchMedia("(orientation: landscape)").matches;
+};
+
+export const isPortableTouchDevice = () => {
+  if (typeof window === "undefined") return false;
+  const hasTouchInput = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+  const shortestSide = Math.min(window.screen.width, window.screen.height);
+  return isIOSDevice() || /Android/i.test(navigator.userAgent) || (hasTouchInput && shortestSide <= 1024);
+};
+
 export const supportsDomFullscreen = (element?: HTMLElement | null) => {
   const sample = (element ?? document.documentElement) as HTMLElement & {
     webkitRequestFullscreen?: () => void;
