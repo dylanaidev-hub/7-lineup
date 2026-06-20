@@ -1,4 +1,4 @@
-/* iOS in-browser tab: maximize usable area (address bar cannot be removed by web APIs). */
+/* Mobile browser tab: maximize usable area when native Fullscreen API is unavailable. */
 
 html.ios-immersive-fullscreen-active,
 body.ios-immersive-fullscreen-active {
@@ -23,7 +23,17 @@ body.ios-immersive-fullscreen-active .workspace-fullscreen-shell--active {
   top: var(--app-vv-offset-top, 0px) !important;
   width: var(--app-vvw, 100vw) !important;
   height: var(--app-vvh, 100dvh) !important;
-  min-height: -webkit-fill-available;
+  min-height: var(--app-lvh, 100dvh);
+  max-height: var(--app-lvh, 100dvh);
+}
+
+@media (orientation: landscape) {
+  body.ios-immersive-fullscreen-active .app-pseudo-fullscreen,
+  body.ios-immersive-fullscreen-active .workspace-fullscreen-shell--active {
+    height: var(--app-lvh, 100lvh) !important;
+    min-height: var(--app-lvh, 100lvh);
+    max-height: var(--app-lvh, 100lvh);
+  }
 }
 
 @media (display-mode: standalone) {

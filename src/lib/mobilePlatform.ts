@@ -1,5 +1,3 @@
-export type IOSBrowser = "safari" | "chrome" | "edge" | "firefox" | "brave" | "other";
-
 export const isIOSDevice = () => {
   if (typeof navigator === "undefined") return false;
   const userAgent = navigator.userAgent;
@@ -13,85 +11,17 @@ export const isStandaloneApp = () => {
     || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 };
 
-export const isIOSInBrowserTab = () => isIOSDevice() && !isStandaloneApp();
-
-export const getIOSBrowser = (): IOSBrowser => {
-  const userAgent = navigator.userAgent;
-  if (/CriOS/i.test(userAgent)) return "chrome";
-  if (/EdgiOS/i.test(userAgent)) return "edge";
-  if (/FxiOS/i.test(userAgent)) return "firefox";
-  if (/Brave/i.test(userAgent)) return "brave";
-  if (/Safari/i.test(userAgent)) return "safari";
-  return "other";
+export const isMobileBrowserTab = () => {
+  if (typeof window === "undefined") return false;
+  const hasTouchInput = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+  const shortestSide = Math.min(window.screen.width, window.screen.height);
+  return hasTouchInput && shortestSide <= 1024 && !isStandaloneApp();
 };
 
-export const getIOSInstallSteps = (browser: IOSBrowser, language: "vi" | "en") => {
-  const copy = {
-    vi: {
-      chrome: [
-        "Bấm nút Chia sẻ (Share) ở thanh dưới Chrome",
-        "Chọn \"Thêm vào Màn hình chính\"",
-        "Mở app từ icon trên Màn hình chính → fullscreen thật, không còn thanh trình duyệt",
-      ],
-      edge: [
-        "Bấm menu (...) → Chia sẻ",
-        "Chọn \"Thêm vào Màn hình chính\"",
-        "Mở app từ icon trên Màn hình chính",
-      ],
-      firefox: [
-        "Bấm menu → Chia sẻ trang",
-        "Chọn \"Thêm vào Màn hình chính\"",
-        "Mở app từ icon trên Màn hình chính",
-      ],
-      brave: [
-        "Bấm menu Brave → Chia sẻ",
-        "Chọn \"Thêm vào Màn hình chính\"",
-        "Mở app từ icon trên Màn hình chính",
-      ],
-      safari: [
-        "Bấm nút Chia sẻ (Share)",
-        "Chọn \"Thêm vào Màn hình chính\"",
-        "Mở app từ icon trên Màn hình chính",
-      ],
-      other: [
-        "Mở menu trình duyệt → Chia sẻ",
-        "Chọn \"Thêm vào Màn hình chính\"",
-        "Mở app từ icon trên Màn hình chính",
-      ],
-    },
-    en: {
-      chrome: [
-        "Tap Share in Chrome's bottom bar",
-        "Choose \"Add to Home Screen\"",
-        "Open the app from your home screen for true fullscreen",
-      ],
-      edge: [
-        "Tap menu (...) → Share",
-        "Choose \"Add to Home Screen\"",
-        "Open the app from your home screen",
-      ],
-      firefox: [
-        "Tap menu → Share page",
-        "Choose \"Add to Home Screen\"",
-        "Open the app from your home screen",
-      ],
-      brave: [
-        "Tap Brave menu → Share",
-        "Choose \"Add to Home Screen\"",
-        "Open the app from your home screen",
-      ],
-      safari: [
-        "Tap the Share button",
-        "Choose \"Add to Home Screen\"",
-        "Open the app from your home screen",
-      ],
-      other: [
-        "Open the browser menu → Share",
-        "Choose \"Add to Home Screen\"",
-        "Open the app from your home screen",
-      ],
-    },
-  } as const;
-
-  return copy[language][browser];
+export const supportsDomFullscreen = (element?: HTMLElement | null) => {
+  const sample = (element ?? document.documentElement) as HTMLElement & {
+    webkitRequestFullscreen?: () => void;
+  };
+  return typeof sample.requestFullscreen === "function"
+    || typeof sample.webkitRequestFullscreen === "function";
 };
