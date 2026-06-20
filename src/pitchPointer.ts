@@ -29,6 +29,10 @@ const getElementBorderInsets = (element: Element) => {
   };
 };
 
+const isPortraitRotatorActive = (element: Element) =>
+  document.body.classList.contains("lineup-portrait-fullscreen")
+  || !!element.closest(".workspace-fullscreen-portrait-rotator");
+
 const getPitchOffsetInRotator = (element: HTMLElement, rotator: HTMLElement) => {
   let x = 0;
   let y = 0;
@@ -45,38 +49,57 @@ const getPitchOffsetInRotator = (element: HTMLElement, rotator: HTMLElement) => 
   return node === rotator ? { x, y } : null;
 };
 
-/** Portrait fullscreen rotates the workspace 90°; HTML elements lack getScreenCTM(). */
+const getRotatorInverseMatrix = (rotator: HTMLElement) => {
+  const transform = window.getComputedStyle(rotator).transform;
+  if (transform && transform !== "none") {
+    return new DOMMatrix(transform).inverse();
+  }
+
+  if (!document.body.classList.contains("lineup-portrait-fullscreen")) return null;
+
+  const width = rotator.offsetWidth;
+  const height = rotator.offsetHeight;
+  return new DOMMatrix()
+    .translate(-width / 2, -height / 2)
+    .rotate(90)
+    .translate(-width / 2, -height / 2)
+    .inverse();
+};
+
+/**
+ * Safari/WebKit does not include ancestor CSS transforms in SVG getScreenCTM().
+ * Map through the portrait rotator with an inverse DOMMatrix instead.
+ */
 const clientToPortraitRotatorPercent = (
-  element: HTMLElement,
+  pitch: HTMLElement,
   clientX: number,
   clientY: number,
   contentWidth: number,
   contentHeight: number,
 ) => {
-  const rotator = element.closest(".workspace-fullscreen-portrait-rotator");
+  const rotator = pitch.closest(".workspace-fullscreen-portrait-rotator");
   if (!(rotator instanceof HTMLElement) || contentWidth <= 0 || contentHeight <= 0) return null;
 
-  const parent = rotator.parentElement;
-  if (!parent) return null;
+  const inverseMatrix = getRotatorInverseMatrix(rotator);
+  if (!inverseMatrix) return null;
 
-  const parentRect = parent.getBoundingClientRect();
-  const layoutLeft = parentRect.left + parentRect.width / 2;
-  const layoutTop = parentRect.top + parentRect.height / 2;
+  const offsetParent = rotator.offsetParent instanceof HTMLElement ? rotator.offsetParent : rotator.parentElement;
+  if (!offsetParent) return null;
+
+  const parentRect = offsetParent.getBoundingClientRect();
+  const layoutLeft = parentRect.left + rotator.offsetLeft;
+  const layoutTop = parentRect.top + rotator.offsetTop;
   const originX = rotator.offsetWidth / 2;
   const originY = rotator.offsetHeight / 2;
 
-  const transform = window.getComputedStyle(rotator).transform;
-  if (!transform || transform === "none") return null;
-
-  const matrix = new DOMMatrix(transform);
   const local = new DOMPoint(clientX - layoutLeft - originX, clientY - layoutTop - originY).matrixTransform(
-    matrix.inverse(),
+    inverseMatrix,
   );
   const localX = local.x + originX;
   const localY = local.y + originY;
 
-  const pitchOffset = getPitchOffsetInRotator(element, rotator);
-  const { left: borderLeft, top: borderTop } = getElementBorderInsets(element);
+  const pitchOffset = getPitchOffsetInRotator(pitch, rotator);
+  const { left: borderLeft, top: borderTop } = getElementBorderInsets(pitch);
 
   if (pitchOffset) {
     return {
@@ -85,7 +108,7 @@ const clientToPortraitRotatorPercent = (
     };
   }
 
-  const bounds = element.closest(".pitch-bounds");
+  const bounds = pitch.closest(".pitch-bounds");
   const boundsEl = bounds instanceof HTMLElement ? bounds : rotator;
   const pitchOffsetX = (boundsEl.clientWidth - contentWidth) / 2;
   const pitchOffsetY = (boundsEl.clientHeight - contentHeight) / 2;
@@ -96,7 +119,28 @@ const clientToPortraitRotatorPercent = (
   };
 };
 
-type ScreenTransformable = Element & { getScreenCTM?: () => DOMMatrix };
+type ScreenTransformable = Element & { getScreenCTM?: () => DOMMatrix | null };
+
+const resolvePitchElement = (element: Element) => {
+  if (element instanceof HTMLElement && element.classList.contains("pitch")) {
+    return element;
+  }
+
+  const pitch = element.closest(".pitch");
+  return pitch instanceof HTMLElement ? pitch : null;
+};
+
+const clientToSvgPercent = (
+  svg: ScreenTransformable,
+  clientX: number,
+  clientY: number,
+) => {
+  const ctm = svg.getScreenCTM?.();
+  if (!ctm) return null;
+
+  const local = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+  return { x: local.x, y: local.y };
+};
 
 /** Map viewport pointer coords to element-local 0–100% (handles ancestor CSS transforms). */
 export const clientToElementPercent = (
@@ -108,20 +152,21 @@ export const clientToElementPercent = (
 ) => {
   if (contentWidth <= 0 || contentHeight <= 0) return null;
 
-  if (element instanceof HTMLElement) {
-    const portrait = clientToPortraitRotatorPercent(element, clientX, clientY, contentWidth, contentHeight);
-    if (portrait) return portrait;
+  const pitch = resolvePitchElement(element);
+
+  if (pitch && isPortraitRotatorActive(element)) {
+    return clientToPortraitRotatorPercent(pitch, clientX, clientY, pitch.clientWidth, pitch.clientHeight);
   }
 
-  const ctm = (element as ScreenTransformable).getScreenCTM?.();
-  if (ctm) {
-    const { left, top } = getElementBorderInsets(element);
-    const local = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+  const mappingElement: ScreenTransformable | null =
+    typeof (element as ScreenTransformable).getScreenCTM === "function"
+      ? (element as ScreenTransformable)
+      : pitch?.querySelector("svg.draw-layer") instanceof SVGSVGElement
+        ? (pitch.querySelector("svg.draw-layer") as ScreenTransformable)
+        : null;
 
-    return {
-      x: ((local.x - left) / contentWidth) * 100,
-      y: ((local.y - top) / contentHeight) * 100,
-    };
+  if (mappingElement) {
+    return clientToSvgPercent(mappingElement, clientX, clientY);
   }
 
   return null;
