@@ -10,6 +10,7 @@ type LineupFooterActionsProps = {
   isCopied: boolean;
   isFullscreen: boolean;
   isLandscape: boolean;
+  isPortableViewport?: boolean;
   onShare: () => void;
   onDownload: () => void;
   onToggleFullscreen: () => void;
@@ -25,6 +26,7 @@ export function LineupFooterActions({
   isCopied,
   isFullscreen,
   isLandscape,
+  isPortableViewport = false,
   onShare,
   onDownload,
   onToggleFullscreen,
@@ -59,7 +61,13 @@ export function LineupFooterActions({
         aria-label={fullscreenLabel}
         aria-pressed={isFullscreen}
       >
-        {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+        {isPortableViewport ? (
+          <RotateCw size={14} />
+        ) : isFullscreen ? (
+          <Minimize size={14} />
+        ) : (
+          <Maximize size={14} />
+        )}
         <span>{fullscreenLabel}</span>
       </button>
     </div>

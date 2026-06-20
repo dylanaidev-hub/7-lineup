@@ -445,6 +445,7 @@ export function AppView({ model }: AppViewProps) {
                   isCopied={copyStatus === "copied"}
                   isFullscreen={isFullscreen}
                   isLandscape={isPitchLandscape}
+                  isPortableViewport={isPortableViewport}
                   onShare={copyShareLink}
                   onDownload={downloadLineupImage}
                   onToggleFullscreen={enterFullscreenFromGesture}
