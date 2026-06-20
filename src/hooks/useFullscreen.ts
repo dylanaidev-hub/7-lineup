@@ -325,29 +325,32 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (!isFullscreen) return;
 
-    const exitIfPortrait = () => {
-      if (!isViewportLandscape()) {
+    let wasLandscape = isViewportLandscape();
+
+    const exitIfRotatedToPortrait = () => {
+      const isLandscape = isViewportLandscape();
+      if (wasLandscape && !isLandscape) {
         exitFullscreen();
+        return;
       }
+      wasLandscape = isLandscape;
     };
 
     const handleOrientationChange = () => {
-      window.requestAnimationFrame(exitIfPortrait);
-      window.setTimeout(exitIfPortrait, 120);
-      window.setTimeout(exitIfPortrait, 320);
+      window.requestAnimationFrame(exitIfRotatedToPortrait);
+      window.setTimeout(exitIfRotatedToPortrait, 120);
+      window.setTimeout(exitIfRotatedToPortrait, 320);
     };
 
     const portraitQuery = window.matchMedia("(orientation: portrait)");
     portraitQuery.addEventListener("change", handleOrientationChange);
     window.addEventListener("orientationchange", handleOrientationChange);
     window.screen.orientation?.addEventListener("change", handleOrientationChange);
-    window.visualViewport?.addEventListener("resize", exitIfPortrait);
 
     return () => {
       portraitQuery.removeEventListener("change", handleOrientationChange);
       window.removeEventListener("orientationchange", handleOrientationChange);
       window.screen.orientation?.removeEventListener("change", handleOrientationChange);
-      window.visualViewport?.removeEventListener("resize", exitIfPortrait);
     };
   }, [exitFullscreen, isFullscreen]);
 
