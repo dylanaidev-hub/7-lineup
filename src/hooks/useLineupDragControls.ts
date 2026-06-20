@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { PitchSize } from "../appRouting";
 import { getZoneName, type FormationPlayer, type OpponentMarker } from "../formationData";
 import type { TacticalMarker } from "../tacticalData";
-import { clampPitchCoordinate, getBoundedPitchPosition, getPitchClientPosition } from "../pitchPointer";
+import { clampPitchCoordinate, getBoundedPitchPosition, getPitchClientPosition, isPointerOverMobileBottomSheet } from "../pitchPointer";
 import { useMarkerDragSession } from "./useMarkerDragSession";
 
 export type LineupDragPreviewState = {
@@ -47,23 +47,45 @@ export function useLineupDragControls({
     return getPitchClientPosition(pitchRef, event.clientX, event.clientY, options);
   };
 
-  const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number) => {
+  const isOutsidePitchDropTarget = (clientX: number, clientY: number, isInside: boolean | undefined) =>
+    isPointerOverMobileBottomSheet(clientX, clientY) || !isInside;
+
+  const updatePlayerPosition = (event: ReactPointerEvent<Element>, id: number, isDrop = false) => {
     const position = getPitchPointerPosition(event, { clamp: false });
-    if (!position) return;
+    const overBottomSheet = isPointerOverMobileBottomSheet(event.clientX, event.clientY);
+    if (!position && !overBottomSheet) return;
+
+    const outsidePitch = isOutsidePitchDropTarget(event.clientX, event.clientY, position?.isInside);
+
     setPlayers((current) => {
-      const nextPlayers = current.map((player) =>
-        player.id === id
-          ? {
-              ...player,
-              position: position.isInside
-                ? getZoneName(pitchSize, clampPitchCoordinate(position.x), clampPitchCoordinate(position.y))
-                : player.position,
-              x: position.isInside ? clampPitchCoordinate(position.x) : player.x,
-              y: position.isInside ? clampPitchCoordinate(position.y) : player.y,
-              onPitch: position.isInside,
-            }
-          : player,
-      );
+      const nextPlayers = current.map((player) => {
+        if (player.id !== id) return player;
+
+        if (!outsidePitch && position?.isInside) {
+          return {
+            ...player,
+            position: getZoneName(pitchSize, clampPitchCoordinate(position.x), clampPitchCoordinate(position.y)),
+            x: clampPitchCoordinate(position.x),
+            y: clampPitchCoordinate(position.y),
+            onPitch: true,
+          };
+        }
+
+        if (isDrop && outsidePitch) {
+          return { ...player, onPitch: false };
+        }
+
+        if (!isDrop && outsidePitch && position) {
+          return {
+            ...player,
+            x: position.x,
+            y: position.y,
+            onPitch: true,
+          };
+        }
+
+        return player;
+      });
 
       if (pitchSize === "custom") {
         setCustomCount(nextPlayers.filter((player) => player.onPitch).length);
@@ -73,20 +95,41 @@ export function useLineupDragControls({
     });
   };
 
-  const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number) => {
+  const updateOpponentPosition = (event: ReactPointerEvent<Element>, id: number, isDrop = false) => {
     const position = getPitchPointerPosition(event, { clamp: false });
-    if (!position) return;
+    const overBottomSheet = isPointerOverMobileBottomSheet(event.clientX, event.clientY);
+    if (!position && !overBottomSheet) return;
+
+    const outsidePitch = isOutsidePitchDropTarget(event.clientX, event.clientY, position?.isInside);
+
     setOpponentMarkers((current) =>
-      current.map((marker) =>
-        marker.id === id
-          ? {
-              ...marker,
-              onPitch: position.isInside,
-              x: position.isInside ? clampPitchCoordinate(position.x) : marker.x,
-              y: position.isInside ? clampPitchCoordinate(position.y) : marker.y,
-            }
-          : marker,
-      ),
+      current.map((marker) => {
+        if (marker.id !== id) return marker;
+
+        if (!outsidePitch && position?.isInside) {
+          return {
+            ...marker,
+            onPitch: true,
+            x: clampPitchCoordinate(position.x),
+            y: clampPitchCoordinate(position.y),
+          };
+        }
+
+        if (isDrop && outsidePitch) {
+          return { ...marker, onPitch: false };
+        }
+
+        if (!isDrop && outsidePitch && position) {
+          return {
+            ...marker,
+            onPitch: true,
+            x: position.x,
+            y: position.y,
+          };
+        }
+
+        return marker;
+      }),
     );
   };
 
@@ -104,31 +147,33 @@ export function useLineupDragControls({
 
   const playerDrag = useMarkerDragSession<number>({
     canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
-    onMove: isAnimationTool ? updateAnimatedPlayer : undefined,
-    onDrop: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id)),
+    showPreview: false,
+    onMove: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id, false)),
+    onDrop: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id, true)),
   });
 
   const opponentDrag = useMarkerDragSession<number>({
     canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
-    onMove: isAnimationTool ? updateAnimatedOpponent : undefined,
-    onDrop: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id)),
+    showPreview: false,
+    onMove: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id, false)),
+    onDrop: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id, true)),
   });
 
   const updateBallMarkerFromPoint = (clientX: number, clientY: number, commitDrop = false) => {
     const marker = ballMarker ?? { id: "ball", label: "", type: "ball" as const, x: 50, y: 56, onPitch: false };
     const position = getPitchClientPosition(pitchRef, clientX, clientY, { clamp: false });
-    setTacticalDragPreview({ type: "ball", id: marker.id, x: clientX, y: clientY });
-    if (!position) return;
+    const overBottomSheet = isPointerOverMobileBottomSheet(clientX, clientY);
+    if (!position && !overBottomSheet) return;
 
-    if (position.isInside) {
+    const outsidePitch = isOutsidePitchDropTarget(clientX, clientY, position?.isInside);
+
+    if (!outsidePitch && position?.isInside) {
       const boundedPosition = getBoundedPitchPosition(position);
-      if (marker.onPitch || commitDrop) {
-        updateTacticalMarker(marker.id, boundedPosition.x, boundedPosition.y, true);
-      }
+      updateTacticalMarker(marker.id, boundedPosition.x, boundedPosition.y, true);
       return;
     }
 
-    if (commitDrop) {
+    if (commitDrop && outsidePitch) {
       updateTacticalMarker(marker.id, marker.x, marker.y, false);
     }
   };

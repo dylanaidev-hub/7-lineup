@@ -150,3 +150,69 @@
     min-height: 36px;
   }
 }
+
+:global(body.lineup-mobile-dock) .header {
+  position: fixed;
+  z-index: 90;
+  right: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--lf-mobile-edge, 12px));
+  left: var(--lf-mobile-edge, 12px);
+  display: flex;
+  width: auto;
+  height: 48px;
+  min-height: 0;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+:global(body.lineup-mobile-dock) .actions {
+  display: flex;
+  width: auto;
+  height: 48px;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+:global(body.lineup-mobile-dock) .button,
+:global(body.lineup-mobile-dock) .saveButton {
+  display: inline-grid;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  place-items: center;
+  align-items: center;
+  justify-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: #173325;
+  padding: 0;
+  color: #ffffff;
+  font-size: 0;
+  line-height: 0;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+:global(body.lineup-mobile-dock) .saveButton {
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  color: #173325;
+}
+
+:global(body.lineup-mobile-dock) .button svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  margin: 0;
+  vertical-align: middle;
+}
+
+:global(body.lineup-mobile-dock) .button > :not(svg):not(.button-spinner) {
+  display: none;
+}

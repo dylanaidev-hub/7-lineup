@@ -1,0 +1,161 @@
+/* Absolute fullscreen workspace: pitch fills the screen, toolbars float on top. */
+
+.workspace-fullscreen-shell--active {
+  position: fixed;
+  inset: 0;
+  top: 0;
+  z-index: 9999;
+  display: block;
+  width: var(--app-vvw, 100vw);
+  height: var(--app-vvh, 100dvh);
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.workspace-fullscreen-inner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Portrait fullscreen: rotate inner frame (JS sets body.lineup-portrait-fullscreen). */
+body.lineup-portrait-fullscreen .workspace-fullscreen-portrait-rotator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--app-vvh, 100dvh);
+  height: var(--app-vvw, 100vw);
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+  overflow: hidden;
+}
+
+@media (orientation: portrait) {
+  .workspace-fullscreen-portrait-rotator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--app-vvh, 100dvh);
+    height: var(--app-vvw, 100vw);
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
+    overflow: hidden;
+  }
+}
+
+.workspace-fullscreen-shell--active .dashboard-shell,
+.workspace-fullscreen-shell--active .app-content,
+.workspace-fullscreen-shell--active .content-grid,
+.workspace-fullscreen-shell--active .lineup-column,
+.workspace-fullscreen-inner .dashboard-shell,
+.workspace-fullscreen-inner .app-content,
+.workspace-fullscreen-inner .content-grid,
+.workspace-fullscreen-inner .lineup-column,
+.workspace-fullscreen-portrait-rotator .dashboard-shell,
+.workspace-fullscreen-portrait-rotator .app-content,
+.workspace-fullscreen-portrait-rotator .content-grid,
+.workspace-fullscreen-portrait-rotator .lineup-column {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+.workspace-fullscreen-shell--active .stats-column,
+.workspace-fullscreen-shell--active .mobile-player-editor,
+.workspace-fullscreen-inner .stats-column,
+.workspace-fullscreen-inner .mobile-player-editor,
+.workspace-fullscreen-portrait-rotator .stats-column,
+.workspace-fullscreen-portrait-rotator .mobile-player-editor {
+  display: none !important;
+}
+
+.workspace-fullscreen-shell--active .content-grid,
+.workspace-fullscreen-inner .content-grid,
+.workspace-fullscreen-portrait-rotator .content-grid {
+  display: block;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-fullscreen-shell--active .lineup-column > .mobile-player-editor,
+.workspace-fullscreen-inner .lineup-column > .mobile-player-editor,
+.workspace-fullscreen-portrait-rotator .lineup-column > .mobile-player-editor {
+  display: none !important;
+}
+
+.workspace-fullscreen-shell--active .lineup-stage,
+.workspace-fullscreen-inner .lineup-stage,
+.workspace-fullscreen-portrait-rotator .lineup-stage {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace-fullscreen-pitch-viewport {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.workspace-fullscreen-pitch-viewport .pitch-bounds {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-fullscreen-shell--active .pitch,
+.workspace-fullscreen-portrait-rotator .pitch,
+.workspace-fullscreen-pitch-viewport .pitch-bounds > .pitch {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* Mobile/tablet fullscreen: keep 68×105 aspect ratio via pitch-bounds. */
+@media (max-width: 1024px) {
+  .workspace-fullscreen-pitch-viewport .pitch-bounds > .pitch.landscape {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    aspect-ratio: var(--pitch-length) / var(--pitch-width);
+  }
+}
+
+/* Desktop fullscreen: pitch fills the entire viewport. */
+@media (min-width: 1025px) {
+  .workspace-fullscreen-pitch-viewport .pitch-bounds {
+    display: block;
+  }
+
+  .workspace-fullscreen-pitch-viewport .pitch-bounds > .pitch {
+    pointer-events: auto;
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    transform: none !important;
+    aspect-ratio: auto !important;
+    border-radius: 0;
+  }
+}

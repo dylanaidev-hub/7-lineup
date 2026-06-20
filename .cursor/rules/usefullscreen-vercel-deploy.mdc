@@ -1,0 +1,38 @@
+---
+description: Auto commit, push, and Vercel deploy after code changes on usefullscreen branch
+alwaysApply: true
+---
+
+# usefullscreen branch — auto push & Vercel deploy
+
+When you finish implementing user-requested code changes on branch `usefullscreen`, **automatically** commit, push, and deploy to Vercel without waiting for the user to ask again.
+
+## Workflow (run after every successful change)
+
+1. Verify build: `npm run build:vercel`
+2. Commit with a concise message (HEREDOC). Use git author env vars if local git identity is unset:
+   - `GIT_AUTHOR_NAME=dylanaidev-hub`
+   - `GIT_AUTHOR_EMAIL=dylanaidev-hub@users.noreply.github.com`
+   - Same for `GIT_COMMITTER_*`
+3. Push: `git push origin usefullscreen`
+4. Deploy production:
+   ```bash
+   NPM_CONFIG_CACHE=/tmp/npm-cache-vercel npx --yes vercel@54.14.2 deploy --prod --yes
+   ```
+
+## Targets
+
+- **Branch:** `usefullscreen`
+- **Production URL:** https://doihinhsanco-usefullscreen.vercel.app/app
+- **Vercel project:** `doihinhsanco-usefullscreen` (team `lineup-football`)
+- **Build command:** `npm run build:vercel` (via `vercel.json`)
+
+## Skip auto deploy only when
+
+- User explicitly says not to commit, push, or deploy
+- Build fails — fix first, then run the full workflow
+- No code changes were made (question-only / review-only tasks)
+
+## After deploy
+
+Briefly confirm: commit SHA, production URL, and inspect link if useful.

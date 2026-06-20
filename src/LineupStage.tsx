@@ -8,6 +8,7 @@ type LineupStageProps = {
   activeTool: CanvasTool | null;
   drawLabel: string;
   isDragging: boolean;
+  isFullscreen?: boolean;
   showMarkerTray: boolean;
   showAnimationPanel: boolean;
   onSelectTool: (tool: CanvasTool) => void;
@@ -22,6 +23,7 @@ export function LineupStage({
   activeTool,
   drawLabel,
   isDragging,
+  isFullscreen = false,
   showMarkerTray,
   showAnimationPanel,
   onSelectTool,
@@ -31,16 +33,22 @@ export function LineupStage({
   animationTimeline,
 }: LineupStageProps) {
   const modeClass = mode === "animation" ? "tool-animation" : mode === "draw" ? "tool-draw" : "tool-personnel";
+  const pitchBounds = <div className="pitch-bounds">{pitch}</div>;
+  const pitchNode = isFullscreen ? (
+    <div className="workspace-fullscreen-pitch-viewport">{pitchBounds}</div>
+  ) : (
+    pitchBounds
+  );
 
   return (
     <div
       className={`lineup-stage sandbox-canvas-stage ${modeClass} ${isDragging ? "dock-dimmed" : ""} ${
         showMarkerTray ? "show-marker-tray" : ""
-      } ${showAnimationPanel ? "show-animation-panel" : ""}`}
+      } ${showAnimationPanel ? "show-animation-panel" : ""}${isFullscreen ? " lineup-stage--fullscreen" : ""}`}
     >
-      <CanvasToolSidebar activeTool={activeTool} drawLabel={drawLabel} onSelectTool={onSelectTool} />
+      <CanvasToolSidebar activeTool={activeTool} drawLabel={drawLabel} isFullscreen={isFullscreen} onSelectTool={onSelectTool} />
       {markerTray}
-      {pitch}
+      {pitchNode}
       {mobileSquadDrawer}
       {animationTimeline}
     </div>

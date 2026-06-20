@@ -1,13 +1,19 @@
+:root {
+  /* Standard pitch proportions: 105m length × 68m width. */
+  --pitch-length: 105;
+  --pitch-width: 68;
+}
+
 .pitch {
   align-self: center;
   flex: 0 1 auto;
-  height: clamp(400px, calc(100vh - 270px), 700px);
-  margin-bottom: 18px;
   width: auto;
+  height: auto;
   max-width: 100%;
   min-height: 0;
   box-sizing: border-box;
   touch-action: pan-y;
+  aspect-ratio: var(--pitch-width) / var(--pitch-length);
   background:
     repeating-linear-gradient(
       0deg,
@@ -19,14 +25,69 @@
     linear-gradient(135deg, #37a84f 0%, #2e9849 50%, #2a8841 100%);
 }
 
-.lineup-stage .pitch {
-  height: min(100%, 700px);
-  justify-self: center;
-  margin-bottom: 0;
+.pitch.landscape {
+  aspect-ratio: var(--pitch-length) / var(--pitch-width);
 }
 
-.sandbox-canvas-stage.show-marker-tray .pitch {
-  height: min(100%, 640px);
+/* Responsive pitch bounds: percentage sizing inside a definite inset box. */
+.pitch-bounds {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pitch-bounds > .pitch {
+  pointer-events: auto;
+  flex: none;
+  position: relative;
+  margin: 0;
+  box-sizing: border-box;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: var(--pitch-width) / var(--pitch-length);
+}
+
+.pitch-bounds > .pitch.landscape {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: var(--pitch-length) / var(--pitch-width);
+}
+
+.pitch-fit-contain {
+  box-sizing: border-box;
+}
+
+.pitch-fit-contain--portrait {
+  aspect-ratio: var(--pitch-width) / var(--pitch-length);
+  height: min(var(--pitch-area-h, 100%), calc(var(--pitch-area-w, 100%) * var(--pitch-length) / var(--pitch-width)));
+  width: auto;
+  max-width: var(--pitch-area-w, 100%);
+}
+
+.pitch-fit-contain--landscape {
+  aspect-ratio: var(--pitch-length) / var(--pitch-width);
+  width: min(var(--pitch-area-w, 100%), calc(var(--pitch-area-h, 100%) * var(--pitch-length) / var(--pitch-width)));
+  height: auto;
+  max-height: var(--pitch-area-h, 100%);
+}
+
+@media (min-width: 1025px) {
+  .lineup-stage .pitch {
+    height: min(100%, 760px);
+    width: auto;
+    justify-self: center;
+    margin-bottom: 0;
+  }
+
+  .sandbox-canvas-stage.show-marker-tray .pitch {
+    height: min(100%, 720px);
+  }
 }
 
 .pitch::after {
@@ -73,7 +134,7 @@
 }
 
 .player-token.dragging {
-  opacity: 0;
+  z-index: 40;
 }
 
 .kit-disc::before {

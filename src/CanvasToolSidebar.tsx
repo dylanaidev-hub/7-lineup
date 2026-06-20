@@ -8,6 +8,7 @@ type CanvasToolSidebarProps = {
   drawLabel: string;
   lineupLabel?: string;
   animationLabel?: string;
+  isFullscreen?: boolean;
   onSelectTool: (tool: CanvasTool) => void;
 };
 
@@ -16,13 +17,17 @@ export function CanvasToolSidebar({
   drawLabel,
   lineupLabel = "Đội hình",
   animationLabel = "Chuyển động",
+  isFullscreen = false,
   onSelectTool,
 }: CanvasToolSidebarProps) {
   const getButtonClassName = (tool: CanvasTool) =>
     activeTool === tool ? `${styles.button} ${styles.buttonActive}` : styles.button;
 
   return (
-    <aside className={styles.sidebar} aria-label="Canvas tools">
+    <aside
+      className={`${styles.sidebar}${isFullscreen ? ` ${styles.sidebarFullscreen} canvas-tool-sidebar--fullscreen` : ""}`}
+      aria-label="Canvas tools"
+    >
       <button
         type="button"
         className={getButtonClassName("PERSONNEL_TOOL")}

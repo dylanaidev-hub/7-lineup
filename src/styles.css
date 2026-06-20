@@ -7,3 +7,6 @@
 @import "./styles/marker-tray.css";
 @import "./styles/pitch.css";
 @import "./styles/theme.css";
+@import "./styles/mobile-dock-fullscreen.css";
+@import "./styles/workspace-fullscreen.css";
+@import "./styles/ios-immersive-fullscreen.css";

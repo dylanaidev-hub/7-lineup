@@ -439,7 +439,7 @@
     grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
     justify-items: center;
-    padding: 8px;
+    padding: 10px;
   }
 
   .sandbox-canvas-stage.show-marker-tray {
@@ -461,20 +461,43 @@
     margin-bottom: 0;
   }
 
-  .sandbox-canvas-stage.show-marker-tray .pitch,
-  .sandbox-canvas-stage.show-animation-panel .pitch {
+  .sandbox-canvas-stage.show-marker-tray .pitch-bounds > .pitch,
+  .sandbox-canvas-stage.show-animation-panel .pitch-bounds > .pitch {
     height: 100%;
     max-height: 100%;
   }
 
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch {
-    height: clamp(380px, calc(100vh - 310px), 600px);
+  .sandbox-canvas-stage > .pitch-bounds,
+  .sandbox-canvas-stage.show-marker-tray > .pitch-bounds,
+  .sandbox-canvas-stage.show-animation-panel > .pitch-bounds {
+    position: relative;
+    inset: auto;
+    height: 100%;
     max-height: 100%;
-    width: auto;
+    width: 100%;
     justify-self: center;
     align-self: center;
+  }
+
+  .sandbox-canvas-stage .pitch-bounds > .pitch.landscape,
+  .sandbox-canvas-stage.show-marker-tray .pitch-bounds > .pitch.landscape,
+  .sandbox-canvas-stage.show-animation-panel .pitch-bounds > .pitch.landscape {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    aspect-ratio: var(--pitch-length) / var(--pitch-width);
+  }
+
+  .pitch.landscape {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.05) 0,
+        rgba(255, 255, 255, 0.05) 11.11%,
+        rgba(255, 255, 255, 0.07) 11.11%,
+        rgba(255, 255, 255, 0.07) 22.22%
+      ),
+      linear-gradient(90deg, #1c5236, #134029);
   }
 }
 
@@ -751,9 +774,9 @@
     padding: 0 18px;
   }
 
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch,
+  .sandbox-canvas-stage > .pitch-bounds,
+  .sandbox-canvas-stage.show-marker-tray > .pitch-bounds,
+  .sandbox-canvas-stage.show-animation-panel > .pitch-bounds,
   .custom-side-tray,
   .sandbox-canvas-stage > .workspace-timeline,
   .workspace-timeline {
@@ -896,28 +919,23 @@
     overflow: hidden;
   }
 
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch {
-    position: absolute;
-    z-index: 20;
+  .sandbox-canvas-stage .pitch-bounds {
     top: var(--lf-mobile-edge);
-    left: 50%;
-    right: auto;
-    bottom: auto;
-    width: min(420px, calc(100% - var(--lf-mobile-edge) * 2));
-    height: auto;
-    max-height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge));
-    min-height: 0;
-    margin-inline: 0;
-    transform: translateX(-50%);
-    box-sizing: border-box;
-    aspect-ratio: 7 / 10;
+    right: var(--lf-mobile-edge);
+    bottom: var(--lf-pitch-reserved-bottom);
+    left: var(--lf-mobile-edge);
   }
 
-  .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
-  .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
-    max-height: calc(100% - var(--lf-pitch-reserved-bottom) - var(--lf-mobile-edge));
+  .sandbox-canvas-stage .pitch-bounds > .pitch.landscape {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.05) 0,
+        rgba(255, 255, 255, 0.05) 11.11%,
+        rgba(255, 255, 255, 0.07) 11.11%,
+        rgba(255, 255, 255, 0.07) 22.22%
+      ),
+      linear-gradient(90deg, #1c5236, #134029);
   }
 
   .lineup-footer-actions,
@@ -1519,14 +1537,11 @@
     --lf-mobile-tray: clamp(112px, 17dvh, 128px);
     --lf-mobile-animation-tray: clamp(184px, 28dvh, 220px);
     --lf-mobile-sheet-max-width: 480px;
-  }
-
-  .sandbox-canvas-stage > .pitch,
-  .sandbox-canvas-stage.show-marker-tray > .pitch,
-  .sandbox-canvas-stage.show-animation-panel > .pitch,
-  .lineup-column.tool-draw .sandbox-canvas-stage > .pitch,
-  .lineup-column.tool-animation .sandbox-canvas-stage > .pitch {
-    width: min(480px, calc(100% - var(--lf-mobile-edge) * 2));
+    --lf-mobile-edge: 8px;
+    --lf-mobile-gap: 8px;
+    --lf-pitch-reserved-bottom: calc(
+      env(safe-area-inset-bottom, 0px) + var(--lf-mobile-dock) + var(--lf-mobile-gap)
+    );
   }
 
   .lineup-column.tool-draw .draw-history-actions {

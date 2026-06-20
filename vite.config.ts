@@ -75,7 +75,8 @@ function seoFilesPlugin(routes: string[], articles: ContentfulRoute[]): Plugin {
 
 export default defineConfig(async ({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const contentfulRoutes = command === "build" ? await fetchContentfulRoutes(env) : [];
+  const skipPrerender = mode === "vercel";
+  const contentfulRoutes = command === "build" && !skipPrerender ? await fetchContentfulRoutes(env) : [];
   const routes = [...new Set([...STATIC_ROUTES, ...contentfulRoutes.map(({ slug }) => `/tin-tuc/${slug}`)])];
   const prerenderRoutes = routes.map((route) => route === "/" ? "/__prerender-home" : route);
 
@@ -83,7 +84,7 @@ export default defineConfig(async ({ command, mode }) => {
     base: "/",
     plugins: [
       react(),
-      ...(command === "build" ? [
+      ...(command === "build" && !skipPrerender ? [
         prerender({
           routes: prerenderRoutes,
           renderer: "@prerenderer/renderer-puppeteer",
@@ -100,6 +101,8 @@ export default defineConfig(async ({ command, mode }) => {
           },
         }),
         seoFilesPlugin(routes, contentfulRoutes),
+      ] : command === "build" && skipPrerender ? [
+        seoFilesPlugin(STATIC_ROUTES, []),
       ] : []),
     ],
   };

@@ -147,12 +147,72 @@
 }
 
 @media (max-width: 360px) {
-  .sidebar {
+  .sidebar:not(.sidebarFullscreen) {
     width: min(42vw, 150px);
     height: 48px;
   }
 
-  .button {
+  .sidebar:not(.sidebarFullscreen) .button {
     min-height: 40px;
   }
+}
+
+:global(body.lineup-mobile-dock) .sidebarFullscreen {
+  position: fixed;
+  z-index: 90;
+  right: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--lf-mobile-edge, 12px));
+  left: 50%;
+  display: grid;
+  width: min(46vw, 240px);
+  height: 48px;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-column: auto;
+  grid-row: auto;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(8, 31, 21, 0.9);
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  transform: translateX(-50%);
+}
+
+:global(body.lineup-mobile-dock) .sidebarFullscreen .button {
+  display: inline-grid;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-items: center;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0;
+  gap: 0;
+  color: #ffffff;
+  font-size: 0;
+  line-height: 0;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+:global(body.lineup-mobile-dock) .sidebarFullscreen .button svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 0;
+  vertical-align: middle;
+}
+
+:global(body.lineup-mobile-dock) .sidebarFullscreen .button span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

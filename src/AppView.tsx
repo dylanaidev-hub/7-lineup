@@ -1,3 +1,4 @@
+import { Fragment, useEffect, useRef, useState } from "react";
 import { AnimationTimeline } from "./AnimationTimeline";
 import { AppContent } from "./AppContent";
 import { AppHeader } from "./AppHeader";
@@ -12,6 +13,7 @@ import { LineupStage } from "./LineupStage";
 import { LineupWorkspace } from "./LineupWorkspace";
 import { LockerRoom } from "./LockerRoom";
 import { MarkerTray } from "./MarkerTray";
+import { MobileLandscapePrompt } from "./MobileLandscapePrompt";
 import { PitchField } from "./PitchField";
 import { ProfileView } from "./ProfileView";
 import { MobilePlayerEditor, MobileSquadDrawer, SquadEditor } from "./SquadEditor";
@@ -20,13 +22,142 @@ import { getDisplayPosition } from "./formationData";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
 import { localizeError } from "./appI18n";
 import type { useAppController } from "./hooks/useAppController";
+import { useFullscreen } from "./hooks/useFullscreen";
 
 type AppViewProps = { model: ReturnType<typeof useAppController> };
 
+const isPortableTouchDevice = () => {
+  if (typeof window === "undefined") return false;
+
+  const userAgent = navigator.userAgent;
+  const isIOSDevice = /iPad|iPhone|iPod/i.test(userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroidDevice = /Android/i.test(userAgent);
+  const hasTouchInput = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+  const shortestScreenSide = Math.min(window.screen.width, window.screen.height);
+
+  return isIOSDevice || isAndroidDevice || (hasTouchInput && shortestScreenSide <= 1024);
+};
+
+const isViewportLandscape = () => {
+  if (typeof window === "undefined") return false;
+
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  if (Math.abs(viewportWidth - viewportHeight) > 1) return viewportWidth > viewportHeight;
+
+  const legacyOrientation = (window as Window & { orientation?: number }).orientation;
+  if (typeof legacyOrientation === "number") return Math.abs(legacyOrientation) === 90;
+
+  return window.screen.orientation?.type.startsWith("landscape")
+    ?? window.matchMedia("(orientation: landscape)").matches;
+};
+
 export function AppView({ model }: AppViewProps) {
   const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showAllCanvasObjects } = model;
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, isPseudoFullscreen, enterFullscreenFromGesture, toggleFullscreen } = useFullscreen(workspaceRef);
+  const [prefersLandscapePitch, setPrefersLandscapePitch] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+    typeof window === "undefined" ? true : window.matchMedia("(min-width: 1025px)").matches,
+  );
+  const [isLandscapeViewport, setIsLandscapeViewport] = useState(() =>
+    isViewportLandscape(),
+  );
+  const [isPortableViewport, setIsPortableViewport] = useState(() => isPortableTouchDevice());
+  const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
+  const wasLandscapeViewportRef = useRef(isLandscapeViewport);
+  const isPitchLandscape = isFullscreen
+    || (isPortableViewport && isLandscapeViewport)
+    || (prefersLandscapePitch && isDesktopViewport);
+  const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
+  const workspaceShellClassName = [
+    "workspace-fullscreen-shell",
+    isFullscreen ? "workspace-fullscreen-shell--active" : "",
+    isPortraitFullscreen ? "workspace-fullscreen-shell--portrait" : "",
+    isPseudoFullscreen ? "app-pseudo-fullscreen" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const fullscreenLabel = language === "vi"
+    ? isFullscreen ? "Thoát toàn màn hình (F)" : "Toàn màn hình (F)"
+    : isFullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)";
+  const rotateLabel = language === "vi"
+    ? isPitchLandscape ? "Sân dọc" : "Sân ngang"
+    : isPitchLandscape ? "Portrait pitch" : "Landscape pitch";
+
+  useEffect(() => {
+    if (isFullscreen) {
+      setPrefersLandscapePitch(true);
+    }
+    document.body.classList.toggle("lineup-mobile-dock", isFullscreen);
+    document.body.classList.toggle("lineup-portrait-fullscreen", isPortraitFullscreen);
+    return () => {
+      document.body.classList.remove("lineup-mobile-dock");
+      document.body.classList.remove("lineup-portrait-fullscreen");
+    };
+  }, [isFullscreen, isPortraitFullscreen]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1025px)");
+    const landscapeQuery = window.matchMedia("(orientation: landscape)");
+    const pendingSyncs: number[] = [];
+    const syncViewport = () => {
+      const nextLandscape = isViewportLandscape();
+
+      setIsDesktopViewport(desktopQuery.matches);
+      setIsLandscapeViewport(nextLandscape);
+      setIsPortableViewport(isPortableTouchDevice());
+
+      if (!nextLandscape || (nextLandscape && !wasLandscapeViewportRef.current)) {
+        setIsLandscapePromptDismissed(false);
+      }
+      wasLandscapeViewportRef.current = nextLandscape;
+    };
+    const syncAfterOrientationChange = () => {
+      window.requestAnimationFrame(syncViewport);
+      pendingSyncs.push(window.setTimeout(syncViewport, 120));
+      pendingSyncs.push(window.setTimeout(syncViewport, 320));
+      pendingSyncs.push(window.setTimeout(syncViewport, 600));
+    };
+
+    syncViewport();
+    desktopQuery.addEventListener("change", syncViewport);
+    landscapeQuery.addEventListener("change", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", syncAfterOrientationChange);
+    window.screen.orientation?.addEventListener("change", syncAfterOrientationChange);
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    return () => {
+      desktopQuery.removeEventListener("change", syncViewport);
+      landscapeQuery.removeEventListener("change", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", syncAfterOrientationChange);
+      window.screen.orientation?.removeEventListener("change", syncAfterOrientationChange);
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+      pendingSyncs.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, []);
+
+  const openMobileLandscapeFullscreen = () => {
+    setPrefersLandscapePitch(true);
+    enterFullscreenFromGesture();
+  };
+
+  const WorkspaceFrame = isFullscreen ? "div" : Fragment;
+  const workspaceFrameProps = isFullscreen
+    ? {
+        className: isPortraitFullscreen
+          ? "workspace-fullscreen-portrait-rotator"
+          : "workspace-fullscreen-inner",
+      }
+    : {};
+
   return (
     <main className="match-bg min-h-screen px-0 py-0 text-slate-900 antialiased sm:px-4 sm:py-6 lg:p-10">
+      <div ref={workspaceRef} className={workspaceShellClassName}>
+      <WorkspaceFrame {...workspaceFrameProps}>
+      {!isFullscreen ? (
       <AppHeader
         copy={copy}
         user={user}
@@ -46,6 +177,7 @@ export function AppView({ model }: AppViewProps) {
           navigate("/", { replace: true });
         }}
       />
+      ) : null}
       <AppOverlays
         copy={copy}
         language={language}
@@ -70,6 +202,25 @@ export function AppView({ model }: AppViewProps) {
         onCloseAuth={() => setIsAuthScreenOpen(false)}
         onAuthenticated={() => setIsAuthScreenOpen(false)}
       />
+      {isPortableViewport &&
+      !isPortraitFullscreen &&
+      isLandscapeViewport &&
+      !isFullscreen &&
+      !isLandscapePromptDismissed &&
+      activeTab === "lineup" ? (
+        <MobileLandscapePrompt
+          title={language === "vi" ? "Xoay ngang đội hình" : "Rotate lineup to landscape"}
+          description={
+            language === "vi"
+              ? "Xoay đội hình sang chiều ngang để có thêm không gian chỉnh sân và sắp xếp cầu thủ."
+              : "Rotate the lineup to landscape for more room to arrange players and work on the pitch."
+          }
+          openLabel={language === "vi" ? "Xoay ngang đội hình" : "Rotate lineup to landscape"}
+          dismissLabel={language === "vi" ? "Để sau" : "Not now"}
+          onOpenFullscreen={openMobileLandscapeFullscreen}
+          onDismiss={() => setIsLandscapePromptDismissed(true)}
+        />
+      ) : null}
       <DashboardShell isTacticsView={false}>
         <AppContent
           activeTab={activeTab}
@@ -131,6 +282,7 @@ export function AppView({ model }: AppViewProps) {
               <LineupColumn
               mode={isAnimationTool ? "animation" : isDrawMode ? "draw" : "personnel"}
               isCustomPitch={pitchSize === "custom"}
+              isFullscreen={isFullscreen}
               header={
                 <LineupHeaderActions
                   saveLabel={copy.save}
@@ -138,6 +290,7 @@ export function AppView({ model }: AppViewProps) {
                   savedLabel={copy.saved}
                   status={lockerStatus}
                   isSaving={isLockerLoading}
+                  isFullscreen={isFullscreen}
                   onSave={handleSaveCurrentLineup}
                   onReset={resetWorkspace}
                 />
@@ -161,6 +314,7 @@ export function AppView({ model }: AppViewProps) {
                   activeTool={activeBottomSheetTool}
                   drawLabel={copy.draw}
                   isDragging={draggingId !== null || draggingOpponentId !== null || draggingTacticalMarkerId !== null}
+                  isFullscreen={isFullscreen}
                   showMarkerTray={showMarkerTray}
                   showAnimationPanel={showAnimationTimeline}
                   onSelectTool={applySandboxTool}
@@ -197,6 +351,7 @@ export function AppView({ model }: AppViewProps) {
                       showDrawTools={showDrawTools}
                       isAnimationTool={isAnimationTool}
                       isPlaying={isPlaying}
+                      isLandscape={isPitchLandscape}
                       showAllCanvasObjects={showAllCanvasObjects}
                       draggingPlayerId={draggingId}
                       draggingOpponentId={draggingOpponentId}
@@ -285,9 +440,16 @@ export function AppView({ model }: AppViewProps) {
                   shareLabel={copy.share}
                   copiedLabel={copy.copied}
                   downloadLabel={copy.download}
+                  fullscreenLabel={fullscreenLabel}
+                  rotateLabel={rotateLabel}
                   isCopied={copyStatus === "copied"}
+                  isFullscreen={isFullscreen}
+                  isLandscape={isPitchLandscape}
+                  isPortableViewport={isPortableViewport}
                   onShare={copyShareLink}
                   onDownload={downloadLineupImage}
+                  onToggleFullscreen={enterFullscreenFromGesture}
+                  onToggleOrientation={() => setPrefersLandscapePitch((current) => !current)}
                 />
               }
               />
@@ -296,8 +458,10 @@ export function AppView({ model }: AppViewProps) {
           }
         />
       </DashboardShell>
+      </WorkspaceFrame>
       <LineupDragPreview preview={activeTab === "lineup" ? dragPreview : null} />
       <ToastStack toasts={toasts} />
+      </div>
     </main>
   );
 }

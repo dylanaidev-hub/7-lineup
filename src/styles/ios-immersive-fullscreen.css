@@ -1,0 +1,78 @@
+/* Mobile browser tab: maximize usable area when native Fullscreen API is unavailable. */
+
+html.ios-immersive-fullscreen-active,
+body.ios-immersive-fullscreen-active {
+  position: fixed;
+  inset: 0;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  width: 100%;
+  height: 100%;
+  height: -webkit-fill-available;
+  touch-action: none;
+}
+
+body.app-pseudo-fullscreen-active .match-bg,
+body.ios-immersive-fullscreen-active .match-bg {
+  position: fixed;
+  inset: 0;
+  min-height: 100%;
+  height: 100%;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+body.app-pseudo-fullscreen-active .app-pseudo-fullscreen,
+body.app-pseudo-fullscreen-active .workspace-fullscreen-shell--active {
+  top: 0 !important;
+  width: var(--app-vvw, 100vw) !important;
+  height: var(--app-lvh, 100dvh) !important;
+  min-height: var(--app-lvh, 100dvh) !important;
+  max-height: var(--app-lvh, 100dvh) !important;
+}
+
+body.ios-immersive-fullscreen-active .match-bg {
+  min-height: 100%;
+  height: 100%;
+  padding: 0 !important;
+}
+
+body.ios-immersive-fullscreen-active .app-pseudo-fullscreen,
+body.ios-immersive-fullscreen-active .workspace-fullscreen-shell--active {
+  top: 0 !important;
+  width: var(--app-vvw, 100vw) !important;
+  height: var(--app-vvh, 100dvh) !important;
+  min-height: var(--app-lvh, 100dvh);
+  max-height: var(--app-lvh, 100dvh);
+}
+
+@media (orientation: landscape) {
+  body.ios-immersive-fullscreen-active .app-pseudo-fullscreen,
+  body.ios-immersive-fullscreen-active .workspace-fullscreen-shell--active {
+    height: var(--app-lvh, 100lvh) !important;
+    min-height: var(--app-lvh, 100lvh);
+    max-height: var(--app-lvh, 100lvh);
+  }
+}
+
+@media (display-mode: standalone) {
+  html,
+  body {
+    overflow: hidden;
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+
+  .match-bg {
+    min-height: 100%;
+    height: 100%;
+    padding: 0 !important;
+  }
+
+  .workspace-fullscreen-shell--active {
+    width: 100% !important;
+    height: 100% !important;
+    inset: 0 !important;
+    top: 0 !important;
+  }
+}

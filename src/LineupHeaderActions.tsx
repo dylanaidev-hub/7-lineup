@@ -7,6 +7,7 @@ type LineupHeaderActionsProps = {
   savedLabel: string;
   status: string;
   isSaving: boolean;
+  isFullscreen?: boolean;
   onSave: () => void;
   onReset: () => void;
 };
@@ -21,11 +22,14 @@ export function LineupHeaderActions({
   savedLabel,
   status,
   isSaving,
+  isFullscreen = false,
   onSave,
   onReset,
 }: LineupHeaderActionsProps) {
   return (
-    <div className={`lineup-column-header ${styles.header}`}>
+    <div
+      className={`lineup-column-header ${styles.header}${isFullscreen ? " lineup-column-header--fullscreen lineup-header-actions--fullscreen" : ""}`}
+    >
       <div className={styles.actions}>
         <button type="button" className={`${styles.button} ${styles.saveButton}`} onClick={onSave} disabled={isSaving}>
           {isSaving ? <ButtonSpinner /> : status === savedLabel ? <Check size={14} /> : <Save size={14} />}

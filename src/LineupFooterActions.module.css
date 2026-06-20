@@ -10,11 +10,29 @@
   color: #2e994c;
 }
 
-.downloadButton {
+.downloadButton,
+.rotateButton,
+.fullscreenButton {
+  min-width: 40px;
+  min-height: 40px;
   background: #173325;
+  color: #ffffff;
+}
+
+.fullscreenButton:hover {
+  background: #262626;
+}
+
+.rotateButton[aria-pressed="true"] {
+  background: #ffffff;
+  color: #173325;
 }
 
 @media (max-width: 1024px) {
+  .rotateButton {
+    display: none !important;
+  }
+
   .actionsRight {
     justify-content: center;
   }
@@ -40,4 +58,23 @@
   .actionsRight {
     gap: 4px;
   }
+}
+
+:global(body.lineup-mobile-dock) .rotateButton {
+  display: none !important;
+}
+
+:global(body.lineup-mobile-dock) .actionsRight {
+  justify-content: center;
+  display: flex;
+  height: 48px;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+:global(body.lineup-mobile-dock) .shareButton {
+  border: 0;
+  background: #173325;
+  color: #ffffff;
 }

@@ -1,0 +1,19 @@
+{
+  "name": "Đội Hình Sân Cỏ",
+  "short_name": "Lineup",
+  "description": "Công cụ xếp đội hình và chiến thuật bóng đá",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/site-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

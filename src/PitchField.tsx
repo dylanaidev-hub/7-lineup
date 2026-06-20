@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import { pitchPointToDisplay, type PitchOrientation } from "./pitchPointer";
 
 type PitchPlayer = {
   id: number;
@@ -46,6 +47,7 @@ type PitchFieldProps = {
   showDrawTools: boolean;
   isAnimationTool: boolean;
   isPlaying: boolean;
+  isLandscape: boolean;
   showAllCanvasObjects: boolean;
   draggingPlayerId: number | null;
   draggingOpponentId: number | null;
@@ -85,6 +87,7 @@ export function PitchField({
   showDrawTools,
   isAnimationTool,
   isPlaying,
+  isLandscape,
   showAllCanvasObjects,
   draggingPlayerId,
   draggingOpponentId,
@@ -104,28 +107,52 @@ export function PitchField({
   onBallPointerMove,
   onBallPointerEnd,
 }: PitchFieldProps) {
+  const orientation: PitchOrientation = isLandscape ? "landscape" : "portrait";
+  const displayPoint = (x: number, y: number) => pitchPointToDisplay(x, y, orientation);
+  const ballDisplayPosition = ballMarker ? displayPoint(ballMarker.x, ballMarker.y) : null;
+
   return (
     <div
       ref={pitchRef}
-      className={`pitch relative mx-auto aspect-[7/10] w-auto max-w-full min-w-0 border-[4px] border-white/80 touch-none select-none ${
+      data-orientation={orientation}
+      className={`pitch relative mx-auto w-auto max-w-full min-w-0 border-[4px] border-white/80 touch-none select-none ${
+        isLandscape ? "landscape" : ""
+      } ${
         isDrawMode ? "draw-mode" : ""
       } ${isPlaying && isAnimationTool ? "playback-mode" : ""}`}
     >
       <div className="absolute inset-[4%] border-[3px] border-white/90" />
-      <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
-      <div className="absolute left-1/2 top-1/2 h-[22%] w-[31%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white/90" />
-      <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
-      <div className="absolute left-1/2 top-[4%] h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
-      <div className="absolute left-1/2 top-[4%] h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
-      <div className="absolute bottom-[4%] left-1/2 h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
-      <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+      {isLandscape ? (
+        <>
+          <div className="absolute bottom-[4%] left-1/2 top-[4%] w-[3px] -translate-x-1/2 bg-white/90" />
+          <div className="absolute left-1/2 top-1/2 h-[31%] w-[22%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white/90" />
+          <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
+          <div className="absolute left-[4%] top-1/2 h-[48%] w-[15%] -translate-y-1/2 border-y-[3px] border-r-[3px] border-white/90" />
+          <div className="absolute left-[4%] top-1/2 h-[26%] w-[7%] -translate-y-1/2 border-y-[3px] border-r-[3px] border-white/90" />
+          <div className="absolute right-[4%] top-1/2 h-[48%] w-[15%] -translate-y-1/2 border-y-[3px] border-l-[3px] border-white/90" />
+          <div className="absolute right-[4%] top-1/2 h-[26%] w-[7%] -translate-y-1/2 border-y-[3px] border-l-[3px] border-white/90" />
+        </>
+      ) : (
+        <>
+          <div className="absolute left-[4%] right-[4%] top-1/2 h-[3px] -translate-y-1/2 bg-white/90" />
+          <div className="absolute left-1/2 top-1/2 h-[22%] w-[31%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white/90" />
+          <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
+          <div className="absolute left-1/2 top-[4%] h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+          <div className="absolute left-1/2 top-[4%] h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-b-[3px] border-white/90" />
+          <div className="absolute bottom-[4%] left-1/2 h-[15%] w-[48%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+          <div className="absolute bottom-[4%] left-1/2 h-[7%] w-[26%] -translate-x-1/2 border-x-[3px] border-t-[3px] border-white/90" />
+        </>
+      )}
 
       <svg ref={drawLayerRef} className="draw-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         {showAllCanvasObjects
           ? drawLines.map((line) => (
               <polyline
                 key={line.id}
-                points={line.points.map((point) => `${point.x},${point.y}`).join(" ")}
+                points={line.points.map((point) => {
+                  const display = displayPoint(point.x, point.y);
+                  return `${display.x},${display.y}`;
+                }).join(" ")}
                 fill="none"
                 stroke="#facc15"
                 strokeLinecap="round"
@@ -152,6 +179,7 @@ export function PitchField({
         if (animationMarker && !animationMarker.onPitch) return null;
         const starterName = player.starterName.trim() || `${labels.player} ${player.id}`;
         const benchNames = getBenchNames(player);
+        const position = displayPoint(animationMarker?.x ?? player.x, animationMarker?.y ?? player.y);
 
         return (
           <div
@@ -164,7 +192,7 @@ export function PitchField({
             className={`player-token group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center outline-none ${
               draggingPlayerId === player.id ? "dragging" : ""
             }`}
-            style={{ left: `${animationMarker?.x ?? player.x}%`, top: `${animationMarker?.y ?? player.y}%` }}
+            style={{ left: `${position.x}%`, top: `${position.y}%` }}
             role="button"
             tabIndex={0}
             aria-label={`${labels.dragPlayer} ${getPositionLabel(player.position)}`}
@@ -184,25 +212,28 @@ export function PitchField({
         );
       })}
       {showAllCanvasObjects
-        ? opponentMarkers.map((marker) => (
-            <button
-              key={`opponent-${marker.id}`}
-              type="button"
-              className={`opponent-pitch-dot ${draggingOpponentId === marker.id ? "dragging" : ""}`}
-              style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
-              onPointerDown={(event) => onOpponentPointerDown(event, marker.id)}
-              onPointerMove={(event) => onOpponentPointerMove(event, marker.id)}
-              onPointerUp={onOpponentPointerEnd}
-              onPointerCancel={onOpponentPointerEnd}
-              aria-label={`${labels.dragOpponent} ${marker.id}`}
-            />
-          ))
+        ? opponentMarkers.map((marker) => {
+            const position = displayPoint(marker.x, marker.y);
+            return (
+              <button
+                key={`opponent-${marker.id}`}
+                type="button"
+                className={`opponent-pitch-dot ${draggingOpponentId === marker.id ? "dragging" : ""}`}
+                style={{ left: `${position.x}%`, top: `${position.y}%` }}
+                onPointerDown={(event) => onOpponentPointerDown(event, marker.id)}
+                onPointerMove={(event) => onOpponentPointerMove(event, marker.id)}
+                onPointerUp={onOpponentPointerEnd}
+                onPointerCancel={onOpponentPointerEnd}
+                aria-label={`${labels.dragOpponent} ${marker.id}`}
+              />
+            );
+          })
         : null}
-      {ballMarker?.onPitch ? (
+      {ballMarker?.onPitch && ballDisplayPosition ? (
         <button
           type="button"
           className={`tactical-ball-marker ${draggingBallId === ballMarker.id ? "dragging" : ""}`}
-          style={{ left: `${ballMarker.x}%`, top: `${ballMarker.y}%` }}
+          style={{ left: `${ballDisplayPosition.x}%`, top: `${ballDisplayPosition.y}%` }}
           onPointerDown={(event) => onBallPointerDown(event, ballMarker.id)}
           onPointerMove={(event) => onBallPointerMove(event, ballMarker.id)}
           onPointerUp={onBallPointerEnd}
