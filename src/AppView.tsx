@@ -68,8 +68,8 @@ export function AppView({ model }: AppViewProps) {
   const [isLandscapePromptDismissed, setIsLandscapePromptDismissed] = useState(false);
   const wasLandscapeViewportRef = useRef(isLandscapeViewport);
   const isPitchLandscape = isFullscreen
-    || (isPortableViewport && isLandscapeViewport)
-    || (prefersLandscapePitch && isDesktopViewport);
+    || prefersLandscapePitch
+    || (isPortableViewport && isLandscapeViewport);
   const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
   const workspaceShellClassName = [
     "workspace-fullscreen-shell",
@@ -83,8 +83,8 @@ export function AppView({ model }: AppViewProps) {
     ? isFullscreen ? "Thoát toàn màn hình (F)" : "Toàn màn hình (F)"
     : isFullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)";
   const rotateLabel = language === "vi"
-    ? isPitchLandscape ? "Sân dọc" : "Sân ngang"
-    : isPitchLandscape ? "Portrait pitch" : "Landscape pitch";
+    ? isPitchLandscape ? "Xoay dọc (90°)" : "Xoay ngang (90°)"
+    : isPitchLandscape ? "Rotate portrait (90°)" : "Rotate landscape (90°)";
 
   useEffect(() => {
     if (isFullscreen) {
@@ -139,9 +139,9 @@ export function AppView({ model }: AppViewProps) {
     };
   }, []);
 
-  const openMobileLandscapeFullscreen = () => {
+  const openMobileLandscapePitch = () => {
     setPrefersLandscapePitch(true);
-    enterFullscreenFromGesture();
+    setIsLandscapePromptDismissed(true);
   };
 
   const WorkspaceFrame = isFullscreen ? "div" : Fragment;
@@ -203,21 +203,19 @@ export function AppView({ model }: AppViewProps) {
         onAuthenticated={() => setIsAuthScreenOpen(false)}
       />
       {isPortableViewport &&
-      !isPortraitFullscreen &&
-      isLandscapeViewport &&
-      !isFullscreen &&
+      !isPitchLandscape &&
       !isLandscapePromptDismissed &&
       activeTab === "lineup" ? (
         <MobileLandscapePrompt
-          title={language === "vi" ? "Chế độ màn hình ngang" : "Landscape mode"}
+          title={language === "vi" ? "Xoay sân ngang" : "Landscape pitch"}
           description={
             language === "vi"
-              ? "Mở toàn màn hình để có thêm không gian chỉnh đội hình và thao tác trên sân."
-              : "Open fullscreen for more room to edit the lineup and work on the pitch."
+              ? "Bấm nút xoay 90° ở góc dưới để xem sân theo chiều ngang, thuận tiện hơn khi chỉnh đội hình."
+              : "Tap the 90° rotate button at the bottom to view the pitch in landscape orientation."
           }
-          openLabel={language === "vi" ? "Mở toàn màn hình" : "Open fullscreen"}
+          openLabel={language === "vi" ? "Xoay ngang" : "Rotate landscape"}
           dismissLabel={language === "vi" ? "Để sau" : "Not now"}
-          onOpenFullscreen={openMobileLandscapeFullscreen}
+          onRotatePitch={openMobileLandscapePitch}
           onDismiss={() => setIsLandscapePromptDismissed(true)}
         />
       ) : null}
@@ -445,6 +443,7 @@ export function AppView({ model }: AppViewProps) {
                   isCopied={copyStatus === "copied"}
                   isFullscreen={isFullscreen}
                   isLandscape={isPitchLandscape}
+                  showFullscreenButton={isDesktopViewport}
                   onShare={copyShareLink}
                   onDownload={downloadLineupImage}
                   onToggleFullscreen={enterFullscreenFromGesture}

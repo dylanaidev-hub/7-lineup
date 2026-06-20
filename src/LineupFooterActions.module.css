@@ -29,12 +29,20 @@
 }
 
 @media (max-width: 1024px) {
-  .rotateButton {
+  .fullscreenButton {
     display: none !important;
   }
 
   .actionsRight {
     justify-content: center;
+  }
+
+  .rotateButton span {
+    display: none;
+  }
+
+  .rotateButton:not([aria-pressed="true"]) svg {
+    transform: rotate(90deg);
   }
 }
 
@@ -58,10 +66,6 @@
   .actionsRight {
     gap: 4px;
   }
-}
-
-:global(body.lineup-mobile-dock) .rotateButton {
-  display: none !important;
 }
 
 :global(body.lineup-mobile-dock) .actionsRight {

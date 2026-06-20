@@ -50,7 +50,7 @@
   line-height: 1.5;
 }
 
-.fullscreenButton {
+.actionButton {
   display: inline-flex;
   min-width: 220px;
   min-height: 48px;
@@ -68,11 +68,11 @@
   cursor: pointer;
 }
 
-.fullscreenButton:hover {
+.actionButton:hover {
   background: #82e3a5;
 }
 
-.fullscreenButton:active {
+.actionButton:active {
   transform: translateY(1px);
 }
 
