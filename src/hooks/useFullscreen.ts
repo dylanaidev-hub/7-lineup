@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { isMobileBrowserTab, supportsDomFullscreen } from "../lib/mobilePlatform";
+import { isMobileBrowserTab, prefersPseudoFullscreen, supportsDomFullscreen } from "../lib/mobilePlatform";
 
-const PSEUDO_FULLSCREEN_CLASS = "app-pseudo-fullscreen";
 const PSEUDO_FULLSCREEN_ACTIVE_CLASS = "app-pseudo-fullscreen-active";
 const NATIVE_FULLSCREEN_ACTIVE_CLASS = "app-native-fullscreen-active";
 const MOBILE_IMMERSIVE_CLASS = "ios-immersive-fullscreen-active";
@@ -165,8 +164,6 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   }, []);
 
   const exitPseudoFullscreen = useCallback(() => {
-    const element = elementRef.current;
-    element?.classList.remove(PSEUDO_FULLSCREEN_CLASS);
     document.documentElement.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     applyMobileImmersiveClasses(false);
@@ -177,15 +174,13 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     setIsPseudoFullscreen(false);
     setIsNativeFullscreen(false);
     setIsFullscreen(false);
-  }, [elementRef]);
+  }, []);
 
   const enterPseudoFullscreen = useCallback(() => {
-    const element = elementRef.current;
-    if (!element) return;
+    if (!elementRef.current) return;
 
     syncVisualViewportVars();
     nudgeBrowserChrome();
-    element.classList.add(PSEUDO_FULLSCREEN_CLASS);
     document.documentElement.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     document.body.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     if (isMobileBrowserTab()) {
@@ -228,7 +223,6 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     syncVisualViewportVars();
     shouldLockOrientationRef.current = true;
     isPseudoFullscreenRef.current = false;
-    workspace.classList.remove(PSEUDO_FULLSCREEN_CLASS);
     document.documentElement.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     setIsPseudoFullscreen(false);
@@ -241,7 +235,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     const element = elementRef.current;
     if (!element || isTransitioningRef.current) return;
 
-    if (isPseudoFullscreenRef.current || element.classList.contains(PSEUDO_FULLSCREEN_CLASS)) {
+    if (isPseudoFullscreenRef.current) {
       exitPseudoFullscreen();
       return;
     }
@@ -254,7 +248,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     isTransitioningRef.current = true;
     clearNativeFallbackTimer();
 
-    if (!supportsDomFullscreen(element)) {
+    if (prefersPseudoFullscreen() || !supportsDomFullscreen(element)) {
       enterPseudoFullscreen();
       isTransitioningRef.current = false;
       return;
@@ -296,13 +290,14 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const syncFullscreenState = () => {
       const element = elementRef.current;
+
+      // Pseudo mode is React-managed; ignore native fullscreenchange while it is active.
+      if (isPseudoFullscreenRef.current) {
+        return;
+      }
+
       const activeElement = getFullscreenElement();
       const isNativeActive = belongsToWorkspace(activeElement, element);
-      const isPseudoActive = Boolean(
-        element &&
-          isPseudoFullscreenRef.current &&
-          element.classList.contains(PSEUDO_FULLSCREEN_CLASS),
-      );
 
       if (isNativeActive && element) {
         clearNativeFallbackTimer();
@@ -312,7 +307,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
         return;
       }
 
-      if (!isNativeActive && !isPseudoActive) {
+      if (!isNativeActive) {
         applyNativeFullscreenClasses(false);
         applyMobileImmersiveClasses(false);
         if (shouldLockOrientationRef.current) {
@@ -329,8 +324,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       }
 
       setIsNativeFullscreen(isNativeActive);
-      setIsPseudoFullscreen(isPseudoActive);
-      setIsFullscreen(isNativeActive || isPseudoActive);
+      setIsFullscreen(isNativeActive);
     };
 
     document.addEventListener("fullscreenchange", syncFullscreenState);
@@ -367,7 +361,11 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     const blockRubberBandScroll = (event: TouchEvent) => {
       if (event.touches.length > 1) return;
       const target = event.target;
-      if (target instanceof Element && target.closest(".pitch, input, textarea, select, [contenteditable='true']")) {
+      if (target instanceof Element && target.closest("input, textarea, select, [contenteditable='true']")) {
+        return;
+      }
+      // iOS pseudo FS: block all touch scroll (marker drag uses pointer events).
+      if (!prefersPseudoFullscreen() && target instanceof Element && target.closest(".pitch")) {
         return;
       }
       event.preventDefault();
@@ -398,8 +396,6 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
 
   useEffect(
     () => () => {
-      const element = elementRef.current;
-      element?.classList.remove(PSEUDO_FULLSCREEN_CLASS);
       document.documentElement.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
       document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
       applyNativeFullscreenClasses(false);
@@ -411,7 +407,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       clearVisualViewportVars();
       unlockLandscapeOrientation();
     },
-    [applyNativeFullscreenClasses, clearNativeFallbackTimer, elementRef],
+    [applyNativeFullscreenClasses, clearNativeFallbackTimer],
   );
 
   return {
