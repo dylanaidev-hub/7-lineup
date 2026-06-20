@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { isIOSInBrowserTab } from "../lib/mobilePlatform";
 
 const PSEUDO_FULLSCREEN_CLASS = "app-pseudo-fullscreen";
 const PSEUDO_FULLSCREEN_ACTIVE_CLASS = "app-pseudo-fullscreen-active";
 const NATIVE_FULLSCREEN_ACTIVE_CLASS = "app-native-fullscreen-active";
+const IOS_IMMERSIVE_CLASS = "ios-immersive-fullscreen-active";
 
 type WebkitFullscreenDocument = Document & {
   webkitExitFullscreen?: () => Promise<void> | void;
@@ -60,6 +62,18 @@ const clearVisualViewportVars = () => {
   root.style.removeProperty("--app-vvw");
   root.style.removeProperty("--app-vvh");
   root.style.removeProperty("--app-vv-offset-top");
+};
+
+const applyIOSImmersiveClasses = (active: boolean) => {
+  document.documentElement.classList.toggle(IOS_IMMERSIVE_CLASS, active);
+  document.body.classList.toggle(IOS_IMMERSIVE_CLASS, active);
+};
+
+const minimizeMobileBrowserChrome = () => {
+  window.scrollTo(0, 1);
+  window.requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+  });
 };
 
 const lockLandscapeOrientation = async () => {
@@ -123,6 +137,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+  const [showIOSInstallHint, setShowIOSInstallHint] = useState(false);
   const isPseudoFullscreenRef = useRef(false);
   const isTransitioningRef = useRef(false);
   const shouldLockOrientationRef = useRef(false);
@@ -146,6 +161,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     element?.classList.remove(PSEUDO_FULLSCREEN_CLASS);
     document.documentElement.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
+    applyIOSImmersiveClasses(false);
     isPseudoFullscreenRef.current = false;
     shouldLockOrientationRef.current = false;
     clearVisualViewportVars();
@@ -153,6 +169,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     setIsPseudoFullscreen(false);
     setIsNativeFullscreen(false);
     setIsFullscreen(false);
+    setShowIOSInstallHint(false);
   }, [elementRef]);
 
   const enterPseudoFullscreen = useCallback(() => {
@@ -160,15 +177,21 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     if (!element) return;
 
     syncVisualViewportVars();
+    minimizeMobileBrowserChrome();
     element.classList.add(PSEUDO_FULLSCREEN_CLASS);
     document.documentElement.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
     document.body.classList.add(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
+    if (isIOSInBrowserTab()) {
+      applyIOSImmersiveClasses(true);
+    }
     isPseudoFullscreenRef.current = true;
     shouldLockOrientationRef.current = true;
     setIsPseudoFullscreen(true);
     setIsNativeFullscreen(false);
     setIsFullscreen(true);
     void lockLandscapeOrientation();
+    window.setTimeout(syncVisualViewportVars, 120);
+    window.setTimeout(minimizeMobileBrowserChrome, 180);
   }, [elementRef]);
 
   const exitNativeFullscreen = useCallback(async () => {
@@ -220,6 +243,14 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
 
     isTransitioningRef.current = true;
     clearNativeFallbackTimer();
+
+    if (isIOSInBrowserTab()) {
+      enterPseudoFullscreen();
+      setShowIOSInstallHint(true);
+      isTransitioningRef.current = false;
+      return;
+    }
+
     const requestedTarget = requestNativeFullscreenSync(element);
     pendingNativeTargetRef.current = requestedTarget;
 
@@ -364,6 +395,7 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
       document.documentElement.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
       document.body.classList.remove(PSEUDO_FULLSCREEN_ACTIVE_CLASS);
       applyNativeFullscreenClasses(false);
+      applyIOSImmersiveClasses(false);
       clearNativeFallbackTimer();
       isPseudoFullscreenRef.current = false;
       shouldLockOrientationRef.current = false;
@@ -378,6 +410,8 @@ export function useFullscreen(elementRef: RefObject<HTMLElement | null>) {
     isFullscreen,
     isPseudoFullscreen,
     isNativeFullscreen,
+    showIOSInstallHint,
+    dismissIOSInstallHint: () => setShowIOSInstallHint(false),
     enterFullscreenFromGesture,
     toggleFullscreen,
   };

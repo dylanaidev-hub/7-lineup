@@ -1,0 +1,77 @@
+.banner {
+  position: fixed;
+  z-index: 10050;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: 8px;
+  left: 8px;
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid rgba(126, 224, 163, 0.35);
+  border-radius: 14px;
+  background: rgba(8, 31, 21, 0.94);
+  color: #f4fff8;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+
+.icon {
+  margin-top: 2px;
+  color: #7ee0a3;
+}
+
+.text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.text p {
+  margin: 6px 0 0;
+  color: rgba(232, 245, 233, 0.78);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.text ol {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: rgba(232, 245, 233, 0.92);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.text li + li {
+  margin-top: 4px;
+}
+
+.close {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+@media (orientation: landscape) {
+  .banner {
+    top: auto;
+    right: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 56px);
+    left: 8px;
+    width: min(420px, calc(100% - 16px));
+  }
+}
