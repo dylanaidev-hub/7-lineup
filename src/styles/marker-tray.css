@@ -36,8 +36,8 @@
 
   .sandbox-canvas-stage > .pitch-bounds > .pitch {
     width: auto;
-    height: min(100cqh, calc(100cqw * var(--pitch-length) / var(--pitch-width)));
-    max-width: 100cqw;
+    height: 100%;
+    max-width: 100%;
   }
 
   .sandbox-canvas-stage > .workspace-timeline {

@@ -482,9 +482,9 @@
   .sandbox-canvas-stage .pitch-bounds > .pitch.landscape,
   .sandbox-canvas-stage.show-marker-tray .pitch-bounds > .pitch.landscape,
   .sandbox-canvas-stage.show-animation-panel .pitch-bounds > .pitch.landscape {
-    width: min(100cqw, calc(100cqh * var(--pitch-length) / var(--pitch-width)));
-    height: auto !important;
-    max-height: 100cqh;
+    height: 100%;
+    width: auto;
+    max-width: 100%;
     aspect-ratio: var(--pitch-length) / var(--pitch-width);
   }
 

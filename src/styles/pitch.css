@@ -29,9 +29,8 @@
   aspect-ratio: var(--pitch-length) / var(--pitch-width);
 }
 
-/* Responsive pitch bounds: container query box + single-axis sizing keeps aspect ratio exact. */
+/* Responsive pitch bounds: percentage sizing inside a definite inset box. */
 .pitch-bounds {
-  container-type: size;
   position: absolute;
   inset: 0;
   z-index: 10;
@@ -47,18 +46,16 @@
   position: relative;
   margin: 0;
   box-sizing: border-box;
-  /* Portrait: height-first — fill optimal device height, derive width from ratio. */
-  height: min(100cqh, calc(100cqw * var(--pitch-length) / var(--pitch-width)));
+  height: 100%;
   width: auto;
-  max-width: 100cqw;
+  max-width: 100%;
   aspect-ratio: var(--pitch-width) / var(--pitch-length);
 }
 
 .pitch-bounds > .pitch.landscape {
-  height: auto;
-  max-height: 100cqh;
-  width: min(100cqw, calc(100cqh * var(--pitch-length) / var(--pitch-width)));
-  max-width: 100cqw;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
   aspect-ratio: var(--pitch-length) / var(--pitch-width);
 }
 
