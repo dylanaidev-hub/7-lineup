@@ -29,7 +29,7 @@ const getElementBorderInsets = (element: Element) => {
   };
 };
 
-const isPortraitRotatorActive = (element: Element) =>
+export const isPortraitRotatorActive = (element: Element) =>
   document.body.classList.contains("lineup-portrait-fullscreen")
   || !!element.closest(".workspace-fullscreen-portrait-rotator");
 
@@ -49,27 +49,25 @@ const getPitchOffsetInRotator = (element: HTMLElement, rotator: HTMLElement) => 
   return node === rotator ? { x, y } : null;
 };
 
-const getRotatorInverseMatrix = (rotator: HTMLElement) => {
-  const transform = window.getComputedStyle(rotator).transform;
-  if (transform && transform !== "none") {
-    return new DOMMatrix(transform).inverse();
-  }
+/**
+ * Map screen coords to rotator-local space.
+ * Uses the rotator's visual center (post-transform AABB) so translate(-50%,-50%) rotate(90deg)
+ * is accounted for without relying on SVG getScreenCTM (broken on WebKit for CSS ancestors).
+ */
+const clientToRotatorLocal = (rotator: HTMLElement, clientX: number, clientY: number) => {
+  const rect = rotator.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = clientX - centerX;
+  const dy = clientY - centerY;
 
-  if (!document.body.classList.contains("lineup-portrait-fullscreen")) return null;
-
-  const width = rotator.offsetWidth;
-  const height = rotator.offsetHeight;
-  return new DOMMatrix()
-    .translate(-width / 2, -height / 2)
-    .rotate(90)
-    .translate(-width / 2, -height / 2)
-    .inverse();
+  // Inverse of CSS rotate(90deg) about the element center (y-down, clockwise).
+  return {
+    x: rotator.offsetWidth / 2 + dy,
+    y: rotator.offsetHeight / 2 - dx,
+  };
 };
 
-/**
- * Safari/WebKit does not include ancestor CSS transforms in SVG getScreenCTM().
- * Map through the portrait rotator with an inverse DOMMatrix instead.
- */
 const clientToPortraitRotatorPercent = (
   pitch: HTMLElement,
   clientX: number,
@@ -80,23 +78,7 @@ const clientToPortraitRotatorPercent = (
   const rotator = pitch.closest(".workspace-fullscreen-portrait-rotator");
   if (!(rotator instanceof HTMLElement) || contentWidth <= 0 || contentHeight <= 0) return null;
 
-  const inverseMatrix = getRotatorInverseMatrix(rotator);
-  if (!inverseMatrix) return null;
-
-  const offsetParent = rotator.offsetParent instanceof HTMLElement ? rotator.offsetParent : rotator.parentElement;
-  if (!offsetParent) return null;
-
-  const parentRect = offsetParent.getBoundingClientRect();
-  const layoutLeft = parentRect.left + rotator.offsetLeft;
-  const layoutTop = parentRect.top + rotator.offsetTop;
-  const originX = rotator.offsetWidth / 2;
-  const originY = rotator.offsetHeight / 2;
-
-  const local = new DOMPoint(clientX - layoutLeft - originX, clientY - layoutTop - originY).matrixTransform(
-    inverseMatrix,
-  );
-  const localX = local.x + originX;
-  const localY = local.y + originY;
+  const { x: localX, y: localY } = clientToRotatorLocal(rotator, clientX, clientY);
 
   const pitchOffset = getPitchOffsetInRotator(pitch, rotator);
   const { left: borderLeft, top: borderTop } = getElementBorderInsets(pitch);
@@ -130,11 +112,7 @@ const resolvePitchElement = (element: Element) => {
   return pitch instanceof HTMLElement ? pitch : null;
 };
 
-const clientToSvgPercent = (
-  svg: ScreenTransformable,
-  clientX: number,
-  clientY: number,
-) => {
+const clientToSvgPercent = (svg: ScreenTransformable, clientX: number, clientY: number) => {
   const ctm = svg.getScreenCTM?.();
   if (!ctm) return null;
 
@@ -188,6 +166,8 @@ export function getPitchClientPosition(
   if (transformed) {
     rawX = transformed.x;
     rawY = transformed.y;
+  } else if (isPortraitRotatorActive(pitch)) {
+    return null;
   } else {
     const rect = pitch.getBoundingClientRect();
     const { left, top } = getElementBorderInsets(pitch);
@@ -206,4 +186,4 @@ export function getPitchClientPosition(
     x: shouldClamp ? clampPitchCoordinate(position.x) : position.x,
     y: shouldClamp ? clampPitchCoordinate(position.y) : position.y,
   };
-}
+};
