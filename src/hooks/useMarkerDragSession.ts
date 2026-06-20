@@ -5,6 +5,8 @@ type DragPoint = { x: number; y: number };
 type Options<TId extends number | string> = {
   canStart: () => boolean;
   threshold?: number;
+  /** When false, skip the fixed-position ghost (marker moves on the pitch instead). */
+  showPreview?: boolean;
   onMove?: (event: ReactPointerEvent<HTMLElement>, id: TId) => void;
   onDrop: (event: ReactPointerEvent<HTMLElement>, id: TId) => void;
 };
@@ -12,6 +14,7 @@ type Options<TId extends number | string> = {
 export function useMarkerDragSession<TId extends number | string>({
   canStart,
   threshold = 4,
+  showPreview = true,
   onMove,
   onDrop,
 }: Options<TId>) {
@@ -26,7 +29,9 @@ export function useMarkerDragSession<TId extends number | string>({
     event.currentTarget.setPointerCapture(event.pointerId);
     sessionRef.current = { id, pointerId: event.pointerId, start: { x: event.clientX, y: event.clientY }, moved: false };
     setActiveId(id);
-    setPreview({ id, x: event.clientX, y: event.clientY });
+    if (showPreview) {
+      setPreview({ id, x: event.clientX, y: event.clientY });
+    }
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLElement>, id: TId) => {
@@ -34,7 +39,9 @@ export function useMarkerDragSession<TId extends number | string>({
     if (!session || session.id !== id || session.pointerId !== event.pointerId) return;
     if (!session.moved && Math.hypot(event.clientX - session.start.x, event.clientY - session.start.y) < threshold) return;
     session.moved = true;
-    setPreview({ id, x: event.clientX, y: event.clientY });
+    if (showPreview) {
+      setPreview({ id, x: event.clientX, y: event.clientY });
+    }
     onMove?.(event, id);
   };
 

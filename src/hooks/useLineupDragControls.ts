@@ -104,27 +104,26 @@ export function useLineupDragControls({
 
   const playerDrag = useMarkerDragSession<number>({
     canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
-    onMove: isAnimationTool ? updateAnimatedPlayer : undefined,
+    showPreview: false,
+    onMove: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id)),
     onDrop: (event, id) => (isAnimationTool ? updateAnimatedPlayer(event, id) : updatePlayerPosition(event, id)),
   });
 
   const opponentDrag = useMarkerDragSession<number>({
     canStart: () => !isDrawMode && !(isAnimationTool && isPlaying),
-    onMove: isAnimationTool ? updateAnimatedOpponent : undefined,
+    showPreview: false,
+    onMove: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id)),
     onDrop: (event, id) => (isAnimationTool ? updateAnimatedOpponent(event, id) : updateOpponentPosition(event, id)),
   });
 
   const updateBallMarkerFromPoint = (clientX: number, clientY: number, commitDrop = false) => {
     const marker = ballMarker ?? { id: "ball", label: "", type: "ball" as const, x: 50, y: 56, onPitch: false };
     const position = getPitchClientPosition(pitchRef, clientX, clientY, { clamp: false });
-    setTacticalDragPreview({ type: "ball", id: marker.id, x: clientX, y: clientY });
     if (!position) return;
 
     if (position.isInside) {
       const boundedPosition = getBoundedPitchPosition(position);
-      if (marker.onPitch || commitDrop) {
-        updateTacticalMarker(marker.id, boundedPosition.x, boundedPosition.y, true);
-      }
+      updateTacticalMarker(marker.id, boundedPosition.x, boundedPosition.y, true);
       return;
     }
 

@@ -179,7 +179,7 @@
 }
 
 .opponent-pitch-dot.dragging {
-  opacity: 0;
+  z-index: 40;
 }
 
 .tactical-ball-marker {
@@ -201,8 +201,8 @@
 }
 
 .tactical-ball-marker.dragging {
+  z-index: 40;
   cursor: grabbing;
-  opacity: 0;
   transform: translate(-50%, -50%) scale(1.08);
 }
 

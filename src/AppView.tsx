@@ -456,9 +456,9 @@ export function AppView({ model }: AppViewProps) {
           }
         />
       </DashboardShell>
+      </WorkspaceFrame>
       <LineupDragPreview preview={activeTab === "lineup" ? dragPreview : null} />
       <ToastStack toasts={toasts} />
-      </WorkspaceFrame>
       </div>
     </main>
   );

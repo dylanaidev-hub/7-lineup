@@ -134,7 +134,7 @@
 }
 
 .player-token.dragging {
-  opacity: 0;
+  z-index: 40;
 }
 
 .kit-disc::before {
