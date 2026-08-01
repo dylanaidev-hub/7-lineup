@@ -580,6 +580,7 @@ export function useAppController() {
     downloadLineupImage,
     dragPreview,
     toasts,
+    showToast,
     showAllCanvasObjects,
   };
 }

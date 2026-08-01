@@ -29,6 +29,12 @@ create policy "Users can view their profile"
 on public.profiles for select
 using (auth.uid() = id);
 
+drop policy if exists "Authenticated users can search profiles" on public.profiles;
+create policy "Authenticated users can search profiles"
+on public.profiles for select
+to authenticated
+using (true);
+
 create policy "Users can insert their profile"
 on public.profiles for insert
 with check (auth.uid() = id);
@@ -184,4 +190,3 @@ using (
   bucket_id = 'avatars'
   and auth.uid()::text = (storage.foldername(name))[1]
 );
-

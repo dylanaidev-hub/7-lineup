@@ -17,6 +17,8 @@ import { MobileLandscapePrompt } from "./MobileLandscapePrompt";
 import { PitchField } from "./PitchField";
 import { ProfileView } from "./ProfileView";
 import { MobilePlayerEditor, MobileSquadDrawer, SquadEditor } from "./SquadEditor";
+import { TeamDashboard } from "./TeamDashboard";
+import { EventDetailPlaceholder, TeamDetail } from "./TeamDetail";
 import { ToastStack } from "./ToastStack";
 import { getDisplayPosition } from "./formationData";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
@@ -54,7 +56,7 @@ const isViewportLandscape = () => {
 };
 
 export function AppView({ model }: AppViewProps) {
-  const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showAllCanvasObjects } = model;
+  const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showToast, showAllCanvasObjects } = model;
   const workspaceRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, isPseudoFullscreen, enterFullscreenFromGesture, toggleFullscreen } = useFullscreen(workspaceRef);
   const [prefersLandscapePitch, setPrefersLandscapePitch] = useState(false);
@@ -172,6 +174,7 @@ export function AppView({ model }: AppViewProps) {
         onToggleUserMenu={() => setIsUserMenuOpen((current) => !current)}
         onOpenProfile={() => switchAppTab("profile")}
         onOpenLocker={() => switchAppTab("locker")}
+        onOpenTeams={() => switchAppTab("teams")}
         onSignOut={async () => {
           await signOut();
           navigate("/", { replace: true });
@@ -264,6 +267,27 @@ export function AppView({ model }: AppViewProps) {
             onDeleteLineup={deleteSavedLineup}
           />
           }
+          teamsView={
+            <TeamDashboard
+              user={user}
+              onRequireAuth={() => {
+                setAuthDialogMode("sign_in");
+                setIsAuthScreenOpen(true);
+              }}
+              onToast={showToast}
+            />
+          }
+          teamDetailView={
+            <TeamDetail
+              user={user}
+              onRequireAuth={() => {
+                setAuthDialogMode("sign_in");
+                setIsAuthScreenOpen(true);
+              }}
+              onToast={showToast}
+            />
+          }
+          eventDetailView={<EventDetailPlaceholder />}
           lineupView={
           <LineupWorkspace
             squadEditor={

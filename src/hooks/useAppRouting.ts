@@ -1,4 +1,5 @@
-import { useCallback, useEffect, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { useLocation } from "react-router-dom";
 import type { CanvasTool } from "../CanvasToolSidebar";
 import { getInitialAppTab, getPitchSizeFromUrl, writeAppRoute, type AppTab, type PitchSize } from "../appRouting";
 
@@ -25,12 +26,18 @@ export function useAppRouting({
   setIsLineupMenuOpen,
   setIsUserMenuOpen,
 }: UseAppRoutingOptions) {
+  const location = useLocation();
+  const lastSyncedRouteRef = useRef<string | null>(null);
   const closeMenus = useCallback(() => {
     setIsLineupMenuOpen(false);
     setIsUserMenuOpen(false);
   }, [setIsLineupMenuOpen, setIsUserMenuOpen]);
 
   const syncAppRouteFromUrl = useCallback(() => {
+    const routeKey = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const didRouteChange = lastSyncedRouteRef.current !== routeKey;
+    lastSyncedRouteRef.current = routeKey;
+
     const nextTab = getInitialAppTab();
     const nextPitchSize = getPitchSizeFromUrl();
     setActiveTab(nextTab);
@@ -46,7 +53,9 @@ export function useAppRouting({
       setActiveBottomSheetTool("ANIMATION_TOOL");
     }
 
-    closeMenus();
+    if (didRouteChange) {
+      closeMenus();
+    }
   }, [
     applyPitchSize,
     closeMenus,
@@ -61,6 +70,10 @@ export function useAppRouting({
     window.addEventListener("popstate", syncAppRouteFromUrl);
     return () => window.removeEventListener("popstate", syncAppRouteFromUrl);
   }, [syncAppRouteFromUrl]);
+
+  useEffect(() => {
+    syncAppRouteFromUrl();
+  }, [location.hash, location.pathname, location.search, syncAppRouteFromUrl]);
 
   const switchAppTab = useCallback(
     (nextTab: AppTab, options: { updateUrl?: boolean } = {}) => {

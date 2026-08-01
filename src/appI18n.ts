@@ -71,6 +71,7 @@ export type AppCopy = {
   googleSignIn: string;
   profileMenu: string;
   lockerMenu: string;
+  teamsMenu: string;
   lockerTitle: string;
   saveCurrentLineup: string;
   saveTacticsBoard: string;
@@ -194,6 +195,7 @@ export const copyByLanguage = {
     googleSignIn: "Đăng nhập Google",
     profileMenu: "Hồ sơ",
     lockerMenu: "Phòng thay đồ",
+    teamsMenu: "Đội bóng",
     lockerTitle: "Phòng thay đồ",
     saveCurrentLineup: "Lưu đội hình hiện tại",
     saveTacticsBoard: "Lưu bảng chiến thuật",
@@ -320,6 +322,7 @@ export const copyByLanguage = {
     googleSignIn: "Sign in with Google",
     profileMenu: "Profile",
     lockerMenu: "Locker Room",
+    teamsMenu: "Teams",
     lockerTitle: "Locker Room",
     saveCurrentLineup: "Save current line-up",
     saveTacticsBoard: "Save tactics board",

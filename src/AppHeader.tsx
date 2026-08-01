@@ -14,6 +14,7 @@ type AppHeaderCopy = {
   signIn: string;
   profileMenu: string;
   lockerMenu: string;
+  teamsMenu: string;
   signOut: string;
 };
 
@@ -28,6 +29,7 @@ type AppHeaderProps = {
   onToggleUserMenu: () => void;
   onOpenProfile: () => void;
   onOpenLocker: () => void;
+  onOpenTeams: () => void;
   onSignOut: () => void;
 };
 
@@ -42,6 +44,7 @@ export function AppHeader({
   onToggleUserMenu,
   onOpenProfile,
   onOpenLocker,
+  onOpenTeams,
   onSignOut,
 }: AppHeaderProps) {
   return (
@@ -59,16 +62,25 @@ export function AppHeader({
         ) : (
           <div ref={userMenuRef} className={styles.userMenu}>
             <span>{user.email}</span>
-            <button type="button" className={styles.dropdownButton} onClick={onToggleUserMenu}>
+            <button
+              type="button"
+              className={styles.dropdownButton}
+              onClick={onToggleUserMenu}
+              aria-expanded={isUserMenuOpen}
+              aria-haspopup="menu"
+            >
               <ChevronDown size={16} />
             </button>
             {isUserMenuOpen ? (
-              <div className={styles.userDropdown}>
+              <div className={styles.userDropdown} role="menu">
                 <button type="button" onClick={onOpenProfile}>
                   {copy.profileMenu}
                 </button>
                 <button type="button" onClick={onOpenLocker}>
                   {copy.lockerMenu}
+                </button>
+                <button type="button" onClick={onOpenTeams}>
+                  {copy.teamsMenu}
                 </button>
                 <button type="button" onClick={onSignOut}>
                   {copy.signOut}

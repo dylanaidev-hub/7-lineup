@@ -1,7 +1,9 @@
 .titleBar {
   position: relative;
+  z-index: 120;
   min-height: 72px;
   flex: 0 0 auto;
+  overflow: visible;
   background: linear-gradient(160deg, #102420, #0a1410);
   border-bottom: 3px solid var(--lf-green);
   padding: 8px 18px;
@@ -19,7 +21,7 @@
   position: absolute;
   top: 50%;
   right: 18px;
-  z-index: 20;
+  z-index: 140;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -46,6 +48,7 @@
 
 .userMenu {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -69,10 +72,16 @@
   padding: 0;
 }
 
+.dropdownButton[aria-expanded="true"] {
+  background: rgba(111, 226, 145, 0.22);
+  border-color: rgba(111, 226, 145, 0.62);
+}
+
 .userDropdown {
   position: absolute;
   top: 42px;
   right: 0;
+  z-index: 160;
   display: grid;
   min-width: 170px;
   gap: 6px;
