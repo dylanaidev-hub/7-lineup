@@ -49,6 +49,30 @@ export interface TeamLeaveRequest {
   member?: Pick<TeamMember, "id" | "player_name" | "role" | "user_id"> | null;
 }
 
+export interface TeamJoinLink {
+  id: string;
+  team_id: string;
+  created_by: string;
+  token: string;
+  role: TeamMemberRole;
+  expires_at: string;
+  max_uses: number | null;
+  used_count: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface TeamJoinLinkPreview {
+  id: string;
+  team_id: string;
+  team_name: string;
+  logo_url: string | null;
+  expires_at: string;
+  max_uses: number | null;
+  used_count: number;
+  is_active: boolean;
+}
+
 export interface SearchableProfile {
   user_id: string;
   name: string | null;

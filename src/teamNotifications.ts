@@ -31,6 +31,14 @@ export const TEAM_NOTIFICATION_MESSAGES = {
   playerTeamAccessDenied: "Bạn chưa có quyền truy cập team này.",
   playerAcceptInviteFailed: "Không thể chấp nhận lời mời. Vui lòng thử lại.",
   playerDeclineInviteFailed: "Không thể từ chối lời mời. Vui lòng thử lại.",
+  joinLinkCreated: "Đã tạo link tham gia team.",
+  joinLinkCopied: "Đã copy link tham gia team.",
+  joinLinkCreateFailed: "Không thể tạo link tham gia team. Vui lòng thử lại.",
+  joinLinkInvalid: "Link tham gia team không còn hợp lệ.",
+  joinLinkExpired: "Link tham gia team đã hết hạn.",
+  joinLinkLimitReached: "Link tham gia team đã đạt giới hạn lượt sử dụng.",
+  joinTeamSuccess: "Bạn đã tham gia team thành công.",
+  joinTeamFailed: "Không thể tham gia team. Vui lòng thử lại.",
 } as const;
 
 export type TeamNotificationKey = keyof typeof TEAM_NOTIFICATION_MESSAGES;
@@ -44,6 +52,9 @@ export function getTeamNotificationFromError(error: unknown, fallback: TeamNotif
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalizedMessage = message.toLowerCase();
 
+  if (/failed to create team join link:/.test(normalizedMessage)) {
+    return message;
+  }
   if (/migration|schema|supabase\/migrations|sql editor|rpc is missing/.test(normalizedMessage)) {
     return message;
   }
@@ -53,8 +64,14 @@ export function getTeamNotificationFromError(error: unknown, fallback: TeamNotif
   if (/pending|waiting|chờ xác nhận/.test(normalizedMessage)) {
     return TEAM_NOTIFICATION_MESSAGES.pendingInvite;
   }
-  if (/permission|policy|rls|not authorized|not admin|không có quyền/.test(normalizedMessage)) {
+  if (/permission|policy|rls|not authorized|not admin|không có quyền|chưa có quyền/.test(normalizedMessage)) {
     return TEAM_NOTIFICATION_MESSAGES.noPermission;
+  }
+  if (/team join link|join link|link tham gia|create team join link/.test(normalizedMessage)) {
+    if (/limit|max|quota|giới hạn/.test(normalizedMessage)) {
+      return TEAM_NOTIFICATION_MESSAGES.joinLinkLimitReached;
+    }
+    return TEAM_NOTIFICATION_MESSAGES.joinLinkCreateFailed;
   }
   if (/limit|max|quota|giới hạn/.test(normalizedMessage)) {
     return TEAM_NOTIFICATION_MESSAGES.memberLimitReached;
@@ -90,6 +107,9 @@ export function getPlayerTeamNotificationFromError(error: unknown, fallback: Tea
   }
   if (/expired|hết hạn/.test(normalizedMessage)) {
     return TEAM_NOTIFICATION_MESSAGES.playerInviteExpired;
+  }
+  if (/limit|max|quota|giới hạn/.test(normalizedMessage)) {
+    return TEAM_NOTIFICATION_MESSAGES.joinLinkLimitReached;
   }
   if (/revoked|deleted|removed|invalid invite|not valid|không còn hợp lệ/.test(normalizedMessage)) {
     return TEAM_NOTIFICATION_MESSAGES.playerInviteInvalid;

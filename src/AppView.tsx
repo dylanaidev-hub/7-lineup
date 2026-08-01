@@ -19,6 +19,7 @@ import { ProfileView } from "./ProfileView";
 import { MobilePlayerEditor, MobileSquadDrawer, SquadEditor } from "./SquadEditor";
 import { TeamDashboard } from "./TeamDashboard";
 import { EventDetailPlaceholder, TeamDetail } from "./TeamDetail";
+import { TeamJoinPage } from "./TeamJoinPage";
 import { ToastStack } from "./ToastStack";
 import { getDisplayPosition } from "./formationData";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
@@ -296,6 +297,16 @@ export function AppView({ model }: AppViewProps) {
             />
           }
           eventDetailView={<EventDetailPlaceholder />}
+          joinTeamView={
+            <TeamJoinPage
+              user={user}
+              onRequireAuth={() => {
+                setAuthDialogMode("sign_in");
+                setIsAuthScreenOpen(true);
+              }}
+              onToast={showToast}
+            />
+          }
           lineupView={
           <LineupWorkspace
             squadEditor={

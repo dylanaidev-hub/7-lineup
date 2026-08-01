@@ -4,6 +4,7 @@ import {
   acceptTeamInvite,
   approveTeamLeaveRequest,
   checkTeamMembership,
+  createTeamJoinLink,
   createTeamEvent,
   createTeam,
   declineTeamLeaveRequest,
@@ -14,8 +15,10 @@ import {
   getPendingTeamInvites,
   getPendingTeamLeaveRequests,
   getTeamDetails,
+  getTeamJoinLink,
   getTeamsByUser,
   inviteTeamMember,
+  joinTeamByLink,
   requestTeamLeave,
   searchProfiles,
   updateAttendance,
@@ -29,6 +32,8 @@ import type {
   TeamEvent,
   TeamEventType,
   TeamInvite,
+  TeamJoinLink,
+  TeamJoinLinkPreview,
   TeamLeaveRequest,
   TeamMember,
   TeamMemberRole,
@@ -40,6 +45,8 @@ type TeamStore = {
   events: TeamEvent[];
   pendingTeamInvites: TeamInvite[];
   pendingTeamLeaveRequests: TeamLeaveRequest[];
+  currentJoinLink: TeamJoinLink | null;
+  currentJoinLinkPreview: TeamJoinLinkPreview | null;
   isLoadingTeams: boolean;
   isLoadingTeamDetails: boolean;
   isLoadingEvents: boolean;
@@ -65,6 +72,9 @@ type TeamStore = {
   inviteTeamMember: (teamId: string, invitedUserId: string, role?: TeamMemberRole) => Promise<TeamInvite>;
   acceptTeamInvite: (inviteId: string) => Promise<TeamMember>;
   declineTeamInvite: (inviteId: string) => Promise<TeamInvite>;
+  createTeamJoinLink: (teamId: string) => Promise<TeamJoinLink>;
+  fetchTeamJoinLink: (token: string) => Promise<TeamJoinLinkPreview | null>;
+  joinTeamByLink: (token: string) => Promise<TeamMember>;
   fetchPendingTeamLeaveRequests: () => Promise<TeamLeaveRequest[]>;
   requestTeamLeave: (teamId: string) => Promise<TeamLeaveRequest>;
   approveTeamLeaveRequest: (requestId: string) => Promise<TeamLeaveRequest>;
@@ -83,6 +93,8 @@ export const useTeamStore = create<TeamStore>((set) => ({
   events: [],
   pendingTeamInvites: [],
   pendingTeamLeaveRequests: [],
+  currentJoinLink: null,
+  currentJoinLinkPreview: null,
   isLoadingTeams: false,
   isLoadingTeamDetails: false,
   isLoadingEvents: false,
@@ -226,6 +238,47 @@ export const useTeamStore = create<TeamStore>((set) => ({
         pendingTeamInvites: state.pendingTeamInvites.filter((pendingInvite) => pendingInvite.id !== inviteId),
       }));
       return invite;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  createTeamJoinLink: async (teamId) => {
+    set({ error: null });
+    try {
+      const currentJoinLink = await createTeamJoinLink(teamId);
+      set({ currentJoinLink });
+      return currentJoinLink;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  fetchTeamJoinLink: async (token) => {
+    set({ error: null });
+    try {
+      const currentJoinLinkPreview = await getTeamJoinLink(token);
+      set({ currentJoinLinkPreview });
+      return currentJoinLinkPreview;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  joinTeamByLink: async (token) => {
+    set({ error: null });
+    try {
+      const member = await joinTeamByLink(token);
+      set((state) => ({
+        currentJoinLinkPreview: null,
+        currentTeam: state.currentTeam?.id === member.team_id
+          ? { ...state.currentTeam, members: [...state.currentTeam.members, member] }
+          : state.currentTeam,
+      }));
+      return member;
     } catch (error) {
       const message = getErrorMessage(error);
       set({ error: message });

@@ -9,6 +9,8 @@ import type {
   TeamEvent,
   TeamEventType,
   TeamInvite,
+  TeamJoinLink,
+  TeamJoinLinkPreview,
   TeamLeaveRequest,
   TeamMember,
   TeamMemberRole,
@@ -78,6 +80,21 @@ const throwRepositoryError = (action: string, error: unknown): never => {
   if (/TEAM_LEAVE_NOT_ADMIN/i.test(details)) {
     throw new Error(TEAM_NOTIFICATION_MESSAGES.noPermission);
   }
+  if (/TEAM_JOIN_LINK_NOT_ADMIN/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.noPermission);
+  }
+  if (/TEAM_JOIN_AUTH_REQUIRED/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.playerTeamAccessDenied);
+  }
+  if (/TEAM_JOIN_LINK_INVALID/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.joinLinkInvalid);
+  }
+  if (/TEAM_JOIN_LINK_EXPIRED/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.joinLinkExpired);
+  }
+  if (/TEAM_JOIN_LINK_LIMIT_REACHED/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.joinLinkLimitReached);
+  }
   if (/PLAYER_INVITE_EXPIRED|invite.*expired|expired.*invite/i.test(details)) {
     throw new Error(TEAM_NOTIFICATION_MESSAGES.playerInviteExpired);
   }
@@ -96,9 +113,6 @@ const throwRepositoryError = (action: string, error: unknown): never => {
   if (/INVALID_TEAM_ROLE|invalid input value for enum .*team_member_role|team_member_role|invalid.*role/i.test(details)) {
     throw new Error(TEAM_NOTIFICATION_MESSAGES.invalidRole);
   }
-  if (/member.*limit|limit.*member|max.*member|quota/i.test(details)) {
-    throw new Error(TEAM_NOTIFICATION_MESSAGES.memberLimitReached);
-  }
   if (
     /relation .*team_invites.* does not exist|function .*send_team_invite.* does not exist|function .*accept_team_invite.* does not exist|function .*decline_team_invite.* does not exist|could not find the function.*(send_team_invite|accept_team_invite|decline_team_invite)|type .*team_invite_status.* does not exist/i.test(details)
   ) {
@@ -108,6 +122,17 @@ const throwRepositoryError = (action: string, error: unknown): never => {
     /relation .*team_leave_requests.* does not exist|type .*team_leave_request_status.* does not exist|function .*create_team_leave_request.* does not exist|function .*approve_team_leave_request.* does not exist|function .*decline_team_leave_request.* does not exist|could not find the function.*(create_team_leave_request|approve_team_leave_request|decline_team_leave_request)/i.test(details)
   ) {
     throw new Error(`${action}: Team leave request schema is missing. Please run supabase/migrations/007_team_leave_requests.sql in Supabase SQL Editor.`);
+  }
+  if (
+    /relation .*team_join_links.* does not exist|function .*create_team_join_link.* does not exist|function .*create_team_join_link_v2.* does not exist|function .*get_team_join_link.* does not exist|function .*join_team_by_link.* does not exist|could not find the function.*(create_team_join_link|create_team_join_link_v2|get_team_join_link|join_team_by_link)/i.test(details)
+  ) {
+    throw new Error(`${action}: Team join link schema is missing. Please run supabase/migrations/010_team_join_link_v2.sql in Supabase SQL Editor.`);
+  }
+  if (/team_join_links|team join link|join_team_by_link|create_team_join_link|create_team_join_link_v2|get_team_join_link/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.joinLinkCreateFailed);
+  }
+  if (/member.*limit|limit.*member|max.*member|quota/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.memberLimitReached);
   }
   if (/schema cache|relationship between .*team_leave_requests|foreign key relationship/i.test(details)) {
     throw new Error(`${action}: Supabase schema cache has not refreshed yet. Please wait a moment, reload the app, then retry.`);
@@ -346,6 +371,45 @@ export async function declineTeamInvite(inviteId: string): Promise<TeamInvite> {
 
   if (error) throwRepositoryError("Failed to decline team invite", error);
   return data as TeamInvite;
+}
+
+export async function createTeamJoinLink(teamId: string): Promise<TeamJoinLink> {
+  const client = ensureSupabase();
+  const { data, error } = await client.rpc("create_team_join_link_v2", {
+    p_team_id: teamId,
+    p_expires_in_days: 30,
+    p_max_uses: null,
+  });
+
+  if (error) throwRepositoryError("Failed to create team join link", error);
+  return data as TeamJoinLink;
+}
+
+export async function getTeamJoinLink(token: string): Promise<TeamJoinLinkPreview | null> {
+  const client = ensureSupabase();
+  const normalizedToken = token.trim();
+  if (!normalizedToken) return null;
+
+  const { data, error } = await client.rpc("get_team_join_link", {
+    p_token: normalizedToken,
+  });
+
+  if (error) throwRepositoryError("Failed to get team join link", error);
+  const rows = (data ?? []) as TeamJoinLinkPreview[];
+  return rows[0] ?? null;
+}
+
+export async function joinTeamByLink(token: string): Promise<TeamMember> {
+  const client = ensureSupabase();
+  const normalizedToken = token.trim();
+  if (!normalizedToken) throw new Error(TEAM_NOTIFICATION_MESSAGES.joinLinkInvalid);
+
+  const { data, error } = await client.rpc("join_team_by_link", {
+    p_token: normalizedToken,
+  });
+
+  if (error) throwRepositoryError("Failed to join team by link", error);
+  return data as TeamMember;
 }
 
 export async function getPendingTeamLeaveRequests(): Promise<TeamLeaveRequest[]> {

@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
+import QRCode from "qrcode";
 import {
   ArrowLeft,
   CalendarDays,
   Check,
   Clock,
+  Copy,
+  Link,
   Loader2,
   LogOut,
   Plus,
+  QrCode,
   Shield,
   Trash2,
   UserRound,
@@ -18,7 +22,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTeamStore } from "./stores/teamStore";
 import { useDebounce } from "./hooks/useDebounce";
 import { getPlayerTeamNotificationFromError, getTeamNotificationFromError, TEAM_NOTIFICATION_MESSAGES } from "./teamNotifications";
-import type { SearchableProfile, TeamDetails, TeamEvent, TeamEventType, TeamMember, TeamMemberRole } from "./types/team";
+import type { SearchableProfile, TeamDetails, TeamEvent, TeamEventType, TeamJoinLink, TeamMember, TeamMemberRole } from "./types/team";
 import styles from "./TeamPages.module.css";
 
 type TeamDetailProps = {
@@ -77,6 +81,7 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     fetchPendingTeamLeaveRequests,
     approveTeamLeaveRequest,
     declineTeamLeaveRequest,
+    createTeamJoinLink,
   } = useTeamStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const comboboxRef = useRef<HTMLDivElement>(null);
@@ -87,6 +92,10 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
   const [isSearchingProfiles, setIsSearchingProfiles] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isJoinLinkOpen, setIsJoinLinkOpen] = useState(false);
+  const [joinLink, setJoinLink] = useState<TeamJoinLink | null>(null);
+  const [joinLinkQr, setJoinLinkQr] = useState("");
+  const [isCreatingJoinLink, setIsCreatingJoinLink] = useState(false);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
   const [reviewingLeaveRequestId, setReviewingLeaveRequestId] = useState<string | null>(null);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
@@ -109,9 +118,19 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     [existingUserIds, profileResults],
   );
   const isSelectedUserInTeam = Boolean(selectedProfile && existingUserIds.has(selectedProfile.user_id));
+  const joinUrl = joinLink
+    ? `${window.location.origin}/app/join-team?token=${encodeURIComponent(joinLink.token)}`
+    : "";
 
   const getProfileDisplayName = (profile: SearchableProfile) =>
     profile.name?.trim() || profile.email?.trim() || "Người dùng chưa đặt tên";
+
+  const getJoinUrl = (link: TeamJoinLink) =>
+    `${window.location.origin}/app/join-team?token=${encodeURIComponent(link.token)}`;
+
+  const copyJoinUrl = async (url: string) => {
+    await navigator.clipboard.writeText(url);
+  };
 
   useEffect(() => {
     if (!isAddMemberOpen) return;
@@ -129,6 +148,29 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     document.addEventListener("pointerdown", closeOnOutsidePointerDown);
     return () => document.removeEventListener("pointerdown", closeOnOutsidePointerDown);
   }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (!joinUrl) {
+      setJoinLinkQr("");
+      return;
+    }
+
+    let isCurrent = true;
+    void QRCode.toDataURL(joinUrl, {
+      width: 240,
+      margin: 1,
+      color: {
+        dark: "#06120d",
+        light: "#ffffff",
+      },
+    }).then((dataUrl) => {
+      if (isCurrent) setJoinLinkQr(dataUrl);
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [joinUrl]);
 
   useEffect(() => {
     if (!isAdmin || !teamId) return;
@@ -229,6 +271,45 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     }
   };
 
+  const handleCreateJoinLink = async () => {
+    if (!currentUserId) {
+      onRequireAuth();
+      return;
+    }
+    if (!isAdmin) {
+      onToast(TEAM_NOTIFICATION_MESSAGES.noPermission, "error");
+      return;
+    }
+
+    setIsCreatingJoinLink(true);
+    try {
+      const nextJoinLink = await createTeamJoinLink(teamId);
+      const nextJoinUrl = getJoinUrl(nextJoinLink);
+      setJoinLink(nextJoinLink);
+      setIsJoinLinkOpen(true);
+      try {
+        await copyJoinUrl(nextJoinUrl);
+        onToast(TEAM_NOTIFICATION_MESSAGES.joinLinkCopied);
+      } catch {
+        onToast(TEAM_NOTIFICATION_MESSAGES.joinLinkCreated);
+      }
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : TEAM_NOTIFICATION_MESSAGES.joinLinkCreateFailed, "error");
+    } finally {
+      setIsCreatingJoinLink(false);
+    }
+  };
+
+  const handleCopyJoinLink = async () => {
+    if (!joinUrl) return;
+    try {
+      await copyJoinUrl(joinUrl);
+      onToast(TEAM_NOTIFICATION_MESSAGES.joinLinkCopied);
+    } catch {
+      onToast("Không thể copy link. Vui lòng copy thủ công.", "error");
+    }
+  };
+
   const handleApproveLeaveRequest = async (requestId: string) => {
     setReviewingLeaveRequestId(requestId);
     try {
@@ -264,10 +345,21 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
           <div className={styles.panelActions}>
             <span className={styles.countBadge}>{members.length} người</span>
             {isAdmin ? (
-              <button type="button" className={styles.primaryButton} onClick={() => setIsAddMemberOpen(true)}>
-                <Plus size={18} />
-                Thêm cầu thủ
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => void handleCreateJoinLink()}
+                  disabled={isCreatingJoinLink}
+                >
+                  {isCreatingJoinLink ? <Loader2 className={styles.spinner} size={18} /> : <QrCode size={18} />}
+                  Mời bằng link
+                </button>
+                <button type="button" className={styles.primaryButton} onClick={() => setIsAddMemberOpen(true)}>
+                  <Plus size={18} />
+                  Thêm cầu thủ
+                </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -417,6 +509,40 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {isJoinLinkOpen && joinLink ? (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="join-link-title">
+            <div className={styles.modalHeader}>
+              <h2 id="join-link-title" className={styles.modalTitle}>Mời bằng link / QR</h2>
+              <button
+                type="button"
+                className={styles.iconButton}
+                onClick={() => setIsJoinLinkOpen(false)}
+                aria-label="Đóng"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.qrCard}>
+                {joinLinkQr ? <img src={joinLinkQr} alt="QR tham gia đội bóng" /> : <Loader2 className={styles.spinner} size={28} />}
+              </div>
+              <div className={styles.inviteLinkBox}>
+                <Link size={18} />
+                <span>{joinUrl}</span>
+              </div>
+              <p className={styles.helperText}>
+                Link có hiệu lực đến {formatEventDate(joinLink.expires_at)}. Người nhận cần đăng nhập trước khi tham gia đội.
+              </p>
+              <button type="button" className={styles.primaryButton} onClick={() => void handleCopyJoinLink()}>
+                <Copy size={18} />
+                Copy link
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
