@@ -210,6 +210,14 @@
   text-transform: uppercase;
 }
 
+.detailHeroActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .heroSkeleton,
 .detailSkeleton {
   border-radius: 24px;
@@ -359,6 +367,13 @@
   background: rgba(255, 255, 255, 0.045);
 }
 
+.memberRowPendingLeave {
+  border-color: rgba(255, 209, 102, 0.32);
+  background:
+    linear-gradient(135deg, rgba(255, 209, 102, 0.12), rgba(255, 255, 255, 0.045)),
+    rgba(255, 255, 255, 0.045);
+}
+
 .memberIdentity {
   min-width: 0;
   display: flex;
@@ -459,6 +474,47 @@
 }
 
 .rowDeleteButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.leaveRequestActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.rowApproveButton,
+.rowDeclineButton {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.rowApproveButton {
+  border: 1px solid rgba(143, 226, 168, 0.32);
+  color: #06120d;
+  background: linear-gradient(135deg, #a7f3bf, #55ce7f);
+}
+
+.rowDeclineButton {
+  border: 1px solid rgba(255, 121, 121, 0.18);
+  color: #ffdede;
+  background: rgba(255, 76, 76, 0.1);
+}
+
+.rowApproveButton:hover:not(:disabled),
+.rowDeclineButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.rowApproveButton:disabled,
+.rowDeclineButton:disabled {
   cursor: not-allowed;
   opacity: 0.56;
 }

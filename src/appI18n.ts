@@ -72,6 +72,12 @@ export type AppCopy = {
   profileMenu: string;
   lockerMenu: string;
   teamsMenu: string;
+  notifications: string;
+  noNotifications: string;
+  acceptInvite: string;
+  declineInvite: string;
+  approveLeaveRequest: string;
+  declineLeaveRequest: string;
   lockerTitle: string;
   saveCurrentLineup: string;
   saveTacticsBoard: string;
@@ -196,6 +202,12 @@ export const copyByLanguage = {
     profileMenu: "Hồ sơ",
     lockerMenu: "Phòng thay đồ",
     teamsMenu: "Đội bóng",
+    notifications: "Thông báo",
+    noNotifications: "Chưa có thông báo mới.",
+    acceptInvite: "Đồng ý",
+    declineInvite: "Từ chối",
+    approveLeaveRequest: "Xác nhận",
+    declineLeaveRequest: "Từ chối",
     lockerTitle: "Phòng thay đồ",
     saveCurrentLineup: "Lưu đội hình hiện tại",
     saveTacticsBoard: "Lưu bảng chiến thuật",
@@ -323,6 +335,12 @@ export const copyByLanguage = {
     profileMenu: "Profile",
     lockerMenu: "Locker Room",
     teamsMenu: "Teams",
+    notifications: "Notifications",
+    noNotifications: "No new notifications.",
+    acceptInvite: "Accept",
+    declineInvite: "Decline",
+    approveLeaveRequest: "Approve",
+    declineLeaveRequest: "Decline",
     lockerTitle: "Locker Room",
     saveCurrentLineup: "Save current line-up",
     saveTacticsBoard: "Save tactics board",

@@ -3,8 +3,10 @@ import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   CalendarDays,
+  Check,
   Clock,
   Loader2,
+  LogOut,
   Plus,
   Shield,
   Trash2,
@@ -15,6 +17,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { useTeamStore } from "./stores/teamStore";
 import { useDebounce } from "./hooks/useDebounce";
+import { getPlayerTeamNotificationFromError, getTeamNotificationFromError, TEAM_NOTIFICATION_MESSAGES } from "./teamNotifications";
 import type { SearchableProfile, TeamDetails, TeamEvent, TeamEventType, TeamMember, TeamMemberRole } from "./types/team";
 import styles from "./TeamPages.module.css";
 
@@ -30,6 +33,11 @@ const formatEventDate = (value: string) =>
   new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "medium",
     timeStyle: "short",
+  }).format(new Date(value));
+
+const formatJoinedDate = (value: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "medium",
   }).format(new Date(value));
 
 function DetailSkeleton() {
@@ -61,7 +69,15 @@ type MembersViewProps = {
 };
 
 function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onRequireAuth, onToast }: MembersViewProps) {
-  const { addTeamMember, deleteTeamMember, searchProfiles } = useTeamStore();
+  const {
+    inviteTeamMember,
+    deleteTeamMember,
+    searchProfiles,
+    pendingTeamLeaveRequests,
+    fetchPendingTeamLeaveRequests,
+    approveTeamLeaveRequest,
+    declineTeamLeaveRequest,
+  } = useTeamStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const comboboxRef = useRef<HTMLDivElement>(null);
   const [profileSearchQuery, setProfileSearchQuery] = useState("");
@@ -72,7 +88,18 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
+  const [reviewingLeaveRequestId, setReviewingLeaveRequestId] = useState<string | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
   const debouncedProfileQuery = useDebounce(profileSearchQuery, 350);
+  const pendingLeaveRequestByMemberId = useMemo(
+    () =>
+      new Map(
+        pendingTeamLeaveRequests
+          .filter((request) => request.team_id === teamId && request.member_id)
+          .map((request) => [request.member_id, request]),
+      ),
+    [pendingTeamLeaveRequests, teamId],
+  );
   const existingUserIds = useMemo(
     () => new Set(members.flatMap((member) => member.user_id ? [member.user_id] : [])),
     [members],
@@ -102,6 +129,13 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     document.addEventListener("pointerdown", closeOnOutsidePointerDown);
     return () => document.removeEventListener("pointerdown", closeOnOutsidePointerDown);
   }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (!isAdmin || !teamId) return;
+    void fetchPendingTeamLeaveRequests().catch((error) => {
+      onToast(getPlayerTeamNotificationFromError(error, "leaveRequestInvalid"), "error");
+    });
+  }, [fetchPendingTeamLeaveRequests, isAdmin, onToast, teamId]);
 
   useEffect(() => {
     const normalizedQuery = debouncedProfileQuery.trim();
@@ -139,22 +173,29 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
       onRequireAuth();
       return;
     }
-    if (!selectedProfile) return;
+    if (!isAdmin) {
+      onToast(TEAM_NOTIFICATION_MESSAGES.noPermission, "error");
+      return;
+    }
+    if (!selectedProfile) {
+      onToast(TEAM_NOTIFICATION_MESSAGES.invalidIdentity, "error");
+      return;
+    }
     if (isSelectedUserInTeam) {
-      onToast("User này đã có trong đội.", "error");
+      onToast(TEAM_NOTIFICATION_MESSAGES.alreadyMember, "error");
       return;
     }
 
     setIsAddingMember(true);
     try {
-      await addTeamMember(teamId, getProfileDisplayName(selectedProfile), "player", selectedProfile.user_id);
+      await inviteTeamMember(teamId, selectedProfile.user_id, "player");
       setProfileSearchQuery("");
       setSelectedProfile(null);
       setProfileResults([]);
-      onToast("Đã thêm thành viên.");
+      onToast(TEAM_NOTIFICATION_MESSAGES.inviteSent);
       window.requestAnimationFrame(() => inputRef.current?.focus());
     } catch (error) {
-      onToast(error instanceof Error ? error.message : "Không thể thêm thành viên.", "error");
+      onToast(getTeamNotificationFromError(error, "inviteSendFailed"), "error");
     } finally {
       setIsAddingMember(false);
     }
@@ -173,15 +214,42 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     setIsSearchOpen(false);
   };
 
-  const handleDeleteMember = async (member: TeamMember) => {
+  const handleConfirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    const member = memberToDelete;
     setDeletingMemberId(member.id);
     try {
       await deleteTeamMember(member.id);
+      setMemberToDelete(null);
       onToast("Đã xoá thành viên.");
     } catch (error) {
       onToast(error instanceof Error ? error.message : "Không thể xoá thành viên.", "error");
     } finally {
       setDeletingMemberId(null);
+    }
+  };
+
+  const handleApproveLeaveRequest = async (requestId: string) => {
+    setReviewingLeaveRequestId(requestId);
+    try {
+      await approveTeamLeaveRequest(requestId);
+      onToast(TEAM_NOTIFICATION_MESSAGES.leaveRequestApproved);
+    } catch (error) {
+      onToast(getPlayerTeamNotificationFromError(error, "leaveRequestInvalid"), "error");
+    } finally {
+      setReviewingLeaveRequestId(null);
+    }
+  };
+
+  const handleDeclineLeaveRequest = async (requestId: string) => {
+    setReviewingLeaveRequestId(requestId);
+    try {
+      await declineTeamLeaveRequest(requestId);
+      onToast(TEAM_NOTIFICATION_MESSAGES.leaveRequestDeclined);
+    } catch (error) {
+      onToast(getPlayerTeamNotificationFromError(error, "leaveRequestInvalid"), "error");
+    } finally {
+      setReviewingLeaveRequestId(null);
     }
   };
 
@@ -208,34 +276,66 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
           <DetailSkeleton />
         ) : members.length ? (
           <div className={styles.memberList}>
-            {members.map((member) => (
-              <article key={member.id} className={styles.memberRow}>
-                <div className={styles.memberIdentity}>
-                  <div className={styles.memberAvatar}>
-                    <UserRound size={20} />
+            {members.map((member) => {
+              const pendingLeaveRequest = pendingLeaveRequestByMemberId.get(member.id);
+              const isReviewingLeaveRequest = Boolean(pendingLeaveRequest && reviewingLeaveRequestId === pendingLeaveRequest.id);
+
+              return (
+                <article key={member.id} className={pendingLeaveRequest ? `${styles.memberRow} ${styles.memberRowPendingLeave}` : styles.memberRow}>
+                  <div className={styles.memberIdentity}>
+                    <div className={styles.memberAvatar}>
+                      <UserRound size={20} />
+                    </div>
+                    <div className={styles.memberText}>
+                      <h3>{member.player_name}</h3>
+                      <p>
+                        {pendingLeaveRequest
+                          ? "Đang yêu cầu rời đội"
+                          : `Tham gia ngày ${formatJoinedDate(member.created_at)}`}
+                      </p>
+                    </div>
                   </div>
-                  <div className={styles.memberText}>
-                    <h3>{member.player_name}</h3>
-                    <p>{member.user_id ? `ID: ${member.user_id}` : "Chưa liên kết tài khoản"}</p>
+                  <div className={styles.memberActions}>
+                    <RoleBadge role={member.role} />
+                    {isAdmin && member.role !== "admin" && pendingLeaveRequest ? (
+                      <div className={styles.leaveRequestActions} aria-label={`${member.player_name} đang yêu cầu rời đội`}>
+                        <button
+                          type="button"
+                          className={styles.rowApproveButton}
+                          onClick={() => void handleApproveLeaveRequest(pendingLeaveRequest.id)}
+                          disabled={isReviewingLeaveRequest}
+                          aria-label={`Chấp nhận yêu cầu rời đội của ${member.player_name}`}
+                          title="Chấp nhận rời đội"
+                        >
+                          {isReviewingLeaveRequest ? <Loader2 className={styles.spinner} size={15} /> : <Check size={15} />}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.rowDeclineButton}
+                          onClick={() => void handleDeclineLeaveRequest(pendingLeaveRequest.id)}
+                          disabled={isReviewingLeaveRequest}
+                          aria-label={`Từ chối yêu cầu rời đội của ${member.player_name}`}
+                          title="Từ chối yêu cầu"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    ) : isAdmin && member.role !== "admin" ? (
+                      <button
+                        type="button"
+                        className={styles.rowDeleteButton}
+                        onClick={() => setMemberToDelete(member)}
+                        disabled={deletingMemberId === member.id}
+                        aria-label={`Xoá ${member.player_name}`}
+                        title="Xoá thành viên"
+                      >
+                        {deletingMemberId === member.id ? <Loader2 className={styles.spinner} size={16} /> : <Trash2 size={16} />}
+                      </button>
+                    ) : null}
                   </div>
-                </div>
-                <div className={styles.memberActions}>
-                  <RoleBadge role={member.role} />
-                  {isAdmin ? (
-                    <button
-                      type="button"
-                      className={styles.rowDeleteButton}
-                      onClick={() => handleDeleteMember(member)}
-                      disabled={deletingMemberId === member.id}
-                      aria-label={`Xoá ${member.player_name}`}
-                      title="Xoá thành viên"
-                    >
-                      {deletingMemberId === member.id ? <Loader2 className={styles.spinner} size={16} /> : <Trash2 size={16} />}
-                    </button>
-                  ) : null}
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         ) : (
           <div className={styles.emptyInline}>
@@ -317,6 +417,44 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {memberToDelete ? (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="delete-member-title">
+            <div className={styles.modalHeader}>
+              <h2 id="delete-member-title" className={styles.modalTitle}>Xác nhận xoá</h2>
+              <button
+                type="button"
+                className={styles.iconButton}
+                onClick={() => setMemberToDelete(null)}
+                aria-label="Đóng"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p className={styles.confirmText}>
+                Bạn có chắc muốn xoá <strong>{memberToDelete.player_name}</strong> khỏi đội không?
+                Thành viên này sẽ mất quyền truy cập đội bóng.
+              </p>
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.secondaryButton} onClick={() => setMemberToDelete(null)}>
+                  Huỷ
+                </button>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => void handleConfirmDeleteMember()}
+                  disabled={deletingMemberId === memberToDelete.id}
+                >
+                  {deletingMemberId === memberToDelete.id ? <Loader2 className={styles.spinner} size={18} /> : <Trash2 size={18} />}
+                  Xoá
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
@@ -476,10 +614,14 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
     isLoadingTeamDetails,
     isLoadingEvents,
     fetchTeamDetails,
+    checkTeamMembership,
     fetchEventsByTeam,
     clearCurrentTeam,
+    requestTeamLeave,
   } = useTeamStore();
   const [activeTab, setActiveTab] = useState<DetailTab>("members");
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
+  const [isRequestingLeave, setIsRequestingLeave] = useState(false);
 
   useEffect(() => {
     if (!user || !teamId) return;
@@ -488,9 +630,56 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
       fetchTeamDetails(teamId),
       fetchEventsByTeam(teamId),
     ]).catch((error) => {
-      onToast(error instanceof Error ? error.message : "Không thể tải chi tiết đội bóng.", "error");
+      onToast(getPlayerTeamNotificationFromError(error, "playerTeamAccessDenied"), "error");
+      navigate("/app/teams", { replace: true });
     });
-  }, [clearCurrentTeam, fetchEventsByTeam, fetchTeamDetails, onToast, teamId, user]);
+  }, [clearCurrentTeam, fetchEventsByTeam, fetchTeamDetails, navigate, onToast, teamId, user]);
+
+  useEffect(() => {
+    if (!user?.id || !teamId) return;
+    let isMounted = true;
+    let isChecking = false;
+
+    const handleRemovedFromTeam = () => {
+      if (!isMounted) return;
+      onToast(TEAM_NOTIFICATION_MESSAGES.playerRemovedFromTeam, "error");
+      clearCurrentTeam();
+      navigate("/app/teams", { replace: true });
+    };
+
+    const verifyCurrentMembership = async () => {
+      if (isChecking) return;
+      isChecking = true;
+      try {
+        const isStillMember = await checkTeamMembership(teamId, user.id);
+        if (!isStillMember) handleRemovedFromTeam();
+      } catch {
+        handleRemovedFromTeam();
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void verifyCurrentMembership();
+    }, 4000);
+    const handleFocus = () => {
+      void verifyCurrentMembership();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void verifyCurrentMembership();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [checkTeamMembership, clearCurrentTeam, navigate, onToast, teamId, user?.id]);
 
   const team = currentTeam as TeamDetails | null;
   const currentUserMember = useMemo(
@@ -498,6 +687,20 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
     [team, user?.id],
   );
   const isAdmin = currentUserMember?.role === "admin";
+
+  const handleRequestLeaveTeam = async () => {
+    if (!teamId) return;
+    setIsRequestingLeave(true);
+    try {
+      await requestTeamLeave(teamId);
+      setIsLeaveConfirmOpen(false);
+      onToast(TEAM_NOTIFICATION_MESSAGES.playerLeaveRequestSent);
+    } catch (error) {
+      onToast(getPlayerTeamNotificationFromError(error, "playerLeaveRequestFailed"), "error");
+    } finally {
+      setIsRequestingLeave(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -540,10 +743,18 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
                 <p className={styles.description}>{team.members.length} thành viên · {events.length} lịch trình</p>
               </div>
             </div>
-            <span className={styles.rolePill}>
-              <Shield size={15} />
-              {isAdmin ? "Admin" : "Thành viên"}
-            </span>
+            <div className={styles.detailHeroActions}>
+              <span className={styles.rolePill}>
+                <Shield size={15} />
+                {isAdmin ? "Admin" : "Thành viên"}
+              </span>
+              {!isAdmin && currentUserMember?.role === "player" ? (
+                <button type="button" className={styles.dangerButton} onClick={() => setIsLeaveConfirmOpen(true)}>
+                  <LogOut size={16} />
+                  Rời đội bóng
+                </button>
+              ) : null}
+            </div>
           </>
         ) : (
           <div className={styles.emptyInline}>
@@ -594,6 +805,44 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
           />
         )}
       </div>
+
+      {isLeaveConfirmOpen ? (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="leave-team-title">
+            <div className={styles.modalHeader}>
+              <h2 id="leave-team-title" className={styles.modalTitle}>Xác nhận rời đội</h2>
+              <button
+                type="button"
+                className={styles.iconButton}
+                onClick={() => setIsLeaveConfirmOpen(false)}
+                aria-label="Đóng"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p className={styles.confirmText}>
+                Bạn muốn gửi yêu cầu rời <strong>{team?.name ?? "đội bóng"}</strong>?
+                Admin sẽ cần xác nhận trước khi bạn rời đội.
+              </p>
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.secondaryButton} onClick={() => setIsLeaveConfirmOpen(false)}>
+                  Huỷ
+                </button>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => void handleRequestLeaveTeam()}
+                  disabled={isRequestingLeave}
+                >
+                  {isRequestingLeave ? <Loader2 className={styles.spinner} size={18} /> : <LogOut size={18} />}
+                  Gửi yêu cầu
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

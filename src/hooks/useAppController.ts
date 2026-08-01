@@ -90,7 +90,7 @@ export function useAppController() {
   const [isAuthScreenOpen, setIsAuthScreenOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [lineupName, setLineupName] = useState("");
-  const { toasts, showToast } = useToasts();
+  const { toasts, notifications, showToast } = useToasts();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const lineupMenuRef = useRef<HTMLDivElement>(null);
   const workspaceBallMarkerRef = useRef({ ...defaultBallMarker });
@@ -580,6 +580,7 @@ export function useAppController() {
     downloadLineupImage,
     dragPreview,
     toasts,
+    notifications,
     showToast,
     showAllCanvasObjects,
   };

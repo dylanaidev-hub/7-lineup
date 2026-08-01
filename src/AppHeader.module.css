@@ -30,6 +30,7 @@
 
 .languageSwitch,
 .loginButton,
+.notificationButton,
 .userMenu > button,
 .userMenu > span {
   display: inline-flex;
@@ -62,8 +63,43 @@
 }
 
 .userMenu > button,
+.notificationButton,
 .loginButton {
   cursor: pointer;
+}
+
+.notificationMenu {
+  position: relative;
+}
+
+.notificationButton {
+  position: relative;
+  width: 34px;
+  justify-content: center;
+  padding: 0;
+}
+
+.notificationButton:hover,
+.dropdownButton:hover {
+  border-color: rgba(111, 226, 145, 0.42);
+  background: rgba(111, 226, 145, 0.16);
+}
+
+.notificationButton[aria-expanded="true"] {
+  background: rgba(111, 226, 145, 0.22);
+  border-color: rgba(111, 226, 145, 0.62);
+}
+
+.notificationDot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #102420;
+  border-radius: 999px;
+  background: #ffcf33;
+  box-shadow: 0 0 0 3px rgba(255, 207, 51, 0.12);
 }
 
 .dropdownButton {
@@ -90,6 +126,122 @@
   background: #ffffff;
   padding: 8px;
   box-shadow: 0 18px 34px rgba(0, 0, 0, 0.22);
+}
+
+.notificationDropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  z-index: 160;
+  width: min(420px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+  border: 1px solid rgba(143, 226, 168, 0.18);
+  border-radius: 18px;
+  background: #081a13;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36);
+}
+
+.notificationHeader {
+  padding: 13px 14px;
+  color: #06120d;
+  background: linear-gradient(135deg, #9cf0b7, #55ce7f);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.notificationEmpty {
+  padding: 16px 14px;
+  color: rgba(239, 255, 244, 0.68);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.notificationList {
+  display: grid;
+  gap: 8px;
+  max-height: min(420px, calc(100vh - 116px));
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.notificationItem {
+  border: 1px solid rgba(143, 226, 168, 0.14);
+  border-radius: 12px;
+  padding: 10px 11px;
+  color: rgba(239, 255, 244, 0.86);
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 12px;
+  font-weight: 820;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.inviteItem {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(111, 226, 145, 0.24);
+  border-radius: 14px;
+  padding: 11px;
+  background: linear-gradient(145deg, rgba(111, 226, 145, 0.14), rgba(255, 255, 255, 0.045));
+  min-width: 0;
+}
+
+.inviteItem p {
+  margin: 0;
+  color: rgba(239, 255, 244, 0.92);
+  font-size: 12px;
+  font-weight: 880;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.inviteActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.acceptInviteButton,
+.declineInviteButton {
+  flex: 1 1 140px;
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.acceptInviteButton {
+  color: #06120d;
+  background: linear-gradient(135deg, #a7f3bf, #55ce7f);
+}
+
+.declineInviteButton {
+  color: rgba(239, 255, 244, 0.86);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.acceptInviteButton:hover,
+.declineInviteButton:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.notificationItemError {
+  border-color: rgba(255, 118, 118, 0.24);
+  color: #ffe0e0;
+  background: rgba(255, 76, 76, 0.1);
 }
 
 .userDropdown button {
@@ -138,6 +290,7 @@
 
   .languageSwitch,
   .loginButton,
+  .notificationButton,
   .userMenu > button,
   .userMenu > span {
     padding-inline: 9px;

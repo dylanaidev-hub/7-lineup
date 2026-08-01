@@ -1,6 +1,8 @@
 export type TeamMemberRole = "admin" | "player";
 export type TeamEventType = "match" | "training";
 export type AttendanceStatus = "going" | "not_going" | "pending";
+export type TeamInviteStatus = "pending" | "accepted" | "declined" | "expired";
+export type TeamLeaveRequestStatus = "pending" | "approved" | "declined";
 
 export interface Team {
   id: string;
@@ -19,6 +21,32 @@ export interface TeamMember {
   role: TeamMemberRole;
   jersey_number?: number | null;
   created_at: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  team_id: string;
+  invited_user_id: string;
+  invited_by: string;
+  role: TeamMemberRole;
+  status: TeamInviteStatus;
+  expires_at: string;
+  responded_at: string | null;
+  created_at: string;
+  team?: Pick<Team, "id" | "name" | "logo_url"> | null;
+}
+
+export interface TeamLeaveRequest {
+  id: string;
+  team_id: string;
+  member_id: string | null;
+  requested_by: string;
+  status: TeamLeaveRequestStatus;
+  reviewed_by: string | null;
+  responded_at: string | null;
+  created_at: string;
+  team?: Pick<Team, "id" | "name" | "logo_url"> | null;
+  member?: Pick<TeamMember, "id" | "player_name" | "role" | "user_id"> | null;
 }
 
 export interface SearchableProfile {

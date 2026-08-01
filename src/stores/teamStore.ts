@@ -1,13 +1,22 @@
 import { create } from "zustand";
 import {
   addTeamMember,
+  acceptTeamInvite,
+  approveTeamLeaveRequest,
+  checkTeamMembership,
   createTeamEvent,
   createTeam,
+  declineTeamLeaveRequest,
+  declineTeamInvite,
   deleteTeamMember,
   deleteTeam,
   getEventsByTeam,
+  getPendingTeamInvites,
+  getPendingTeamLeaveRequests,
   getTeamDetails,
   getTeamsByUser,
+  inviteTeamMember,
+  requestTeamLeave,
   searchProfiles,
   updateAttendance,
 } from "../repositories/teamRepository";
@@ -19,6 +28,8 @@ import type {
   TeamDetails,
   TeamEvent,
   TeamEventType,
+  TeamInvite,
+  TeamLeaveRequest,
   TeamMember,
   TeamMemberRole,
 } from "../types/team";
@@ -27,14 +38,19 @@ type TeamStore = {
   teams: Team[];
   currentTeam: TeamDetails | null;
   events: TeamEvent[];
+  pendingTeamInvites: TeamInvite[];
+  pendingTeamLeaveRequests: TeamLeaveRequest[];
   isLoadingTeams: boolean;
   isLoadingTeamDetails: boolean;
   isLoadingEvents: boolean;
+  isLoadingTeamInvites: boolean;
+  isLoadingTeamLeaveRequests: boolean;
   error: string | null;
   clearError: () => void;
   clearCurrentTeam: () => void;
   fetchTeamsByUser: (userId: string) => Promise<Team[]>;
   fetchTeamDetails: (teamId: string) => Promise<TeamDetails>;
+  checkTeamMembership: (teamId: string, userId: string) => Promise<boolean>;
   createTeam: (name: string, createdBy: string) => Promise<Team>;
   deleteTeam: (teamId: string) => Promise<string>;
   searchProfiles: (query: string) => Promise<SearchableProfile[]>;
@@ -45,6 +61,14 @@ type TeamStore = {
     userId?: string,
     jerseyNumber?: number | null,
   ) => Promise<TeamMember>;
+  fetchPendingTeamInvites: (userId: string) => Promise<TeamInvite[]>;
+  inviteTeamMember: (teamId: string, invitedUserId: string, role?: TeamMemberRole) => Promise<TeamInvite>;
+  acceptTeamInvite: (inviteId: string) => Promise<TeamMember>;
+  declineTeamInvite: (inviteId: string) => Promise<TeamInvite>;
+  fetchPendingTeamLeaveRequests: () => Promise<TeamLeaveRequest[]>;
+  requestTeamLeave: (teamId: string) => Promise<TeamLeaveRequest>;
+  approveTeamLeaveRequest: (requestId: string) => Promise<TeamLeaveRequest>;
+  declineTeamLeaveRequest: (requestId: string) => Promise<TeamLeaveRequest>;
   deleteTeamMember: (memberId: string) => Promise<string>;
   fetchEventsByTeam: (teamId: string) => Promise<TeamEvent[]>;
   createTeamEvent: (teamId: string, title: string, eventDate: string, eventType: TeamEventType) => Promise<TeamEvent>;
@@ -57,9 +81,13 @@ export const useTeamStore = create<TeamStore>((set) => ({
   teams: [],
   currentTeam: null,
   events: [],
+  pendingTeamInvites: [],
+  pendingTeamLeaveRequests: [],
   isLoadingTeams: false,
   isLoadingTeamDetails: false,
   isLoadingEvents: false,
+  isLoadingTeamInvites: false,
+  isLoadingTeamLeaveRequests: false,
   error: null,
   clearError: () => set({ error: null }),
   clearCurrentTeam: () => set({ currentTeam: null, events: [] }),
@@ -84,6 +112,16 @@ export const useTeamStore = create<TeamStore>((set) => ({
     } catch (error) {
       const message = getErrorMessage(error);
       set({ error: message, isLoadingTeamDetails: false });
+      throw error;
+    }
+  },
+  checkTeamMembership: async (teamId, userId) => {
+    set({ error: null });
+    try {
+      return await checkTeamMembership(teamId, userId);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
       throw error;
     }
   },
@@ -135,6 +173,115 @@ export const useTeamStore = create<TeamStore>((set) => ({
           : state.currentTeam,
       }));
       return member;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  fetchPendingTeamInvites: async (userId) => {
+    set({ isLoadingTeamInvites: true, error: null });
+    try {
+      const pendingTeamInvites = await getPendingTeamInvites(userId);
+      set({ pendingTeamInvites, isLoadingTeamInvites: false });
+      return pendingTeamInvites;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message, isLoadingTeamInvites: false });
+      throw error;
+    }
+  },
+  inviteTeamMember: async (teamId, invitedUserId, role = "player") => {
+    set({ error: null });
+    try {
+      return await inviteTeamMember(teamId, invitedUserId, role);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  acceptTeamInvite: async (inviteId) => {
+    set({ error: null });
+    try {
+      const member = await acceptTeamInvite(inviteId);
+      set((state) => ({
+        pendingTeamInvites: state.pendingTeamInvites.filter((invite) => invite.id !== inviteId),
+        currentTeam: state.currentTeam?.id === member.team_id
+          ? { ...state.currentTeam, members: [...state.currentTeam.members, member] }
+          : state.currentTeam,
+      }));
+      return member;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  declineTeamInvite: async (inviteId) => {
+    set({ error: null });
+    try {
+      const invite = await declineTeamInvite(inviteId);
+      set((state) => ({
+        pendingTeamInvites: state.pendingTeamInvites.filter((pendingInvite) => pendingInvite.id !== inviteId),
+      }));
+      return invite;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  fetchPendingTeamLeaveRequests: async () => {
+    set({ isLoadingTeamLeaveRequests: true, error: null });
+    try {
+      const pendingTeamLeaveRequests = await getPendingTeamLeaveRequests();
+      set({ pendingTeamLeaveRequests, isLoadingTeamLeaveRequests: false });
+      return pendingTeamLeaveRequests;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message, isLoadingTeamLeaveRequests: false });
+      throw error;
+    }
+  },
+  requestTeamLeave: async (teamId) => {
+    set({ error: null });
+    try {
+      return await requestTeamLeave(teamId);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  approveTeamLeaveRequest: async (requestId) => {
+    set({ error: null });
+    try {
+      const request = await approveTeamLeaveRequest(requestId);
+      set((state) => ({
+        pendingTeamLeaveRequests: state.pendingTeamLeaveRequests.filter((pendingRequest) => pendingRequest.id !== requestId),
+        currentTeam: state.currentTeam?.id === request.team_id && request.member_id
+          ? {
+              ...state.currentTeam,
+              members: state.currentTeam.members.filter((member) => member.id !== request.member_id),
+            }
+          : state.currentTeam,
+      }));
+      return request;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ error: message });
+      throw error;
+    }
+  },
+  declineTeamLeaveRequest: async (requestId) => {
+    set({ error: null });
+    try {
+      const request = await declineTeamLeaveRequest(requestId);
+      set((state) => ({
+        pendingTeamLeaveRequests: state.pendingTeamLeaveRequests.filter((pendingRequest) => pendingRequest.id !== requestId),
+      }));
+      return request;
     } catch (error) {
       const message = getErrorMessage(error);
       set({ error: message });
