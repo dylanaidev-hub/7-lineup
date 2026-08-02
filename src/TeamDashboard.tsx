@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
-import { CalendarDays, Loader2, Plus, Shield, Trash2, Trophy, Users, X } from "lucide-react";
+import { Loader2, Plus, Shield, Trash2, Trophy, Users, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTeamStore } from "./stores/teamStore";
 import type { Team } from "./types/team";
@@ -136,10 +136,6 @@ export function TeamDashboard({ user, onRequireAuth, onToast }: TeamDashboardPro
                     <span className={styles.metaItem}>
                       <Users size={15} />
                       Thành viên
-                    </span>
-                    <span className={styles.metaItem}>
-                      <CalendarDays size={15} />
-                      Lịch trình
                     </span>
                   </div>
                 </button>

@@ -1,4 +1,4 @@
-export type AppTab = "lineup" | "profile" | "locker" | "teams" | "team-detail" | "event-detail" | "join-team";
+export type AppTab = "lineup" | "profile" | "locker" | "teams" | "team-detail" | "join-team";
 export type PitchSize = 5 | 7 | 11 | "custom";
 
 const pitchSizes: PitchSize[] = [5, 7, 11];
@@ -11,7 +11,6 @@ export const getInitialAppTab = (): AppTab => {
   if (path.endsWith("/locker")) return "locker";
   if (path === "/app/teams") return "teams";
   if (path.startsWith("/app/teams/")) return "team-detail";
-  if (path.startsWith("/app/events/")) return "event-detail";
   if (path.startsWith("/app/join-team")) return "join-team";
 
   const params = new URLSearchParams(window.location.search);
@@ -21,7 +20,11 @@ export const getInitialAppTab = (): AppTab => {
 };
 
 export const getPitchSizeFromUrl = (): PitchSize | null => {
-  const value = new URLSearchParams(window.location.search).get("pitch");
+  return getPitchSizeFromSearch(window.location.search);
+};
+
+export const getPitchSizeFromSearch = (search: string): PitchSize | null => {
+  const value = new URLSearchParams(search).get("pitch");
   if (value === "custom") return "custom";
 
   const numericValue = Number(value);
@@ -37,8 +40,6 @@ export const getAppRouteUrl = (nextTab: AppTab, nextPitchSize?: PitchSize) => {
         ? "/app/locker"
         : nextTab === "teams"
           ? "/app/teams"
-          : nextTab === "event-detail"
-            ? url.pathname
           : "/app/lineup";
   url.search = "";
   url.hash = "";
@@ -46,15 +47,4 @@ export const getAppRouteUrl = (nextTab: AppTab, nextPitchSize?: PitchSize) => {
     url.searchParams.set("pitch", String(nextPitchSize));
   }
   return url;
-};
-
-export const writeAppRoute = (nextTab: AppTab, nextPitchSize: PitchSize, replace = false) => {
-  const nextUrl = getAppRouteUrl(nextTab, nextPitchSize).toString();
-  if (nextUrl === window.location.href) return;
-
-  if (replace) {
-    window.history.replaceState({ tab: nextTab }, "", nextUrl);
-  } else {
-    window.history.pushState({ tab: nextTab }, "", nextUrl);
-  }
 };

@@ -137,6 +137,12 @@ body.app-pseudo-fullscreen-active {
   background: transparent;
 }
 
+.workspace-fullscreen-shell--scrollable {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+
 .workspace-fullscreen-shell:fullscreen,
 .workspace-fullscreen-shell:-webkit-full-screen {
   width: 100vw;
@@ -179,6 +185,17 @@ body.app-pseudo-fullscreen-active {
     #101820;
 }
 
+.match-bg--scrollable {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
 .pitch-mode-bar {
   flex: 0 0 auto;
   background: #eef0f0;
@@ -209,6 +226,14 @@ body.app-pseudo-fullscreen-active {
   min-height: 0;
   background: #eef0f0;
   overflow: hidden;
+}
+
+.dashboard-shell--scrollable {
+  overflow-x: clip;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .tactics-dashboard {

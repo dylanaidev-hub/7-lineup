@@ -5,13 +5,11 @@ import {
   approveTeamLeaveRequest,
   checkTeamMembership,
   createTeamJoinLink,
-  createTeamEvent,
   createTeam,
   declineTeamLeaveRequest,
   declineTeamInvite,
   deleteTeamMember,
   deleteTeam,
-  getEventsByTeam,
   getPendingTeamInvites,
   getPendingTeamLeaveRequests,
   getTeamDetails,
@@ -21,16 +19,11 @@ import {
   joinTeamByLink,
   requestTeamLeave,
   searchProfiles,
-  updateAttendance,
 } from "../repositories/teamRepository";
 import type {
-  Attendance,
-  AttendanceStatus,
   SearchableProfile,
   Team,
   TeamDetails,
-  TeamEvent,
-  TeamEventType,
   TeamInvite,
   TeamJoinLink,
   TeamJoinLinkPreview,
@@ -42,14 +35,12 @@ import type {
 type TeamStore = {
   teams: Team[];
   currentTeam: TeamDetails | null;
-  events: TeamEvent[];
   pendingTeamInvites: TeamInvite[];
   pendingTeamLeaveRequests: TeamLeaveRequest[];
   currentJoinLink: TeamJoinLink | null;
   currentJoinLinkPreview: TeamJoinLinkPreview | null;
   isLoadingTeams: boolean;
   isLoadingTeamDetails: boolean;
-  isLoadingEvents: boolean;
   isLoadingTeamInvites: boolean;
   isLoadingTeamLeaveRequests: boolean;
   error: string | null;
@@ -80,9 +71,6 @@ type TeamStore = {
   approveTeamLeaveRequest: (requestId: string) => Promise<TeamLeaveRequest>;
   declineTeamLeaveRequest: (requestId: string) => Promise<TeamLeaveRequest>;
   deleteTeamMember: (memberId: string) => Promise<string>;
-  fetchEventsByTeam: (teamId: string) => Promise<TeamEvent[]>;
-  createTeamEvent: (teamId: string, title: string, eventDate: string, eventType: TeamEventType) => Promise<TeamEvent>;
-  updateAttendance: (eventId: string, memberId: string, status: AttendanceStatus) => Promise<Attendance>;
 };
 
 const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "Unknown team management error.";
@@ -90,19 +78,17 @@ const getErrorMessage = (error: unknown) => error instanceof Error ? error.messa
 export const useTeamStore = create<TeamStore>((set) => ({
   teams: [],
   currentTeam: null,
-  events: [],
   pendingTeamInvites: [],
   pendingTeamLeaveRequests: [],
   currentJoinLink: null,
   currentJoinLinkPreview: null,
   isLoadingTeams: false,
   isLoadingTeamDetails: false,
-  isLoadingEvents: false,
   isLoadingTeamInvites: false,
   isLoadingTeamLeaveRequests: false,
   error: null,
   clearError: () => set({ error: null }),
-  clearCurrentTeam: () => set({ currentTeam: null, events: [] }),
+  clearCurrentTeam: () => set({ currentTeam: null }),
   fetchTeamsByUser: async (userId) => {
     set({ isLoadingTeams: true, error: null });
     try {
@@ -156,7 +142,6 @@ export const useTeamStore = create<TeamStore>((set) => ({
       set((state) => ({
         teams: state.teams.filter((team) => team.id !== deletedTeamId),
         currentTeam: state.currentTeam?.id === deletedTeamId ? null : state.currentTeam,
-        events: state.currentTeam?.id === deletedTeamId ? [] : state.events,
       }));
       return deletedTeamId;
     } catch (error) {
@@ -351,45 +336,6 @@ export const useTeamStore = create<TeamStore>((set) => ({
           : state.currentTeam,
       }));
       return deletedMemberId;
-    } catch (error) {
-      const message = getErrorMessage(error);
-      set({ error: message });
-      throw error;
-    }
-  },
-  fetchEventsByTeam: async (teamId) => {
-    set({ isLoadingEvents: true, error: null });
-    try {
-      const events = await getEventsByTeam(teamId);
-      set({ events, isLoadingEvents: false });
-      return events;
-    } catch (error) {
-      const message = getErrorMessage(error);
-      set({ error: message, isLoadingEvents: false });
-      throw error;
-    }
-  },
-  createTeamEvent: async (teamId, title, eventDate, eventType) => {
-    set({ error: null });
-    try {
-      const event = await createTeamEvent(teamId, title, eventDate, eventType);
-      set((state) => ({
-        events: [...state.events, event].sort((left, right) =>
-          new Date(left.event_date).getTime() - new Date(right.event_date).getTime(),
-        ),
-      }));
-      return event;
-    } catch (error) {
-      const message = getErrorMessage(error);
-      set({ error: message });
-      throw error;
-    }
-  },
-  updateAttendance: async (eventId, memberId, status) => {
-    set({ error: null });
-    try {
-      const nextAttendance = await updateAttendance(eventId, memberId, status);
-      return nextAttendance;
     } catch (error) {
       const message = getErrorMessage(error);
       set({ error: message });

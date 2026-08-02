@@ -3,9 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import QRCode from "qrcode";
 import {
   ArrowLeft,
-  CalendarDays,
   Check,
-  Clock,
   Copy,
   Link,
   Loader2,
@@ -22,7 +20,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTeamStore } from "./stores/teamStore";
 import { useDebounce } from "./hooks/useDebounce";
 import { getPlayerTeamNotificationFromError, getTeamNotificationFromError, TEAM_NOTIFICATION_MESSAGES } from "./teamNotifications";
-import type { SearchableProfile, TeamDetails, TeamEvent, TeamEventType, TeamJoinLink, TeamMember, TeamMemberRole } from "./types/team";
+import type { SearchableProfile, TeamDetails, TeamJoinLink, TeamMember, TeamMemberRole } from "./types/team";
 import styles from "./TeamPages.module.css";
 
 type TeamDetailProps = {
@@ -31,9 +29,7 @@ type TeamDetailProps = {
   onToast: (message: string, tone?: "success" | "error") => void;
 };
 
-type DetailTab = "members" | "events";
-
-const formatEventDate = (value: string) =>
+const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -535,7 +531,7 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
                 <span>{joinUrl}</span>
               </div>
               <p className={styles.helperText}>
-                Link có hiệu lực đến {formatEventDate(joinLink.expires_at)}. Người nhận cần đăng nhập trước khi tham gia đội.
+                Link có hiệu lực đến {formatDateTime(joinLink.expires_at)}. Người nhận cần đăng nhập trước khi tham gia đội.
               </p>
               <button type="button" className={styles.primaryButton} onClick={() => void handleCopyJoinLink()}>
                 <Copy size={18} />
@@ -587,182 +583,56 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
   );
 }
 
-type EventsViewProps = {
-  teamId: string;
-  events: TeamEvent[];
-  isAdmin: boolean;
-  isLoading: boolean;
-  onToast: TeamDetailProps["onToast"];
-};
-
-function EventsView({ teamId, events, isAdmin, isLoading, onToast }: EventsViewProps) {
-  const navigate = useNavigate();
-  const { createTeamEvent } = useTeamStore();
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [eventType, setEventType] = useState<TeamEventType>("match");
-  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
-  const upcomingEvents = useMemo(
-    () => events.filter((event) => new Date(event.event_date).getTime() >= Date.now()),
-    [events],
-  );
-
-  const handleCreateEvent = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsCreatingEvent(true);
-    try {
-      await createTeamEvent(teamId, eventTitle, eventDate, eventType);
-      setEventTitle("");
-      setEventDate("");
-      setEventType("match");
-      setIsEventModalOpen(false);
-      onToast("Đã tạo lịch trình.");
-    } catch (error) {
-      onToast(error instanceof Error ? error.message : "Không thể tạo lịch trình.", "error");
-    } finally {
-      setIsCreatingEvent(false);
-    }
-  };
-
-  return (
-    <section className={styles.panel}>
-      <div className={styles.panelHeader}>
-        <div>
-          <p className={styles.panelEyebrow}>Schedule</p>
-          <h2 className={styles.panelTitle}>Lịch trình</h2>
-        </div>
-        {isAdmin ? (
-          <button type="button" className={styles.primaryButton} onClick={() => setIsEventModalOpen(true)}>
-            <Plus size={18} />
-            Tạo lịch trình mới
-          </button>
-        ) : null}
-      </div>
-
-      {isLoading ? (
-        <DetailSkeleton />
-      ) : upcomingEvents.length ? (
-        <div className={styles.eventGrid}>
-          {upcomingEvents.map((event) => (
-            <button
-              key={event.id}
-              type="button"
-              className={styles.eventCard}
-              onClick={() => navigate(`/app/events/${event.id}`)}
-            >
-              <span className={event.event_type === "match" ? styles.matchBadge : styles.trainingBadge}>
-                {event.event_type === "match" ? "Match" : "Training"}
-              </span>
-              <h3>{event.title}</h3>
-              <p>
-                <Clock size={16} />
-                {formatEventDate(event.event_date)}
-              </p>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className={styles.emptyInline}>
-          <CalendarDays size={38} />
-          <h3>Chưa có lịch trình sắp tới</h3>
-          <p>Khi admin tạo trận đấu hoặc buổi tập, lịch trình sẽ hiển thị tại đây.</p>
-        </div>
-      )}
-
-      {isEventModalOpen ? (
-        <div className={styles.modalOverlay}>
-          <form className={styles.modal} onSubmit={handleCreateEvent}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Tạo lịch trình</h2>
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={() => setIsEventModalOpen(false)}
-                aria-label="Đóng"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <label className={styles.label}>
-                <span className={styles.labelText}>Tiêu đề</span>
-                <input
-                  value={eventTitle}
-                  onChange={(inputEvent) => setEventTitle(inputEvent.target.value)}
-                  className={styles.input}
-                  placeholder="VD: Trận giao hữu vs FC Bạn"
-                  autoFocus
-                />
-              </label>
-              <label className={styles.label}>
-                <span className={styles.labelText}>Ngày giờ</span>
-                <input
-                  type="datetime-local"
-                  value={eventDate}
-                  onChange={(inputEvent) => setEventDate(inputEvent.target.value)}
-                  className={styles.input}
-                />
-              </label>
-              <label className={styles.label}>
-                <span className={styles.labelText}>Loại sự kiện</span>
-                <select
-                  value={eventType}
-                  onChange={(inputEvent) => setEventType(inputEvent.target.value as TeamEventType)}
-                  className={styles.input}
-                >
-                  <option value="match">Trận đấu</option>
-                  <option value="training">Buổi tập</option>
-                </select>
-              </label>
-              <button
-                type="submit"
-                className={styles.primaryButton}
-                disabled={isCreatingEvent || !eventTitle.trim() || !eventDate}
-              >
-                {isCreatingEvent ? <Loader2 className={styles.spinner} size={18} /> : <Plus size={18} />}
-                Tạo lịch trình
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
   const {
     currentTeam,
-    events,
     isLoadingTeamDetails,
-    isLoadingEvents,
     fetchTeamDetails,
     checkTeamMembership,
-    fetchEventsByTeam,
     clearCurrentTeam,
     requestTeamLeave,
   } = useTeamStore();
-  const [activeTab, setActiveTab] = useState<DetailTab>("members");
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
   const [isRequestingLeave, setIsRequestingLeave] = useState(false);
+  const [teamLoadError, setTeamLoadError] = useState("");
+  const team = currentTeam as TeamDetails | null;
+  const currentUserMember = useMemo(
+    () => team?.members.find((member) => member.user_id === user?.id) ?? null,
+    [team, user?.id],
+  );
+  const isAdmin = currentUserMember?.role === "admin";
 
   useEffect(() => {
-    if (!user || !teamId) return;
-    clearCurrentTeam();
-    void Promise.all([
-      fetchTeamDetails(teamId),
-      fetchEventsByTeam(teamId),
-    ]).catch((error) => {
-      onToast(getPlayerTeamNotificationFromError(error, "playerTeamAccessDenied"), "error");
+    if (!user) return;
+    if (!teamId) {
+      clearCurrentTeam();
       navigate("/app/teams", { replace: true });
+      return;
+    }
+    let isMounted = true;
+    setTeamLoadError("");
+    clearCurrentTeam();
+    void fetchTeamDetails(teamId).catch((error) => {
+      if (!isMounted) return;
+      const message = getPlayerTeamNotificationFromError(error, "playerTeamAccessDenied");
+      setTeamLoadError(message);
+      onToast(message, "error");
     });
-  }, [clearCurrentTeam, fetchEventsByTeam, fetchTeamDetails, navigate, onToast, teamId, user]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [clearCurrentTeam, fetchTeamDetails, navigate, onToast, teamId, user]);
 
   useEffect(() => {
-    if (!user?.id || !teamId) return;
+    if (!teamId) return;
+    window.sessionStorage.setItem("lastTeamDetailId", teamId);
+  }, [teamId]);
+
+  useEffect(() => {
+    if (!user?.id || !teamId || !currentUserMember?.id) return;
     let isMounted = true;
     let isChecking = false;
 
@@ -770,7 +640,8 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
       if (!isMounted) return;
       onToast(TEAM_NOTIFICATION_MESSAGES.playerRemovedFromTeam, "error");
       clearCurrentTeam();
-      navigate("/app/teams", { replace: true });
+      console.warn("⚠️ Redirect blocked: handleRemovedFromTeam fired!");
+      // navigate("/app/teams", { replace: true });
     };
 
     const verifyCurrentMembership = async () => {
@@ -780,7 +651,8 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
         const isStillMember = await checkTeamMembership(teamId, user.id);
         if (!isStillMember) handleRemovedFromTeam();
       } catch {
-        handleRemovedFromTeam();
+        // A transient RLS/schema/network error must not be treated as a removal.
+        // Actual removal is represented by a successful membership check returning false.
       } finally {
         isChecking = false;
       }
@@ -805,14 +677,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [checkTeamMembership, clearCurrentTeam, navigate, onToast, teamId, user?.id]);
-
-  const team = currentTeam as TeamDetails | null;
-  const currentUserMember = useMemo(
-    () => team?.members.find((member) => member.user_id === user?.id) ?? null,
-    [team, user?.id],
-  );
-  const isAdmin = currentUserMember?.role === "admin";
+  }, [checkTeamMembership, clearCurrentTeam, currentUserMember?.id, navigate, onToast, teamId, user?.id]);
 
   const handleRequestLeaveTeam = async () => {
     if (!teamId) return;
@@ -838,10 +703,42 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
         <div className={styles.authCard}>
           <Shield className={styles.authIcon} size={42} />
           <h1 className={styles.authTitle}>Đăng nhập để xem đội bóng</h1>
-          <p className={styles.authText}>Bạn cần đăng nhập để xem thành viên, lịch trình và quyền quản trị đội.</p>
+          <p className={styles.authText}>Bạn cần đăng nhập để xem thành viên và quyền quản trị đội.</p>
           <button type="button" className={styles.primaryButton} onClick={onRequireAuth}>
             Đăng nhập
           </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (!teamId) {
+    return (
+      <section className={styles.page}>
+        <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
+          <ArrowLeft size={18} />
+          Đội bóng
+        </button>
+        <div className={styles.emptyInline}>
+          <Shield size={36} />
+          <h2>Không tìm thấy đội bóng</h2>
+          <p>Đường dẫn đội bóng không hợp lệ. Vui lòng quay lại danh sách đội bóng.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (teamLoadError && !isLoadingTeamDetails && !team) {
+    return (
+      <section className={styles.page}>
+        <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
+          <ArrowLeft size={18} />
+          Đội bóng
+        </button>
+        <div className={styles.authCard}>
+          <Shield className={styles.authIcon} size={42} />
+          <h1 className={styles.authTitle}>Không thể mở chi tiết đội bóng</h1>
+          <p className={styles.authText}>{teamLoadError}</p>
         </div>
       </section>
     );
@@ -866,7 +763,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
               <div>
                 <p className={styles.eyebrow}>Chi tiết đội bóng</p>
                 <h1 className={styles.title}>{team.name}</h1>
-                <p className={styles.description}>{team.members.length} thành viên · {events.length} lịch trình</p>
+                <p className={styles.description}>{team.members.length} thành viên</p>
               </div>
             </div>
             <div className={styles.detailHeroActions}>
@@ -891,45 +788,16 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
         )}
       </header>
 
-      <nav className={styles.tabs} aria-label="Team detail tabs">
-        <button
-          type="button"
-          className={activeTab === "members" ? styles.tabActive : styles.tab}
-          onClick={() => setActiveTab("members")}
-        >
-          <Users size={18} />
-          Thành viên
-        </button>
-        <button
-          type="button"
-          className={activeTab === "events" ? styles.tabActive : styles.tab}
-          onClick={() => setActiveTab("events")}
-        >
-          <CalendarDays size={18} />
-          Lịch trình
-        </button>
-      </nav>
-
       <div className={styles.detailContent}>
-        {activeTab === "members" ? (
-          <MembersView
-            teamId={teamId ?? ""}
-            members={team?.members ?? []}
-            isAdmin={isAdmin}
-            isLoading={isLoadingTeamDetails}
-            currentUserId={user.id}
-            onRequireAuth={onRequireAuth}
-            onToast={onToast}
-          />
-        ) : (
-          <EventsView
-            teamId={teamId ?? ""}
-            events={events}
-            isAdmin={isAdmin}
-            isLoading={isLoadingEvents}
-            onToast={onToast}
-          />
-        )}
+        <MembersView
+          teamId={teamId}
+          members={team?.members ?? []}
+          isAdmin={isAdmin}
+          isLoading={isLoadingTeamDetails}
+          currentUserId={user.id}
+          onRequireAuth={onRequireAuth}
+          onToast={onToast}
+        />
       </div>
 
       {isLeaveConfirmOpen ? (
@@ -969,28 +837,6 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
           </div>
         </div>
       ) : null}
-    </section>
-  );
-}
-
-export function EventDetailPlaceholder() {
-  const { eventId } = useParams<{ eventId: string }>();
-  const navigate = useNavigate();
-
-  return (
-    <section className={styles.page}>
-      <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
-        <ArrowLeft size={18} />
-        Đội bóng
-      </button>
-      <div className={styles.authCard}>
-        <CalendarDays className={styles.authIcon} size={42} />
-        <h1 className={styles.authTitle}>Chi tiết lịch trình</h1>
-        <p className={styles.authText}>
-          Màn hình điểm danh cho lịch trình này sẽ được xây dựng ở bước tiếp theo.
-          {eventId ? ` Event ID: ${eventId}` : ""}
-        </p>
-      </div>
     </section>
   );
 }

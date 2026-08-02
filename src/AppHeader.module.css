@@ -31,6 +31,7 @@
 .languageSwitch,
 .loginButton,
 .notificationButton,
+.workspaceButton,
 .userMenu > button,
 .userMenu > span {
   display: inline-flex;
@@ -64,8 +65,26 @@
 
 .userMenu > button,
 .notificationButton,
+.workspaceButton,
 .loginButton {
   cursor: pointer;
+}
+
+.workspaceButton {
+  border-color: rgba(255, 207, 51, 0.72);
+  background: linear-gradient(135deg, #ffe36f, #ffc400);
+  color: #06120d;
+  box-shadow: 0 10px 22px rgba(255, 196, 0, 0.18);
+}
+
+.workspaceButton:hover {
+  border-color: rgba(255, 236, 148, 0.88);
+  background: linear-gradient(135deg, #fff0a3, #ffd21a);
+  transform: translateY(-1px);
+}
+
+.workspaceButton:active {
+  transform: translateY(0);
 }
 
 .notificationMenu {
@@ -281,6 +300,21 @@
   .userMenu > span {
     max-width: 96px;
   }
+
+  .workspaceButton {
+    width: 34px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .workspaceButton > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 380px) {
@@ -291,6 +325,7 @@
   .languageSwitch,
   .loginButton,
   .notificationButton,
+  .workspaceButton,
   .userMenu > button,
   .userMenu > span {
     padding-inline: 9px;

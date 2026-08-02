@@ -72,6 +72,7 @@ export type AppCopy = {
   profileMenu: string;
   lockerMenu: string;
   teamsMenu: string;
+  createLineupButton: string;
   notifications: string;
   noNotifications: string;
   acceptInvite: string;
@@ -200,8 +201,9 @@ export const copyByLanguage = {
     signOut: "Đăng xuất",
     googleSignIn: "Đăng nhập Google",
     profileMenu: "Hồ sơ",
-    lockerMenu: "Phòng thay đồ",
+    lockerMenu: "Thư viện",
     teamsMenu: "Đội bóng",
+    createLineupButton: "Tạo sơ đồ đội bóng",
     notifications: "Thông báo",
     noNotifications: "Chưa có thông báo mới.",
     acceptInvite: "Đồng ý",
@@ -333,8 +335,9 @@ export const copyByLanguage = {
     signOut: "Sign out",
     googleSignIn: "Sign in with Google",
     profileMenu: "Profile",
-    lockerMenu: "Locker Room",
+    lockerMenu: "Library",
     teamsMenu: "Teams",
+    createLineupButton: "Create lineup",
     notifications: "Notifications",
     noNotifications: "No new notifications.",
     acceptInvite: "Accept",

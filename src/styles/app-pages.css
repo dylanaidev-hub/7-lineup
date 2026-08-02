@@ -1,0 +1,54 @@
+html.app-page-scrollable,
+body.app-page-scrollable {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+}
+
+body.app-page-scrollable #root {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  overflow: visible !important;
+}
+
+body.app-page-scrollable .match-bg {
+  height: auto !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  overflow: visible !important;
+  touch-action: pan-y !important;
+}
+
+body.app-page-scrollable .workspace-fullscreen-shell,
+body.app-page-scrollable .dashboard-shell {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y !important;
+}
+
+body.app-page-scrollable .dashboard-shell {
+  flex: 0 0 auto;
+}
+
+body.app-page-scrollable [class*="_page_"] {
+  min-height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: pan-y !important;
+}
+
+body.app-page-scrollable [class*="_detailContent_"],
+body.app-page-scrollable [class*="_detailSingle_"],
+body.app-page-scrollable [class*="_panel_"] {
+  max-height: none !important;
+  overflow: visible !important;
+}

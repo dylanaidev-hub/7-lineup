@@ -1,13 +1,9 @@
 import { supabase } from "../lib/supabaseClient";
 import { TEAM_NOTIFICATION_MESSAGES } from "../teamNotifications";
 import type {
-  Attendance,
-  AttendanceStatus,
   SearchableProfile,
   Team,
   TeamDetails,
-  TeamEvent,
-  TeamEventType,
   TeamInvite,
   TeamJoinLink,
   TeamJoinLinkPreview,
@@ -18,8 +14,13 @@ import type {
 
 const teamColumns = "id,name,logo_url,created_by,created_at";
 const teamMemberColumns = "id,team_id,user_id,player_name,role,jersey_number,created_at";
-const eventColumns = "id,team_id,title,event_date,event_type,lineup_id,created_at";
-const attendanceColumns = "id,event_id,member_id,status,updated_at";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const assertValidUuid = (value: string, fieldName: string) => {
+  if (!UUID_PATTERN.test(value)) {
+    throw new Error(`${fieldName} is required.`);
+  }
+};
 const teamInviteColumns = "id,team_id,invited_user_id,invited_by,role,status,expires_at,responded_at,created_at,team:teams(id,name,logo_url)";
 const teamLeaveRequestColumns = "id,team_id,member_id,requested_by,status,reviewed_by,responded_at,created_at";
 
@@ -466,60 +467,4 @@ export async function deleteTeamMember(memberId: string): Promise<string> {
   if (error) throwRepositoryError("Failed to delete team member", error);
   if (!data) throw new Error("Failed to delete team member: Member not found or you do not have permission to delete it.");
   return data.id as string;
-}
-
-export async function getEventsByTeam(teamId: string): Promise<TeamEvent[]> {
-  const client = ensureSupabase();
-  const { data, error } = await client
-    .from("events")
-    .select(eventColumns)
-    .eq("team_id", teamId)
-    .order("event_date", { ascending: true });
-
-  if (error) throwRepositoryError("Failed to get events by team", error);
-  return (data ?? []) as TeamEvent[];
-}
-
-export async function createTeamEvent(
-  teamId: string,
-  title: string,
-  eventDate: string,
-  eventType: TeamEventType,
-): Promise<TeamEvent> {
-  const client = ensureSupabase();
-  const normalizedTitle = title.trim();
-  if (!normalizedTitle) throw new Error("Event title is required.");
-  if (!eventDate) throw new Error("Event date is required.");
-
-  const { data, error } = await client
-    .from("events")
-    .insert({
-      team_id: teamId,
-      title: normalizedTitle,
-      event_date: new Date(eventDate).toISOString(),
-      event_type: eventType,
-    })
-    .select(eventColumns)
-    .single();
-
-  if (error) throwRepositoryError("Failed to create event", error);
-  return data as TeamEvent;
-}
-
-export async function updateAttendance(
-  eventId: string,
-  memberId: string,
-  status: AttendanceStatus,
-): Promise<Attendance> {
-  const client = ensureSupabase();
-  const { data, error } = await client
-    .from("attendance")
-    .update({ status })
-    .eq("event_id", eventId)
-    .eq("member_id", memberId)
-    .select(attendanceColumns)
-    .single();
-
-  if (error) throwRepositoryError("Failed to update attendance", error);
-  return data as Attendance;
 }

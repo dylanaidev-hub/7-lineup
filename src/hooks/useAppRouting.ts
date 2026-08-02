@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { CanvasTool } from "../CanvasToolSidebar";
-import { getInitialAppTab, getPitchSizeFromUrl, writeAppRoute, type AppTab, type PitchSize } from "../appRouting";
+import { getAppRouteUrl, getPitchSizeFromSearch, type AppTab, type PitchSize } from "../appRouting";
 
 type WorkspaceMode = "LINEUP" | "CUSTOM" | "ANIMATION";
 
@@ -27,26 +27,41 @@ export function useAppRouting({
   setIsUserMenuOpen,
 }: UseAppRoutingOptions) {
   const location = useLocation();
+  const navigate = useNavigate();
   const lastSyncedRouteRef = useRef<string | null>(null);
   const closeMenus = useCallback(() => {
     setIsLineupMenuOpen(false);
     setIsUserMenuOpen(false);
   }, [setIsLineupMenuOpen, setIsUserMenuOpen]);
 
+  const getAppTabFromRouter = useCallback((): AppTab => {
+    const path = location.pathname;
+    if (path.endsWith("/profile")) return "profile";
+    if (path.endsWith("/locker")) return "locker";
+    if (path.startsWith("/app/join-team")) return "join-team";
+    if (/^\/app\/teams\/[^/]+/.test(path)) return "team-detail";
+    if (path === "/app/teams") return "teams";
+
+    const params = new URLSearchParams(location.search);
+    if (params.get("tab") === "profile") return "profile";
+    if (params.get("tab") === "locker") return "locker";
+    return "lineup";
+  }, [location.pathname, location.search]);
+
   const syncAppRouteFromUrl = useCallback(() => {
-    const routeKey = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const routeKey = `${location.pathname}${location.search}${location.hash}`;
     const didRouteChange = lastSyncedRouteRef.current !== routeKey;
     lastSyncedRouteRef.current = routeKey;
 
-    const nextTab = getInitialAppTab();
-    const nextPitchSize = getPitchSizeFromUrl();
+    const nextTab = getAppTabFromRouter();
+    const nextPitchSize = getPitchSizeFromSearch(location.search);
     setActiveTab(nextTab);
 
     if (nextTab === "lineup" && nextPitchSize && nextPitchSize !== pitchSize) {
       applyPitchSize(nextPitchSize, { updateUrl: false });
     }
 
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     if (nextTab === "lineup" && params.get("tab") === "tactics") {
       setCurrentMode("ANIMATION");
       setActiveTool("ANIMATION_TOOL");
@@ -59,17 +74,16 @@ export function useAppRouting({
   }, [
     applyPitchSize,
     closeMenus,
+    getAppTabFromRouter,
+    location.hash,
+    location.pathname,
+    location.search,
     pitchSize,
     setActiveBottomSheetTool,
     setActiveTab,
     setActiveTool,
     setCurrentMode,
   ]);
-
-  useEffect(() => {
-    window.addEventListener("popstate", syncAppRouteFromUrl);
-    return () => window.removeEventListener("popstate", syncAppRouteFromUrl);
-  }, [syncAppRouteFromUrl]);
 
   useEffect(() => {
     syncAppRouteFromUrl();
@@ -81,10 +95,11 @@ export function useAppRouting({
       closeMenus();
 
       if (options.updateUrl !== false) {
-        writeAppRoute(nextTab, pitchSize);
+        const nextUrl = getAppRouteUrl(nextTab, pitchSize);
+        navigate(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
       }
     },
-    [closeMenus, pitchSize, setActiveTab],
+    [closeMenus, navigate, pitchSize, setActiveTab],
   );
 
   return { switchAppTab };

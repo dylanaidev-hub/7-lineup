@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type AppContentTab = "lineup" | "profile" | "locker" | "teams" | "team-detail" | "event-detail" | "join-team";
+export type AppContentTab = "lineup" | "profile" | "locker" | "teams" | "team-detail" | "join-team";
 
 type AppContentProps = {
   activeTab: AppContentTab;
@@ -8,17 +8,15 @@ type AppContentProps = {
   lockerView: ReactNode;
   teamsView: ReactNode;
   teamDetailView: ReactNode;
-  eventDetailView: ReactNode;
   joinTeamView: ReactNode;
   lineupView: ReactNode;
 };
 
-export function AppContent({ activeTab, profileView, lockerView, teamsView, teamDetailView, eventDetailView, joinTeamView, lineupView }: AppContentProps) {
+export function AppContent({ activeTab, profileView, lockerView, teamsView, teamDetailView, joinTeamView, lineupView }: AppContentProps) {
   if (activeTab === "profile") return <>{profileView}</>;
   if (activeTab === "locker") return <>{lockerView}</>;
   if (activeTab === "teams") return <>{teamsView}</>;
   if (activeTab === "team-detail") return <>{teamDetailView}</>;
-  if (activeTab === "event-detail") return <>{eventDetailView}</>;
   if (activeTab === "join-team") return <>{joinTeamView}</>;
   return <>{lineupView}</>;
 }

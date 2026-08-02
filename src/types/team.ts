@@ -1,6 +1,4 @@
 export type TeamMemberRole = "admin" | "player";
-export type TeamEventType = "match" | "training";
-export type AttendanceStatus = "going" | "not_going" | "pending";
 export type TeamInviteStatus = "pending" | "accepted" | "declined" | "expired";
 export type TeamLeaveRequestStatus = "pending" | "approved" | "declined";
 
@@ -81,26 +79,6 @@ export interface SearchableProfile {
   id?: string;
   username?: string | null;
   full_name?: string | null;
-}
-
-export interface Event {
-  id: string;
-  team_id: string;
-  title: string;
-  event_date: string;
-  event_type: TeamEventType;
-  lineup_id: string | null;
-  created_at: string;
-}
-
-export type TeamEvent = Event;
-
-export interface Attendance {
-  id: string;
-  event_id: string;
-  member_id: string;
-  status: AttendanceStatus;
-  updated_at: string;
 }
 
 export interface TeamDetails extends Team {

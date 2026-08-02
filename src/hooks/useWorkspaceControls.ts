@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
+import { useNavigate } from "react-router-dom";
 import type { CanvasTool } from "../CanvasToolSidebar";
-import { writeAppRoute, type PitchSize } from "../appRouting";
+import { getAppRouteUrl, type PitchSize } from "../appRouting";
 import {
   createOpponentMarkers,
   createPlayers,
@@ -78,6 +79,8 @@ export function useWorkspaceControls({
   setActiveTool,
   setActiveBottomSheetTool,
 }: UseWorkspaceControlsOptions) {
+  const navigate = useNavigate();
+
   const applyPitchSize = (nextPitchSize: PitchSize, options: { updateUrl?: boolean } = {}) => {
     setSavedPlayersByPitch((current) => ({ ...current, [pitchSize]: players }));
     setSavedFormationByPitch((current) => ({ ...current, [pitchSize]: formation }));
@@ -102,7 +105,8 @@ export function useWorkspaceControls({
     setActiveTool("PERSONNEL_TOOL");
     setActiveBottomSheetTool("PERSONNEL_TOOL");
     if (options.updateUrl !== false) {
-      writeAppRoute("lineup", nextPitchSize);
+      const nextUrl = getAppRouteUrl("lineup", nextPitchSize);
+      navigate(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     }
   };
 

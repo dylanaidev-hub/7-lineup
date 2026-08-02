@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { User } from "@supabase/supabase-js";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, LayoutTemplate } from "lucide-react";
 import type { ToastMessage } from "./ToastStack";
 import { useTeamStore } from "./stores/teamStore";
 import { supabase } from "./lib/supabaseClient";
@@ -19,6 +19,7 @@ type AppHeaderCopy = {
   profileMenu: string;
   lockerMenu: string;
   teamsMenu: string;
+  createLineupButton: string;
   notifications: string;
   noNotifications: string;
   acceptInvite: string;
@@ -42,6 +43,7 @@ type AppHeaderProps = {
   onOpenProfile: () => void;
   onOpenLocker: () => void;
   onOpenTeams: () => void;
+  onOpenWorkspace: () => void;
   onOpenTeamDetail: (teamId: string) => void;
   onTeamMemberRemoved: (teamId: string) => void;
   onSignOut: () => void;
@@ -61,6 +63,7 @@ export function AppHeader({
   onOpenProfile,
   onOpenLocker,
   onOpenTeams,
+  onOpenWorkspace,
   onOpenTeamDetail,
   onTeamMemberRemoved,
   onSignOut,
@@ -305,6 +308,15 @@ export function AppHeader({
         ) : (
           <div ref={userMenuRef} className={styles.userMenu}>
             <span>{user.email}</span>
+            <button
+              type="button"
+              className={styles.workspaceButton}
+              onClick={onOpenWorkspace}
+              title={copy.createLineupButton}
+            >
+              <LayoutTemplate size={15} />
+              <span>{copy.createLineupButton}</span>
+            </button>
             <div ref={notificationRef} className={styles.notificationMenu}>
               <button
                 type="button"

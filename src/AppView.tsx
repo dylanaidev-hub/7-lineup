@@ -18,7 +18,7 @@ import { PitchField } from "./PitchField";
 import { ProfileView } from "./ProfileView";
 import { MobilePlayerEditor, MobileSquadDrawer, SquadEditor } from "./SquadEditor";
 import { TeamDashboard } from "./TeamDashboard";
-import { EventDetailPlaceholder, TeamDetail } from "./TeamDetail";
+import { TeamDetail } from "./TeamDetail";
 import { TeamJoinPage } from "./TeamJoinPage";
 import { ToastStack } from "./ToastStack";
 import { getDisplayPosition } from "./formationData";
@@ -74,8 +74,10 @@ export function AppView({ model }: AppViewProps) {
     || (isPortableViewport && isLandscapeViewport)
     || (prefersLandscapePitch && isDesktopViewport);
   const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
+  const isAppPageScrollable = activeTab !== "lineup";
   const workspaceShellClassName = [
     "workspace-fullscreen-shell",
+    isAppPageScrollable ? "workspace-fullscreen-shell--scrollable" : "",
     isFullscreen ? "workspace-fullscreen-shell--active" : "",
     isPortraitFullscreen ? "workspace-fullscreen-shell--portrait" : "",
     isPseudoFullscreen ? "app-pseudo-fullscreen" : "",
@@ -93,13 +95,21 @@ export function AppView({ model }: AppViewProps) {
     if (isFullscreen) {
       setPrefersLandscapePitch(true);
     }
-    document.body.classList.toggle("lineup-mobile-dock", isFullscreen);
-    document.body.classList.toggle("lineup-portrait-fullscreen", isPortraitFullscreen);
+    const isLineupFullscreen = activeTab === "lineup" && isFullscreen;
+    const isLineupPortraitFullscreen = activeTab === "lineup" && isPortraitFullscreen;
+    const isScrollableAppPage = activeTab !== "lineup";
+
+    document.body.classList.toggle("lineup-mobile-dock", isLineupFullscreen);
+    document.body.classList.toggle("lineup-portrait-fullscreen", isLineupPortraitFullscreen);
+    document.documentElement.classList.toggle("app-page-scrollable", isScrollableAppPage);
+    document.body.classList.toggle("app-page-scrollable", isScrollableAppPage);
     return () => {
       document.body.classList.remove("lineup-mobile-dock");
       document.body.classList.remove("lineup-portrait-fullscreen");
+      document.documentElement.classList.remove("app-page-scrollable");
+      document.body.classList.remove("app-page-scrollable");
     };
-  }, [isFullscreen, isPortraitFullscreen]);
+  }, [activeTab, isFullscreen, isPortraitFullscreen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1025px)");
@@ -157,7 +167,7 @@ export function AppView({ model }: AppViewProps) {
     : {};
 
   return (
-    <main className="match-bg min-h-screen px-0 py-0 text-slate-900 antialiased sm:px-4 sm:py-6 lg:p-10">
+    <main className={`match-bg min-h-screen px-0 py-0 text-slate-900 antialiased sm:px-4 sm:py-6 lg:p-10 ${isAppPageScrollable ? "match-bg--scrollable" : ""}`}>
       <div ref={workspaceRef} className={workspaceShellClassName}>
       <WorkspaceFrame {...workspaceFrameProps}>
       {!isFullscreen ? (
@@ -178,10 +188,12 @@ export function AppView({ model }: AppViewProps) {
         onOpenProfile={() => switchAppTab("profile")}
         onOpenLocker={() => switchAppTab("locker")}
         onOpenTeams={() => switchAppTab("teams")}
+        onOpenWorkspace={() => switchAppTab("lineup")}
         onOpenTeamDetail={(teamId) => navigate(`/app/teams/${teamId}`)}
         onTeamMemberRemoved={() => {
           if (activeTab === "team-detail") {
-            navigate("/app/teams", { replace: true });
+            console.warn("⚠️ Redirect blocked: onTeamMemberRemoved fired!");
+            // navigate("/app/teams", { replace: true });
           }
         }}
         onSignOut={async () => {
@@ -233,7 +245,7 @@ export function AppView({ model }: AppViewProps) {
           onDismiss={() => setIsLandscapePromptDismissed(true)}
         />
       ) : null}
-      <DashboardShell isTacticsView={false}>
+      <DashboardShell isTacticsView={false} isScrollable={isAppPageScrollable}>
         <AppContent
           activeTab={activeTab}
           profileView={
@@ -296,7 +308,6 @@ export function AppView({ model }: AppViewProps) {
               onToast={showToast}
             />
           }
-          eventDetailView={<EventDetailPlaceholder />}
           joinTeamView={
             <TeamJoinPage
               user={user}
