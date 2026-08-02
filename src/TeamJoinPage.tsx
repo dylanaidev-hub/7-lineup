@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, Loader2, Shield, Trophy, UserPlus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "./Button";
 import { useTeamStore } from "./stores/teamStore";
 import { getPlayerTeamNotificationFromError, TEAM_NOTIFICATION_MESSAGES } from "./teamNotifications";
 import styles from "./TeamPages.module.css";
@@ -91,18 +92,18 @@ export function TeamJoinPage({ user, onRequireAuth, onToast }: TeamJoinPageProps
             <Shield className={styles.authIcon} size={42} />
             <h1 className={styles.authTitle}>Link không hợp lệ</h1>
             <p className={styles.authText}>Link tham gia đội bóng không tồn tại hoặc đã bị thu hồi.</p>
-            <button type="button" className={styles.primaryButton} onClick={() => navigate("/app/teams")}>
+            <Button variant="primary" className={styles.authCardButton} onClick={() => navigate("/app/teams")}>
               Đội bóng của tôi
-            </button>
+            </Button>
           </>
         ) : !isUsable ? (
           <>
             <Shield className={styles.authIcon} size={42} />
             <h1 className={styles.authTitle}>Link không còn hiệu lực</h1>
             <p className={styles.authText}>Link này đã hết hạn, bị tắt hoặc đã đạt giới hạn lượt sử dụng.</p>
-            <button type="button" className={styles.primaryButton} onClick={() => navigate("/app/teams")}>
+            <Button variant="primary" className={styles.authCardButton} onClick={() => navigate("/app/teams")}>
               Đội bóng của tôi
-            </button>
+            </Button>
           </>
         ) : (
           <>
@@ -118,15 +119,15 @@ export function TeamJoinPage({ user, onRequireAuth, onToast }: TeamJoinPageProps
             <p className={styles.authText}>
               Xác nhận tham gia đội bóng để xem thành viên, lịch trình và các chiến thuật của team.
             </p>
-            <button
-              type="button"
-              className={styles.primaryButton}
+            <Button
+              variant="primary"
+              className={styles.authCardButton}
+              loading={isJoining}
+              leadingIcon={<UserPlus size={18} aria-hidden="true" />}
               onClick={() => void handleJoinTeam()}
-              disabled={isJoining}
             >
-              {isJoining ? <Loader2 className={styles.spinner} size={18} /> : <UserPlus size={18} />}
               {user ? "Tham gia đội bóng" : "Đăng nhập để tham gia"}
-            </button>
+            </Button>
           </>
         )}
       </div>

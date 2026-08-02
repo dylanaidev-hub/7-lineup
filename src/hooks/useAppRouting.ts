@@ -39,6 +39,7 @@ export function useAppRouting({
     if (path.endsWith("/profile")) return "profile";
     if (path.endsWith("/locker")) return "locker";
     if (path.startsWith("/app/join-team")) return "join-team";
+    if (/^\/app\/teams\/[^/]+\/matches\/[^/]+/.test(path)) return "match-detail";
     if (/^\/app\/teams\/[^/]+/.test(path)) return "team-detail";
     if (path === "/app/teams") return "teams";
 

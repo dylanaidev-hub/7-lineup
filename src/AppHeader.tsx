@@ -5,6 +5,7 @@ import type { ToastMessage } from "./ToastStack";
 import { useTeamStore } from "./stores/teamStore";
 import { supabase } from "./lib/supabaseClient";
 import { formatTeamNotification, getPlayerTeamNotificationFromError, TEAM_NOTIFICATION_MESSAGES } from "./teamNotifications";
+import { Button } from "./Button";
 import styles from "./AppHeader.module.css";
 
 type LanguageMeta = {
@@ -308,15 +309,16 @@ export function AppHeader({
         ) : (
           <div ref={userMenuRef} className={styles.userMenu}>
             <span>{user.email}</span>
-            <button
-              type="button"
-              className={styles.workspaceButton}
+            <Button
+              variant="primary"
+              size="sm"
+              className={styles.createLineupButton}
+              leadingIcon={<LayoutTemplate size={15} aria-hidden="true" />}
               onClick={onOpenWorkspace}
               title={copy.createLineupButton}
             >
-              <LayoutTemplate size={15} />
-              <span>{copy.createLineupButton}</span>
-            </button>
+              {copy.createLineupButton}
+            </Button>
             <div ref={notificationRef} className={styles.notificationMenu}>
               <button
                 type="button"
@@ -339,12 +341,22 @@ export function AppHeader({
                         <div key={invite.id} className={styles.inviteItem}>
                           <p>{formatTeamNotification("playerInviteReceived", invite.team?.name)}</p>
                           <div className={styles.inviteActions}>
-                            <button type="button" className={styles.acceptInviteButton} onClick={() => void handleAcceptInvite(invite.id)}>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className={styles.inviteActionButton}
+                              onClick={() => void handleAcceptInvite(invite.id)}
+                            >
                               {copy.acceptInvite}
-                            </button>
-                            <button type="button" className={styles.declineInviteButton} onClick={() => void handleDeclineInvite(invite.id)}>
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className={styles.inviteActionButton}
+                              onClick={() => void handleDeclineInvite(invite.id)}
+                            >
                               {copy.declineInvite}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -356,12 +368,22 @@ export function AppHeader({
                               : formatTeamNotification("leaveRequestReceived", request.team?.name)}
                           </p>
                           <div className={styles.inviteActions}>
-                            <button type="button" className={styles.acceptInviteButton} onClick={() => void handleApproveLeaveRequest(request.id)}>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className={styles.inviteActionButton}
+                              onClick={() => void handleApproveLeaveRequest(request.id)}
+                            >
                               {copy.approveLeaveRequest}
-                            </button>
-                            <button type="button" className={styles.declineInviteButton} onClick={() => void handleDeclineLeaveRequest(request.id)}>
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className={styles.inviteActionButton}
+                              onClick={() => void handleDeclineLeaveRequest(request.id)}
+                            >
                               {copy.declineLeaveRequest}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ))}

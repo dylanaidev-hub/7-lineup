@@ -1,0 +1,126 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.md {
+  min-height: 48px;
+  padding: 0 24px;
+  font-size: 13px;
+}
+
+.sm {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 11px;
+  gap: 7px;
+}
+
+.panel {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 11px;
+  gap: 7px;
+  box-sizing: border-box;
+}
+
+.primary {
+  color: #06120d;
+  background: linear-gradient(135deg, #9cf0b7, #55ce7f);
+  box-shadow: 0 14px 32px rgba(74, 213, 122, 0.28);
+}
+
+.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #b4fac9, #66dc8e);
+  box-shadow: 0 18px 40px rgba(74, 213, 122, 0.38);
+}
+
+.secondary {
+  color: #dfffea;
+  border: 1px solid rgba(223, 255, 234, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: rgba(143, 226, 168, 0.38);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.danger {
+  color: #ffffff;
+  border: 1px solid rgba(255, 121, 121, 0.28);
+  background: linear-gradient(135deg, #ff5d5d, #b62626);
+  box-shadow: 0 14px 32px rgba(255, 75, 75, 0.22);
+}
+
+.danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 188, 188, 0.48);
+  background: linear-gradient(135deg, #ff7474, #ce3030);
+  box-shadow: 0 18px 40px rgba(255, 75, 75, 0.3);
+}
+
+.sm.primary {
+  box-shadow: 0 10px 22px rgba(74, 213, 122, 0.22);
+}
+
+.sm.primary:hover:not(:disabled) {
+  box-shadow: 0 14px 28px rgba(74, 213, 122, 0.32);
+}
+
+.panel.primary {
+  box-shadow: 0 10px 22px rgba(74, 213, 122, 0.22);
+}
+
+.panel.primary:hover:not(:disabled) {
+  box-shadow: 0 14px 28px rgba(74, 213, 122, 0.32);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.label {
+  line-height: 1.15;
+}
+
+.spinner {
+  animation: button-spin 820ms linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .fullWidthMobile {
+    width: 100%;
+  }
+}

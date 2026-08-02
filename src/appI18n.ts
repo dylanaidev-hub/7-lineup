@@ -203,7 +203,7 @@ export const copyByLanguage = {
     profileMenu: "Hồ sơ",
     lockerMenu: "Thư viện",
     teamsMenu: "Đội bóng",
-    createLineupButton: "Tạo sơ đồ đội bóng",
+    createLineupButton: "Tạo đội hình",
     notifications: "Thông báo",
     noNotifications: "Chưa có thông báo mới.",
     acceptInvite: "Đồng ý",

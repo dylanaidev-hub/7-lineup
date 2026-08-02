@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { supabase } from "./lib/supabaseClient";
 import type { SavedLineupRecord } from "./lineupState";
 
 type SaveLineupRecordArgs = {
@@ -24,4 +25,18 @@ export async function saveLineupRecord({ supabase, user, name, format, playersDa
     players_data: playersData,
   });
   return { error };
+}
+
+export async function fetchSavedLineups() {
+  if (!supabase) {
+    throw new Error("Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+  }
+
+  const { data, error } = await supabase
+    .from("lineups")
+    .select("id,user_id,name,format,players_data,created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as SavedLineupRecord[];
 }

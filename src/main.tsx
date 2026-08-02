@@ -266,6 +266,7 @@ function RootRouter() {
       <Route path="/app/profile" element={<CanvasRoute />} />
       <Route path="/app/locker" element={<CanvasRoute />} />
       <Route path="/app/teams" element={<CanvasRoute />} />
+      <Route path="/app/teams/:teamId/matches/:matchId" element={<CanvasRoute />} />
       <Route path="/app/teams/:teamId" element={<CanvasRoute />} />
       <Route path="/app/join-team" element={<CanvasRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />

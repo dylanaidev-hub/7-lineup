@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
-import { Loader2, Plus, Shield, Trash2, Trophy, Users, X } from "lucide-react";
+import { Plus, Shield, Trash2, Trophy, Users, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "./Button";
 import { useTeamStore } from "./stores/teamStore";
 import type { Team } from "./types/team";
 import styles from "./TeamPages.module.css";
@@ -77,21 +78,14 @@ export function TeamDashboard({ user, onRequireAuth, onToast }: TeamDashboardPro
   return (
     <section className={styles.page}>
       <div className={styles.hero}>
-        <div>
-          <p className={styles.eyebrow}>Team management</p>
-          <h1 className={styles.title}>Đội bóng của tôi</h1>
-          <p className={styles.description}>
-            Quản lý đội bóng, thành viên và lịch trình thi đấu/tập luyện trong cùng một không gian chiến thuật.
-          </p>
-        </div>
-        <button
-          type="button"
-          className={styles.primaryButton}
+        <h1 className={styles.dashboardTitle}>Đội bóng của tôi</h1>
+        <Button
+          variant="primary"
+          leadingIcon={<Plus size={18} aria-hidden="true" />}
           onClick={() => (user ? setIsCreateOpen(true) : onRequireAuth())}
         >
-          <Plus size={18} />
           Tạo đội mới
-        </button>
+        </Button>
       </div>
 
       <div className={styles.content}>
@@ -102,9 +96,9 @@ export function TeamDashboard({ user, onRequireAuth, onToast }: TeamDashboardPro
             <p className={styles.authText}>
               Tính năng đội bóng dùng Supabase RLS, vì vậy bạn cần đăng nhập để xem đội, thêm thành viên và quản lý lịch trình.
             </p>
-            <button type="button" className={styles.primaryButton} onClick={onRequireAuth}>
+            <Button variant="primary" className={styles.authCardButton} onClick={onRequireAuth}>
               Đăng nhập
-            </button>
+            </Button>
           </div>
         ) : isLoadingTeams ? (
           <div className={styles.grid}>
@@ -187,14 +181,17 @@ export function TeamDashboard({ user, onRequireAuth, onToast }: TeamDashboardPro
                   autoFocus
                 />
               </label>
-              <button
+              <Button
                 type="submit"
-                className={styles.primaryButton}
-                disabled={isSubmitting || !teamName.trim()}
+                variant="primary"
+                fullWidth
+                className={styles.modalSubmitButton}
+                loading={isSubmitting}
+                disabled={!teamName.trim()}
+                leadingIcon={<Plus size={18} aria-hidden="true" />}
               >
-                {isSubmitting ? <Loader2 className={styles.spinner} size={18} /> : <Plus size={18} />}
                 Tạo đội
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -220,23 +217,25 @@ export function TeamDashboard({ user, onRequireAuth, onToast }: TeamDashboardPro
                 Bạn có chắc muốn xoá <strong>{teamToDelete.name}</strong>? Thành viên, lịch trình và dữ liệu liên quan của đội sẽ bị xoá theo.
               </p>
               <div className={styles.modalActions}>
-                <button
+                <Button
                   type="button"
-                  className={styles.secondaryButton}
+                  variant="secondary"
+                  fullWidthMobile
                   onClick={() => setTeamToDelete(null)}
                   disabled={deletingTeamId === teamToDelete.id}
                 >
                   Huỷ
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className={styles.dangerButton}
+                  variant="danger"
+                  fullWidthMobile
+                  loading={deletingTeamId === teamToDelete.id}
+                  leadingIcon={<Trash2 size={18} aria-hidden="true" />}
                   onClick={handleDeleteTeam}
-                  disabled={deletingTeamId === teamToDelete.id}
                 >
-                  {deletingTeamId === teamToDelete.id ? <Loader2 className={styles.spinner} size={18} /> : <Trash2 size={18} />}
                   Xoá đội
-                </button>
+                </Button>
               </div>
             </div>
           </div>

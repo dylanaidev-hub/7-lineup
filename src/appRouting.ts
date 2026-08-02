@@ -1,4 +1,4 @@
-export type AppTab = "lineup" | "profile" | "locker" | "teams" | "team-detail" | "join-team";
+export type AppTab = "lineup" | "profile" | "locker" | "teams" | "team-detail" | "match-detail" | "join-team";
 export type PitchSize = 5 | 7 | 11 | "custom";
 
 const pitchSizes: PitchSize[] = [5, 7, 11];
@@ -10,6 +10,7 @@ export const getInitialAppTab = (): AppTab => {
   if (path.endsWith("/profile")) return "profile";
   if (path.endsWith("/locker")) return "locker";
   if (path === "/app/teams") return "teams";
+  if (/^\/app\/teams\/[^/]+\/matches\/[^/]+/.test(path)) return "match-detail";
   if (path.startsWith("/app/teams/")) return "team-detail";
   if (path.startsWith("/app/join-team")) return "join-team";
 
@@ -30,6 +31,8 @@ export const getPitchSizeFromSearch = (search: string): PitchSize | null => {
   const numericValue = Number(value);
   return isPitchSize(numericValue) ? numericValue : null;
 };
+
+export const getTeamScheduleUrl = (teamId: string) => `/app/teams/${teamId}?section=schedule`;
 
 export const getAppRouteUrl = (nextTab: AppTab, nextPitchSize?: PitchSize) => {
   const url = new URL(window.location.href);

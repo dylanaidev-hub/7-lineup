@@ -17,6 +17,7 @@ import { MobileLandscapePrompt } from "./MobileLandscapePrompt";
 import { PitchField } from "./PitchField";
 import { ProfileView } from "./ProfileView";
 import { MobilePlayerEditor, MobileSquadDrawer, SquadEditor } from "./SquadEditor";
+import { MatchDetail } from "./MatchDetail";
 import { TeamDashboard } from "./TeamDashboard";
 import { TeamDetail } from "./TeamDetail";
 import { TeamJoinPage } from "./TeamJoinPage";
@@ -300,6 +301,16 @@ export function AppView({ model }: AppViewProps) {
           }
           teamDetailView={
             <TeamDetail
+              user={user}
+              onRequireAuth={() => {
+                setAuthDialogMode("sign_in");
+                setIsAuthScreenOpen(true);
+              }}
+              onToast={showToast}
+            />
+          }
+          matchDetailView={
+            <MatchDetail
               user={user}
               onRequireAuth={() => {
                 setAuthDialogMode("sign_in");

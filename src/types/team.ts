@@ -1,6 +1,43 @@
 export type TeamMemberRole = "admin" | "player";
 export type TeamInviteStatus = "pending" | "accepted" | "declined" | "expired";
 export type TeamLeaveRequestStatus = "pending" | "approved" | "declined";
+export type TeamMatchType = "match" | "training";
+export type TeamMatchAttendanceStatus = "going" | "not_going" | "maybe" | "unknown";
+
+export interface MatchLineupSnapshot {
+  lineup_id: string;
+  name: string;
+  format: string;
+  players_data: unknown;
+  applied_at: string;
+}
+
+export interface TeamMatch {
+  id: string;
+  team_id: string;
+  title: string;
+  match_type: TeamMatchType;
+  location: string | null;
+  location_map_url: string | null;
+  starts_at: string;
+  notes: string | null;
+  lineup_id: string | null;
+  lineup_snapshot: MatchLineupSnapshot | null;
+  applied_lineups: MatchLineupSnapshot[];
+  created_by: string;
+  created_at: string;
+}
+
+export interface TeamMatchAttendance {
+  id: string;
+  match_id: string;
+  member_id: string;
+  status: TeamMatchAttendanceStatus;
+  updated_by: string | null;
+  responded_at: string | null;
+  created_at?: string;
+  updated_at: string;
+}
 
 export interface Team {
   id: string;

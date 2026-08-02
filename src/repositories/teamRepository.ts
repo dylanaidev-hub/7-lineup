@@ -1,4 +1,10 @@
 import { supabase } from "../lib/supabaseClient";
+import {
+  findScheduleConflicts,
+  formatScheduleConflictMessage,
+  TEAM_MATCH_TITLE_MAX_LENGTH,
+} from "../teamMatchSchedule";
+import { normalizeGoogleMapUrl, validateGoogleMapUrlInput } from "../teamMatchLocation";
 import { TEAM_NOTIFICATION_MESSAGES } from "../teamNotifications";
 import type {
   SearchableProfile,
@@ -8,6 +14,11 @@ import type {
   TeamJoinLink,
   TeamJoinLinkPreview,
   TeamLeaveRequest,
+  MatchLineupSnapshot,
+  TeamMatch,
+  TeamMatchAttendance,
+  TeamMatchAttendanceStatus,
+  TeamMatchType,
   TeamMember,
   TeamMemberRole,
 } from "../types/team";
@@ -23,6 +34,51 @@ const assertValidUuid = (value: string, fieldName: string) => {
 };
 const teamInviteColumns = "id,team_id,invited_user_id,invited_by,role,status,expires_at,responded_at,created_at,team:teams(id,name,logo_url)";
 const teamLeaveRequestColumns = "id,team_id,member_id,requested_by,status,reviewed_by,responded_at,created_at";
+const teamMatchColumns =
+  "id,team_id,title,match_type,location,location_map_url,starts_at,notes,lineup_id,lineup_snapshot,applied_lineups,created_by,created_at";
+const teamMatchAttendanceColumns = "id,match_id,member_id,status,updated_by,responded_at,updated_at,created_at";
+
+function mapLineupSnapshot(value: unknown): MatchLineupSnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.lineup_id !== "string" || typeof row.name !== "string" || typeof row.format !== "string") {
+    return null;
+  }
+  return {
+    lineup_id: row.lineup_id,
+    name: row.name,
+    format: row.format,
+    players_data: row.players_data ?? null,
+    applied_at: typeof row.applied_at === "string" ? row.applied_at : new Date().toISOString(),
+  };
+}
+
+function mapAppliedLineups(value: unknown, legacySnapshot: MatchLineupSnapshot | null): MatchLineupSnapshot[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => mapLineupSnapshot(item)).filter((item): item is MatchLineupSnapshot => item !== null);
+  }
+  return legacySnapshot ? [legacySnapshot] : [];
+}
+
+export function mapTeamMatchRow(row: Record<string, unknown> | null | undefined): TeamMatch | null {
+  if (!row || typeof row.id !== "string" || typeof row.team_id !== "string") return null;
+
+  return {
+    id: row.id,
+    team_id: row.team_id,
+    title: typeof row.title === "string" ? row.title : "",
+    match_type: row.match_type === "training" ? "training" : "match",
+    location: typeof row.location === "string" ? row.location : null,
+    location_map_url: typeof row.location_map_url === "string" ? row.location_map_url : null,
+    starts_at: typeof row.starts_at === "string" ? row.starts_at : new Date(String(row.starts_at)).toISOString(),
+    notes: typeof row.notes === "string" ? row.notes : null,
+    lineup_id: typeof row.lineup_id === "string" ? row.lineup_id : null,
+    lineup_snapshot: mapLineupSnapshot(row.lineup_snapshot),
+    applied_lineups: mapAppliedLineups(row.applied_lineups, mapLineupSnapshot(row.lineup_snapshot)),
+    created_by: typeof row.created_by === "string" ? row.created_by : "",
+    created_at: typeof row.created_at === "string" ? row.created_at : new Date(String(row.created_at)).toISOString(),
+  };
+}
 
 type SearchUsersForTeamRow = {
   user_id: string;
@@ -128,6 +184,32 @@ const throwRepositoryError = (action: string, error: unknown): never => {
     /relation .*team_join_links.* does not exist|function .*create_team_join_link.* does not exist|function .*create_team_join_link_v2.* does not exist|function .*get_team_join_link.* does not exist|function .*join_team_by_link.* does not exist|could not find the function.*(create_team_join_link|create_team_join_link_v2|get_team_join_link|join_team_by_link)/i.test(details)
   ) {
     throw new Error(`${action}: Team join link schema is missing. Please run supabase/migrations/010_team_join_link_v2.sql in Supabase SQL Editor.`);
+  }
+  if (/relation .*team_matches.* does not exist|type .*team_match_type.* does not exist/i.test(details)) {
+    throw new Error(`${action}: Team schedule schema is missing. Please run supabase/migrations/011_team_matches.sql in Supabase SQL Editor.`);
+  }
+  if (/team_matches_team_starts_at_unique|duplicate key value.*team_matches|team_matches.*unique constraint/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.matchTimeDuplicate);
+  }
+  if (
+    /relation .*team_match_attendance.* does not exist|type .*team_match_attendance_status.* does not exist|function .*upsert_team_match_attendance.* does not exist|could not find the function.*upsert_team_match_attendance/i.test(details)
+  ) {
+    throw new Error(`${action}: Match attendance schema is missing. Please run supabase/migrations/013_team_match_attendance.sql in Supabase SQL Editor.`);
+  }
+  if (/team_match_attendance\.updated_by|column .*team_match_attendance.* does not exist/i.test(details)) {
+    throw new Error(`${action}: Match attendance schema is out of date. Please run supabase/migrations/014_team_match_attendance_columns.sql in Supabase SQL Editor.`);
+  }
+  if (/invalid input value for enum team_match_attendance_status/i.test(details)) {
+    throw new Error(`${action}: Match attendance status enum is out of date. Please run supabase/migrations/016_team_match_attendance_status_rsvp.sql in Supabase SQL Editor.`);
+  }
+  if (/team_match_attendance\.marked_by|column \"marked_by\".*team_match_attendance/i.test(details)) {
+    throw new Error(`${action}: Match attendance schema is out of date. Please run supabase/migrations/018_team_match_attendance_repair.sql in Supabase SQL Editor.`);
+  }
+  if (/MATCH_NOT_FOUND/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.matchNotFound);
+  }
+  if (/TEAM_MATCH_ATTENDANCE_NOT_ALLOWED|TEAM_MEMBER_NOT_FOUND/i.test(details)) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.matchAttendanceNotAllowed);
   }
   if (/team_join_links|team join link|join_team_by_link|create_team_join_link|create_team_join_link_v2|get_team_join_link/i.test(details)) {
     throw new Error(TEAM_NOTIFICATION_MESSAGES.joinLinkCreateFailed);
@@ -467,4 +549,410 @@ export async function deleteTeamMember(memberId: string): Promise<string> {
   if (error) throwRepositoryError("Failed to delete team member", error);
   if (!data) throw new Error("Failed to delete team member: Member not found or you do not have permission to delete it.");
   return data.id as string;
+}
+
+export async function getTeamMatches(teamId: string): Promise<TeamMatch[]> {
+  const client = ensureSupabase();
+  const { data, error } = await client
+    .from("team_matches")
+    .select(teamMatchColumns)
+    .eq("team_id", teamId)
+    .order("starts_at", { ascending: true });
+
+  if (error) {
+    if (/column team_matches\.location_map_url does not exist/i.test(error.message ?? "")) {
+      const { data: fallbackData, error: fallbackError } = await client
+        .from("team_matches")
+        .select("id,team_id,title,match_type,location,starts_at,notes,created_by,created_at")
+        .eq("team_id", teamId)
+        .order("starts_at", { ascending: true });
+
+      if (fallbackError) throwRepositoryError("Failed to get team matches", fallbackError);
+      return (fallbackData ?? []).map((row) => ({
+        ...(row as TeamMatch),
+        location_map_url: null,
+      }));
+    }
+
+    throwRepositoryError("Failed to get team matches", error);
+  }
+
+  return (data ?? []) as TeamMatch[];
+}
+
+export async function createTeamMatch(
+  teamId: string,
+  createdBy: string,
+  input: {
+    title: string;
+    matchType: TeamMatchType;
+    startsAt: string;
+    location?: string | null;
+    locationMapUrl?: string | null;
+    notes?: string | null;
+  },
+): Promise<TeamMatch> {
+  const client = ensureSupabase();
+  const trimmedTitle = input.title.trim();
+  if (!trimmedTitle) {
+    throw new Error("Vui lòng nhập tiêu đề sự kiện.");
+  }
+  if (trimmedTitle.length > TEAM_MATCH_TITLE_MAX_LENGTH) {
+    throw new Error(`Tiêu đề không được dài hơn ${TEAM_MATCH_TITLE_MAX_LENGTH} ký tự.`);
+  }
+
+  const mapUrlError = validateGoogleMapUrlInput(input.locationMapUrl ?? "");
+  if (mapUrlError) throw new Error(mapUrlError);
+
+  const startsAtDate = new Date(input.startsAt);
+  if (Number.isNaN(startsAtDate.getTime())) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.matchInvalidTime);
+  }
+  const startsAtIso = startsAtDate.toISOString();
+
+  const existingMatches = await getTeamMatches(teamId);
+  const conflicts = findScheduleConflicts(existingMatches, {
+    startsAt: startsAtIso,
+    matchType: input.matchType,
+  });
+  if (conflicts.length > 0) {
+    throw new Error(formatScheduleConflictMessage(conflicts[0]));
+  }
+
+  const { data, error } = await client
+    .from("team_matches")
+    .insert({
+      team_id: teamId,
+      created_by: createdBy,
+      title: trimmedTitle,
+      match_type: input.matchType,
+      starts_at: startsAtIso,
+      location: input.location?.trim() || null,
+      location_map_url: normalizeGoogleMapUrl(input.locationMapUrl ?? ""),
+      notes: input.notes?.trim() || null,
+    })
+    .select(teamMatchColumns)
+    .single();
+
+  if (error) throwRepositoryError("Failed to create team match", error);
+  return data as TeamMatch;
+}
+
+export async function createTeamMatchesBatch(
+  teamId: string,
+  createdBy: string,
+  input: {
+    title: string;
+    matchType: TeamMatchType;
+    startsAtList: string[];
+    location?: string | null;
+    locationMapUrl?: string | null;
+    notes?: string | null;
+  },
+): Promise<TeamMatch[]> {
+  if (input.startsAtList.length === 0) {
+    throw new Error("Không có lịch nào để tạo.");
+  }
+
+  const client = ensureSupabase();
+  const trimmedTitle = input.title.trim();
+  if (!trimmedTitle) {
+    throw new Error("Vui lòng nhập tiêu đề sự kiện.");
+  }
+  if (trimmedTitle.length > TEAM_MATCH_TITLE_MAX_LENGTH) {
+    throw new Error(`Tiêu đề không được dài hơn ${TEAM_MATCH_TITLE_MAX_LENGTH} ký tự.`);
+  }
+
+  const mapUrlError = validateGoogleMapUrlInput(input.locationMapUrl ?? "");
+  if (mapUrlError) throw new Error(mapUrlError);
+
+  const startsAtIsoList: string[] = [];
+  for (const startsAt of input.startsAtList) {
+    const startsAtDate = new Date(startsAt);
+    if (Number.isNaN(startsAtDate.getTime())) {
+      throw new Error(TEAM_NOTIFICATION_MESSAGES.matchInvalidTime);
+    }
+    startsAtIsoList.push(startsAtDate.toISOString());
+  }
+
+  const uniqueStartsAt = new Set(startsAtIsoList);
+  if (uniqueStartsAt.size !== startsAtIsoList.length) {
+    throw new Error("Các lần lặp không được trùng thời gian.");
+  }
+
+  const normalizedLocation = input.location?.trim() || null;
+  const normalizedMapUrl = normalizeGoogleMapUrl(input.locationMapUrl ?? "");
+  const normalizedNotes = input.notes?.trim() || null;
+
+  const existingMatches = await getTeamMatches(teamId);
+  const draftMatches: TeamMatch[] = [...existingMatches];
+
+  for (const startsAtIso of startsAtIsoList) {
+    const conflicts = findScheduleConflicts(draftMatches, {
+      startsAt: startsAtIso,
+      matchType: input.matchType,
+    });
+    if (conflicts.length > 0) {
+      throw new Error(formatScheduleConflictMessage(conflicts[0]));
+    }
+
+    draftMatches.push({
+      id: `draft-${startsAtIso}`,
+      team_id: teamId,
+      title: trimmedTitle,
+      match_type: input.matchType,
+      location: normalizedLocation,
+      location_map_url: normalizedMapUrl,
+      starts_at: startsAtIso,
+      notes: normalizedNotes,
+      lineup_id: null,
+      lineup_snapshot: null,
+      applied_lineups: [],
+      created_by: createdBy,
+      created_at: startsAtIso,
+    });
+  }
+
+  const { data, error } = await client
+    .from("team_matches")
+    .insert(
+      startsAtIsoList.map((startsAtIso) => ({
+        team_id: teamId,
+        created_by: createdBy,
+        title: trimmedTitle,
+        match_type: input.matchType,
+        starts_at: startsAtIso,
+        location: normalizedLocation,
+        location_map_url: normalizedMapUrl,
+        notes: normalizedNotes,
+      })),
+    )
+    .select(teamMatchColumns);
+
+  if (error) throwRepositoryError("Failed to create team match", error);
+  return (data ?? []) as TeamMatch[];
+}
+
+export async function updateTeamMatch(
+  matchId: string,
+  input: {
+    title: string;
+    matchType: TeamMatchType;
+    startsAt: string;
+    location?: string | null;
+    locationMapUrl?: string | null;
+    notes?: string | null;
+  },
+): Promise<TeamMatch> {
+  const client = ensureSupabase();
+  assertValidUuid(matchId, "Match id");
+
+  const trimmedTitle = input.title.trim();
+  if (!trimmedTitle) {
+    throw new Error("Vui lòng nhập tiêu đề sự kiện.");
+  }
+  if (trimmedTitle.length > TEAM_MATCH_TITLE_MAX_LENGTH) {
+    throw new Error(`Tiêu đề không được dài hơn ${TEAM_MATCH_TITLE_MAX_LENGTH} ký tự.`);
+  }
+
+  const mapUrlError = validateGoogleMapUrlInput(input.locationMapUrl ?? "");
+  if (mapUrlError) throw new Error(mapUrlError);
+
+  const startsAtDate = new Date(input.startsAt);
+  if (Number.isNaN(startsAtDate.getTime())) {
+    throw new Error(TEAM_NOTIFICATION_MESSAGES.matchInvalidTime);
+  }
+  const startsAtIso = startsAtDate.toISOString();
+
+  const existingMatch = await getTeamMatch(matchId);
+  const existingMatches = await getTeamMatches(existingMatch.team_id);
+  const conflicts = findScheduleConflicts(existingMatches, {
+    startsAt: startsAtIso,
+    matchType: input.matchType,
+    excludeMatchId: matchId,
+  });
+  if (conflicts.length > 0) {
+    throw new Error(formatScheduleConflictMessage(conflicts[0]));
+  }
+
+  const { data, error } = await client
+    .from("team_matches")
+    .update({
+      title: trimmedTitle,
+      match_type: input.matchType,
+      starts_at: startsAtIso,
+      location: input.location?.trim() || null,
+      location_map_url: normalizeGoogleMapUrl(input.locationMapUrl ?? ""),
+      notes: input.notes?.trim() || null,
+    })
+    .eq("id", matchId)
+    .select(teamMatchColumns)
+    .single();
+
+  if (error) throwRepositoryError("Failed to update team match", error);
+  if (!data) throw new Error(TEAM_NOTIFICATION_MESSAGES.matchUpdateFailed);
+  const mapped = mapTeamMatchRow(data);
+  if (!mapped) throw new Error(TEAM_NOTIFICATION_MESSAGES.matchUpdateFailed);
+  return mapped;
+}
+
+export async function applyMatchLineups(
+  matchId: string,
+  lineups: MatchLineupSnapshot[],
+): Promise<TeamMatch> {
+  const client = ensureSupabase();
+  assertValidUuid(matchId, "Match id");
+
+  const firstLineup = lineups[0] ?? null;
+
+  const { data, error } = await client
+    .from("team_matches")
+    .update({
+      applied_lineups: lineups,
+      lineup_id: firstLineup?.lineup_id ?? null,
+      lineup_snapshot: firstLineup,
+    })
+    .eq("id", matchId)
+    .select(teamMatchColumns)
+    .single();
+
+  if (error) throwRepositoryError("Failed to apply match lineups", error);
+  if (!data) throw new Error(TEAM_NOTIFICATION_MESSAGES.matchLineupApplyFailed);
+  const mapped = mapTeamMatchRow(data);
+  if (!mapped) throw new Error(TEAM_NOTIFICATION_MESSAGES.matchLineupApplyFailed);
+  return mapped;
+}
+
+export async function getTeamMatch(matchId: string): Promise<TeamMatch> {
+  const client = ensureSupabase();
+  assertValidUuid(matchId, "Match id");
+  const { data, error } = await client
+    .from("team_matches")
+    .select(teamMatchColumns)
+    .eq("id", matchId)
+    .single();
+
+  if (error) throwRepositoryError("Failed to get team match", error);
+  if (!data) throw new Error(TEAM_NOTIFICATION_MESSAGES.matchNotFound);
+  const mapped = mapTeamMatchRow(data);
+  if (!mapped) throw new Error(TEAM_NOTIFICATION_MESSAGES.matchNotFound);
+  return mapped;
+}
+
+export async function getMatchAttendance(matchId: string): Promise<TeamMatchAttendance[]> {
+  const client = ensureSupabase();
+  assertValidUuid(matchId, "Match id");
+  const { data, error } = await client
+    .from("team_match_attendance")
+    .select(teamMatchAttendanceColumns)
+    .eq("match_id", matchId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    if (/column team_match_attendance\.created_at does not exist/i.test(error.message ?? "")) {
+      const { data: fallbackData, error: fallbackError } = await client
+        .from("team_match_attendance")
+        .select("id,match_id,member_id,status,updated_by,responded_at,updated_at")
+        .eq("match_id", matchId)
+        .order("updated_at", { ascending: false });
+
+      if (fallbackError) throwRepositoryError("Failed to get match attendance", fallbackError);
+      return (fallbackData ?? []) as TeamMatchAttendance[];
+    }
+
+    throwRepositoryError("Failed to get match attendance", error);
+  }
+
+  return (data ?? []) as TeamMatchAttendance[];
+}
+
+export async function getMyAttendanceByMatchIds(
+  matchIds: string[],
+  memberId: string,
+): Promise<Record<string, TeamMatchAttendanceStatus>> {
+  if (matchIds.length === 0) return {};
+
+  const client = ensureSupabase();
+  assertValidUuid(memberId, "Member id");
+  for (const matchId of matchIds) {
+    assertValidUuid(matchId, "Match id");
+  }
+
+  const { data, error } = await client
+    .from("team_match_attendance")
+    .select("match_id,status")
+    .in("match_id", matchIds)
+    .eq("member_id", memberId);
+
+  if (error) throwRepositoryError("Failed to get match attendance", error);
+
+  const attendanceByMatchId: Record<string, TeamMatchAttendanceStatus> = {};
+  for (const row of data ?? []) {
+    attendanceByMatchId[row.match_id as string] = row.status as TeamMatchAttendanceStatus;
+  }
+
+  return attendanceByMatchId;
+}
+
+export async function upsertMatchAttendance(
+  matchId: string,
+  memberId: string,
+  status: TeamMatchAttendanceStatus,
+): Promise<TeamMatchAttendance> {
+  const client = ensureSupabase();
+  assertValidUuid(matchId, "Match id");
+  assertValidUuid(memberId, "Member id");
+  const { data, error } = await client.rpc("upsert_team_match_attendance", {
+    p_match_id: matchId,
+    p_member_id: memberId,
+    p_status: status,
+  });
+
+  if (error) throwRepositoryError("Failed to update match attendance", error);
+  if (!data) throw new Error(TEAM_NOTIFICATION_MESSAGES.matchAttendanceUpdateFailed);
+  return data as TeamMatchAttendance;
+}
+
+export async function deleteTeamMatch(matchId: string): Promise<string> {
+  const client = ensureSupabase();
+  const { data, error } = await client
+    .from("team_matches")
+    .delete()
+    .eq("id", matchId)
+    .select("id")
+    .single();
+
+  if (error) throwRepositoryError("Failed to delete team match", error);
+  if (!data) throw new Error("Failed to delete team match: Match not found or you do not have permission to delete it.");
+  return data.id as string;
+}
+
+export async function deleteTeamMatches(matchIds: string[]): Promise<number> {
+  if (matchIds.length === 0) return 0;
+  for (const matchId of matchIds) {
+    assertValidUuid(matchId, "Match id");
+  }
+
+  const client = ensureSupabase();
+  const { data, error } = await client
+    .from("team_matches")
+    .delete()
+    .in("id", matchIds)
+    .select("id");
+
+  if (error) throwRepositoryError("Failed to delete team matches", error);
+  return data?.length ?? 0;
+}
+
+export async function deleteAllTeamMatches(teamId: string): Promise<number> {
+  assertValidUuid(teamId, "Team id");
+  const client = ensureSupabase();
+  const { data, error } = await client
+    .from("team_matches")
+    .delete()
+    .eq("team_id", teamId)
+    .select("id");
+
+  if (error) throwRepositoryError("Failed to delete all team matches", error);
+  return data?.length ?? 0;
 }
