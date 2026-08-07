@@ -83,7 +83,9 @@ export function AppHeader({
     declineTeamLeaveRequest,
     clearCurrentTeam,
   } = useTeamStore();
-  const adminLeaveRequests = pendingTeamLeaveRequests.filter((request) => request.requested_by !== user?.id);
+  const adminLeaveRequests = user?.id
+    ? pendingTeamLeaveRequests.filter((request) => request.requested_by !== user.id)
+    : [];
   const hasNotifications = notifications.length > 0 || pendingTeamInvites.length > 0 || adminLeaveRequests.length > 0;
 
   useEffect(() => {

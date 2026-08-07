@@ -93,9 +93,14 @@ export function AppView({ model }: AppViewProps) {
     : isPitchLandscape ? "Portrait pitch" : "Landscape pitch";
 
   useEffect(() => {
-    if (isFullscreen) {
-      setPrefersLandscapePitch(true);
-    }
+    if (!isFullscreen) return;
+    setPrefersLandscapePitch(true);
+    return () => {
+      setPrefersLandscapePitch(false);
+    };
+  }, [isFullscreen]);
+
+  useEffect(() => {
     const isLineupFullscreen = activeTab === "lineup" && isFullscreen;
     const isLineupPortraitFullscreen = activeTab === "lineup" && isPortraitFullscreen;
     const isScrollableAppPage = activeTab !== "lineup";
@@ -191,10 +196,12 @@ export function AppView({ model }: AppViewProps) {
         onOpenTeams={() => switchAppTab("teams")}
         onOpenWorkspace={() => switchAppTab("lineup")}
         onOpenTeamDetail={(teamId) => navigate(`/app/teams/${teamId}`)}
-        onTeamMemberRemoved={() => {
-          if (activeTab === "team-detail") {
-            console.warn("⚠️ Redirect blocked: onTeamMemberRemoved fired!");
-            // navigate("/app/teams", { replace: true });
+        onTeamMemberRemoved={(removedTeamId) => {
+          const path = window.location.pathname;
+          const isOnRemovedTeam =
+            path === `/app/teams/${removedTeamId}` || path.startsWith(`/app/teams/${removedTeamId}/`);
+          if (isOnRemovedTeam) {
+            navigate("/app/teams", { replace: true });
           }
         }}
         onSignOut={async () => {

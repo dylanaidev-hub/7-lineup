@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
@@ -132,6 +132,14 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
   const [isLoadingLineups, setIsLoadingLineups] = useState(false);
   const [isApplyingLineup, setIsApplyingLineup] = useState(false);
   const [isLineupPickerOpen, setIsLineupPickerOpen] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const team = currentTeam as TeamDetails | null;
   const currentUserMember = useMemo(
@@ -173,7 +181,7 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
     return counts;
   }, [attendanceByMemberId, sortedMembers]);
 
-  const loadMatchData = async () => {
+  const loadMatchData = useCallback(async () => {
     if (!matchId) return;
     setIsLoadingMatch(true);
     setLoadError("");
@@ -182,16 +190,20 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
         getTeamMatch(matchId),
         getMatchAttendance(matchId),
       ]);
+      if (!isMountedRef.current) return;
       setMatch(nextMatch);
       setAttendance(nextAttendance);
     } catch (error) {
+      if (!isMountedRef.current) return;
       const message = error instanceof Error ? error.message : TEAM_NOTIFICATION_MESSAGES.matchNotFound;
       setLoadError(message);
       onToast(message, "error");
     } finally {
-      setIsLoadingMatch(false);
+      if (isMountedRef.current) {
+        setIsLoadingMatch(false);
+      }
     }
-  };
+  }, [matchId, onToast]);
 
   useEffect(() => {
     if (!user || !teamId || !matchId) return;
@@ -209,7 +221,7 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
     return () => {
       isMounted = false;
     };
-  }, [clearCurrentTeam, fetchTeamDetails, matchId, onToast, teamId, user]);
+  }, [clearCurrentTeam, fetchTeamDetails, loadMatchData, matchId, onToast, teamId, user]);
 
   useEffect(() => {
     if (!SHOW_APPLIED_LINEUP_SECTION || !user || !isAdmin) {
@@ -271,7 +283,7 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
     return () => {
       void client.removeChannel(channel);
     };
-  }, [matchId, navigate, onToast, teamId]);
+  }, [loadMatchData, matchId, navigate, onToast, teamId]);
 
   useEffect(() => {
     if (!match || !teamId) return;
