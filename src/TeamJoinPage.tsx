@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, Loader2, Shield, Trophy, UserPlus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "./Button";
+import { getAppPath } from "./appRouting";
 import { useTeamStore } from "./stores/teamStore";
 import { getPlayerTeamNotificationFromError, TEAM_NOTIFICATION_MESSAGES } from "./teamNotifications";
 import styles from "./TeamPages.module.css";
@@ -56,7 +57,7 @@ export function TeamJoinPage({ user, onRequireAuth, onToast }: TeamJoinPageProps
       const member = await joinTeamByLink(token);
       await fetchTeamsByUser(user.id);
       onToast(TEAM_NOTIFICATION_MESSAGES.joinTeamSuccess);
-      navigate(`/app/teams/${member.team_id}`, { replace: true });
+      navigate(getAppPath("team-detail", undefined, { teamId: member.team_id }), { replace: true });
     } catch (error) {
       onToast(getPlayerTeamNotificationFromError(error, "joinTeamFailed"), "error");
     } finally {
@@ -92,7 +93,7 @@ export function TeamJoinPage({ user, onRequireAuth, onToast }: TeamJoinPageProps
             <Shield className={styles.authIcon} size={42} />
             <h1 className={styles.authTitle}>Link không hợp lệ</h1>
             <p className={styles.authText}>Link tham gia đội bóng không tồn tại hoặc đã bị thu hồi.</p>
-            <Button variant="primary" className={styles.authCardButton} onClick={() => navigate("/app/teams")}>
+            <Button variant="primary" className={styles.authCardButton} onClick={() => navigate(getAppPath("teams"))}>
               Đội bóng của tôi
             </Button>
           </>
@@ -101,7 +102,7 @@ export function TeamJoinPage({ user, onRequireAuth, onToast }: TeamJoinPageProps
             <Shield className={styles.authIcon} size={42} />
             <h1 className={styles.authTitle}>Link không còn hiệu lực</h1>
             <p className={styles.authText}>Link này đã hết hạn, bị tắt hoặc đã đạt giới hạn lượt sử dụng.</p>
-            <Button variant="primary" className={styles.authCardButton} onClick={() => navigate("/app/teams")}>
+            <Button variant="primary" className={styles.authCardButton} onClick={() => navigate(getAppPath("teams"))}>
               Đội bóng của tôi
             </Button>
           </>

@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getTeamScheduleUrl } from "./appRouting";
+import { getAppPath } from "./appRouting";
 import { Button } from "./Button";
 import { supabase } from "./lib/supabaseClient";
 import { copyByLanguage } from "./appI18n";
@@ -263,7 +263,7 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
         },
         () => {
           onToast(TEAM_NOTIFICATION_MESSAGES.matchDeleted);
-          navigate(getTeamScheduleUrl(teamId), { replace: true });
+          navigate(getAppPath("team-detail", undefined, { teamId, search: { section: "schedule" } }), { replace: true });
         },
       )
       .on(
@@ -398,7 +398,7 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
   if (!user) {
     return (
       <section className={styles.page}>
-        <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
+        <button type="button" className={styles.backButton} onClick={() => navigate(getAppPath("teams"))}>
           <ArrowLeft size={18} />
           Đội bóng
         </button>
@@ -418,10 +418,10 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
 
   const goBackToTeamSchedule = () => {
     if (!resolvedTeamId) {
-      navigate("/app/teams");
+      navigate(getAppPath("teams"));
       return;
     }
-    navigate(getTeamScheduleUrl(resolvedTeamId));
+    navigate(getAppPath("team-detail", undefined, { teamId: resolvedTeamId, search: { section: "schedule" } }));
   };
 
   if (!teamId || !matchId) {
@@ -664,7 +664,7 @@ export function MatchDetail({ user, onRequireAuth, onToast }: MatchDetailProps) 
         onConfirm={(selectedLineups) => void handleConfirmLineups(selectedLineups)}
         onCreateNew={() => {
           setIsLineupPickerOpen(false);
-          navigate("/app/lineup?pitch=7");
+          navigate(getAppPath("lineup"));
         }}
       />
       ) : null}

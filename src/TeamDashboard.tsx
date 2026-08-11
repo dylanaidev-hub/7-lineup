@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { Plus, Shield, Trash2, Trophy, Users, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "./Button";
+import { getAppPath } from "./appRouting";
 import { useTeamStore } from "./stores/teamStore";
 import type { Team } from "./types/team";
 import styles from "./TeamPages.module.css";
@@ -52,7 +53,7 @@ export function TeamDashboard({ user, onRequireAuth, onToast }: TeamDashboardPro
       setTeamName("");
       setIsCreateOpen(false);
       onToast("Đã tạo đội bóng.");
-      navigate(`/app/teams/${team.id}`);
+      navigate(getAppPath("team-detail", undefined, { teamId: team.id }));
     } catch (error) {
       onToast(error instanceof Error ? error.message : "Không thể tạo đội bóng.", "error");
     } finally {
@@ -116,7 +117,7 @@ export function TeamDashboard({ user, onRequireAuth, onToast }: TeamDashboardPro
                 <button
                   type="button"
                   className={styles.cardLink}
-                  onClick={() => navigate(`/app/teams/${team.id}`)}
+                  onClick={() => navigate(getAppPath("team-detail", undefined, { teamId: team.id }))}
                   aria-label={`Xem chi tiết ${team.name}`}
                 >
                   <div className={styles.cardTop}>

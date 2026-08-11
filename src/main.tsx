@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM, { type Root } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -12,11 +12,19 @@ import { PublicContentPage, type PublicPageKind } from "./PublicContentPage";
 import { SeoHead } from "./SeoHead";
 import { LanguageProvider, useLanguage } from "./LanguageContext";
 import { useAuth } from "./hooks/useAuth";
+import {
+  AppJoinTeamRoute,
+  AppLineupRoute,
+  AppLockerRoute,
+  AppMatchDetailRoute,
+  AppProfileRoute,
+  AppTeamDetailRoute,
+  AppTeamsRoute,
+  AppWorkspaceLayout,
+} from "./routes/appWorkspaceRoutes";
 import "./styles.css";
 
 type AuthDialogMode = "sign_in" | "sign_up";
-
-const CanvasApp = lazy(() => import("./App"));
 
 const routeCopy = {
   vi: {
@@ -225,18 +233,6 @@ function LegacyNewsRedirect() {
   return <Navigate to={slug ? `/tin-tuc/${slug}` : "/tin-tuc"} replace />;
 }
 
-function CanvasRoute() {
-  const { language } = useLanguage();
-  return (
-    <>
-      <SeoHead title="Không gian chiến thuật | Đội Hình Sân Cỏ" description="Không gian tạo đội hình và sa bàn chiến thuật." path="/app/lineup" robots="noindex,nofollow" />
-      <Suspense fallback={<AppLoadingScreen message={routeCopy[language].loading} />}>
-        <CanvasApp />
-      </Suspense>
-    </>
-  );
-}
-
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -261,14 +257,16 @@ function RootRouter() {
       <Route path="/tinh-nang/ve-sa-ban" element={<PublicContentRoute kind="tactics" />} />
       <Route path="/tinh-nang/tao-chuyen-dong" element={<PublicContentRoute kind="animation" />} />
       <Route path="/app" element={<Navigate to="/app/lineup?pitch=7" replace />} />
-      <Route path="/app/lineup" element={<CanvasRoute />} />
       <Route path="/app/tactics" element={<TacticsRouteRedirect />} />
-      <Route path="/app/profile" element={<CanvasRoute />} />
-      <Route path="/app/locker" element={<CanvasRoute />} />
-      <Route path="/app/teams" element={<CanvasRoute />} />
-      <Route path="/app/teams/:teamId/matches/:matchId" element={<CanvasRoute />} />
-      <Route path="/app/teams/:teamId" element={<CanvasRoute />} />
-      <Route path="/app/join-team" element={<CanvasRoute />} />
+      <Route element={<AppWorkspaceLayout />}>
+        <Route path="/app/lineup" element={<AppLineupRoute />} />
+        <Route path="/app/profile" element={<AppProfileRoute />} />
+        <Route path="/app/locker" element={<AppLockerRoute />} />
+        <Route path="/app/teams" element={<AppTeamsRoute />} />
+        <Route path="/app/teams/:teamId/matches/:matchId" element={<AppMatchDetailRoute />} />
+        <Route path="/app/teams/:teamId" element={<AppTeamDetailRoute />} />
+        <Route path="/app/join-team" element={<AppJoinTeamRoute />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

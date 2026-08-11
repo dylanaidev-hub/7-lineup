@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { AppTab, PitchSize } from "../appRouting";
+import type { PitchSize } from "../appRouting";
 import type { CanvasTool } from "../CanvasToolSidebar";
 import { createOpponentMarkers, type DrawLine, type FormationKey, type FormationPlayer, type OpponentMarker } from "../formationData";
 import { clampCustomCount } from "../lineupShare";
@@ -33,7 +33,7 @@ type Options = {
   setCurrentMode: Dispatch<SetStateAction<WorkspaceMode>>;
   setActiveTool: Dispatch<SetStateAction<CanvasTool>>;
   setActiveBottomSheetTool: Dispatch<SetStateAction<CanvasTool | null>>;
-  setActiveTab: Dispatch<SetStateAction<AppTab>>;
+  navigateToLineup: () => void;
   setIsDrawMode: Dispatch<SetStateAction<boolean>>;
 };
 
@@ -55,7 +55,7 @@ export function useLineupRestoreActions(options: Options) {
       options.setCurrentMode("ANIMATION");
       options.setActiveTool("ANIMATION_TOOL");
       options.setActiveBottomSheetTool("ANIMATION_TOOL");
-      options.setActiveTab("lineup");
+      options.navigateToLineup();
       options.setLockerStatus("");
       return;
     }
@@ -93,7 +93,7 @@ export function useLineupRestoreActions(options: Options) {
     }
     options.setRedoDrawLines([]);
     options.setIsDrawMode(false);
-    options.setActiveTab("lineup");
+    options.navigateToLineup();
     options.setLockerStatus("");
   };
 

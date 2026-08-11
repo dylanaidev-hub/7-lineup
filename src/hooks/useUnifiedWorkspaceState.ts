@@ -13,7 +13,7 @@ import {
   type FormationPlayer,
   type OpponentMarker,
 } from "../formationData";
-import { getInitialAppTab, getPitchSizeFromUrl, type AppTab, type PitchSize } from "../appRouting";
+import { getPitchSizeFromUrl, type PitchSize } from "../appRouting";
 import { clampCustomCount, type SharedLineup } from "../lineupShare";
 import type { WorkspaceMode } from "../stores/tacticalStore";
 import type { Language } from "../languagePreference";
@@ -87,7 +87,6 @@ export function useUnifiedWorkspaceState(sharedLineup: SharedLineup<FormationKey
   const [isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [selectedMobilePlayerId, setSelectedMobilePlayerId] = useState(1);
-  const [activeTab, setActiveTab] = useState<AppTab>(() => getInitialAppTab());
   const [currentMode, setCurrentMode] = useState<WorkspaceMode>(initial.mode);
   const initialTool = initial.tool;
   const [activeTool, setActiveTool] = useState<CanvasTool>(initialTool);
@@ -136,8 +135,6 @@ export function useUnifiedWorkspaceState(sharedLineup: SharedLineup<FormationKey
     selectedMobilePlayerId,
     setSelectedMobilePlayerId,
     selectedMobilePlayer,
-    activeTab,
-    setActiveTab,
     currentMode,
     setCurrentMode,
     activeTool,

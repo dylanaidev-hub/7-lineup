@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "./Button";
+import { getAppPath } from "./appRouting";
 import { useTeamMatchesRealtime } from "./hooks/useTeamMatchesRealtime";
 import { createTeamMatch, createTeamMatchesBatch, deleteTeamMatch, deleteTeamMatches, getMyAttendanceByMatchIds, getTeamMatches, updateTeamMatch, upsertMatchAttendance } from "./repositories/teamRepository";
 import { useTeamStore } from "./stores/teamStore";
@@ -67,6 +68,20 @@ type TeamDetailProps = {
   user: User | null;
   onRequireAuth: () => void;
   onToast: (message: string, tone?: "success" | "error") => void;
+};
+
+const EMPTY_TEAM_MEMBERS: TeamMember[] = [];
+const EMPTY_TEAM_MATCHES: TeamMatch[] = [];
+const EMPTY_ATTENDANCE_BY_MATCH: Record<string, TeamMatchAttendanceStatus> = {};
+
+const areAttendanceRecordsEqual = (
+  left: Record<string, TeamMatchAttendanceStatus>,
+  right: Record<string, TeamMatchAttendanceStatus>,
+) => {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+  return leftKeys.every((key) => left[key] === right[key]);
 };
 
 const formatDateTime = (value: string) =>
@@ -276,7 +291,7 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
 
   useEffect(() => {
     if (!joinUrl) {
-      setJoinLinkQr("");
+      setJoinLinkQr((current) => (current ? "" : current));
       return;
     }
 
@@ -302,13 +317,15 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     void fetchPendingTeamLeaveRequests().catch((error) => {
       onToast(getPlayerTeamNotificationFromError(error, "leaveRequestInvalid"), "error");
     });
-  }, [fetchPendingTeamLeaveRequests, isAdmin, onToast, teamId]);
+    // fetchPendingTeamLeaveRequests and onToast are stable store/callback references.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refetch when admin context or team changes
+  }, [isAdmin, teamId]);
 
   useEffect(() => {
     const normalizedQuery = debouncedProfileQuery.trim();
     if (!isAddMemberOpen || selectedProfile || normalizedQuery.length < 2) {
-      setProfileResults([]);
-      setIsSearchingProfiles(false);
+      setProfileResults((current) => (current.length === 0 ? current : []));
+      setIsSearchingProfiles((current) => (current ? false : current));
       return;
     }
 
@@ -332,7 +349,9 @@ function MembersView({ teamId, members, isAdmin, isLoading, currentUserId, onReq
     return () => {
       isCurrentRequest = false;
     };
-  }, [debouncedProfileQuery, isAddMemberOpen, onToast, searchProfiles, selectedProfile]);
+    // searchProfiles and onToast are stable store/callback references.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- query-driven search only
+  }, [debouncedProfileQuery, isAddMemberOpen, selectedProfile]);
 
   const handleAddMember = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1063,17 +1082,31 @@ function ScheduleView({ teamId, userId, currentMemberId, isAdmin, onToast }: Sch
     return isPastMatchTime(parsedStartsAt);
   }, [scheduleValidationError, parsedStartsAt]);
 
+  const scheduleConflictMatchId = createFormConflicts[0]?.match.id ?? null;
+  const scheduleConflictStartsAt = createFormConflicts[0]?.match.starts_at ?? null;
+
   useEffect(() => {
-    const conflict = createFormConflicts[0];
-    if (!conflict || !isScheduleModalOpen) return;
-    setSelectedDateKey(getLocalDateKeyFromIso(conflict.match.starts_at));
-    const conflictDate = new Date(conflict.match.starts_at);
-    setCalendarMonth(new Date(conflictDate.getFullYear(), conflictDate.getMonth(), 1));
-  }, [createFormConflicts, isScheduleModalOpen]);
+    if (!scheduleConflictMatchId || !scheduleConflictStartsAt || !isScheduleModalOpen) return;
+
+    const nextDateKey = getLocalDateKeyFromIso(scheduleConflictStartsAt);
+    const conflictDate = new Date(scheduleConflictStartsAt);
+    const nextMonth = new Date(conflictDate.getFullYear(), conflictDate.getMonth(), 1);
+
+    setSelectedDateKey((current) => (current === nextDateKey ? current : nextDateKey));
+    setCalendarMonth((current) =>
+      current.getFullYear() === nextMonth.getFullYear() && current.getMonth() === nextMonth.getMonth()
+        ? current
+        : nextMonth,
+    );
+  }, [scheduleConflictMatchId, scheduleConflictStartsAt, isScheduleModalOpen]);
 
   const calendarCells = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
 
-  const selectedDayMatches = selectedDateKey ? matchesByDate.get(selectedDateKey) ?? [] : [];
+  const selectedDayMatches = useMemo(() => {
+    if (!selectedDateKey) return EMPTY_TEAM_MATCHES;
+    return matchesByDate.get(selectedDateKey) ?? EMPTY_TEAM_MATCHES;
+  }, [selectedDateKey, matchesByDate]);
+
   const selectedDayDuplicateTimes = useMemo(
     () => (selectedDateKey ? getDuplicateStartTimes(selectedDayMatches) : new Set<number>()),
     [selectedDateKey, selectedDayMatches],
@@ -1081,7 +1114,7 @@ function ScheduleView({ teamId, userId, currentMemberId, isAdmin, onToast }: Sch
 
   const isUpcomingMatch = (match: TeamMatch) => new Date(match.starts_at).getTime() >= Date.now();
 
-  const matchIdsForAttendance = useMemo(() => {
+  const matchIdsForAttendanceKey = useMemo(() => {
     const ids = new Set<string>();
     if (nearestUpcomingMatch && isUpcomingMatch(nearestUpcomingMatch)) {
       ids.add(nearestUpcomingMatch.id);
@@ -1091,30 +1124,37 @@ function ScheduleView({ teamId, userId, currentMemberId, isAdmin, onToast }: Sch
         ids.add(match.id);
       }
     }
-    return [...ids];
+    return [...ids].sort().join("|");
   }, [nearestUpcomingMatch, selectedDayMatches]);
 
   useEffect(() => {
-    if (!currentMemberId || matchIdsForAttendance.length === 0) {
-      setMyAttendanceByMatchId({});
+    if (!currentMemberId || !matchIdsForAttendanceKey) {
+      setMyAttendanceByMatchId((current) =>
+        Object.keys(current).length === 0 ? current : EMPTY_ATTENDANCE_BY_MATCH,
+      );
       return;
     }
 
+    const matchIds = matchIdsForAttendanceKey.split("|");
     let isMounted = true;
-    void getMyAttendanceByMatchIds(matchIdsForAttendance, currentMemberId)
+    void getMyAttendanceByMatchIds(matchIds, currentMemberId)
       .then((nextAttendance) => {
         if (!isMounted) return;
-        setMyAttendanceByMatchId(nextAttendance);
+        setMyAttendanceByMatchId((current) =>
+          areAttendanceRecordsEqual(current, nextAttendance) ? current : nextAttendance,
+        );
       })
       .catch(() => {
         if (!isMounted) return;
-        setMyAttendanceByMatchId({});
+        setMyAttendanceByMatchId((current) =>
+          Object.keys(current).length === 0 ? current : EMPTY_ATTENDANCE_BY_MATCH,
+        );
       });
 
     return () => {
       isMounted = false;
     };
-  }, [currentMemberId, matchIdsForAttendance]);
+  }, [currentMemberId, matchIdsForAttendanceKey]);
 
   useEffect(() => {
     if (!openMenuMatchId) return;
@@ -1434,7 +1474,7 @@ function ScheduleView({ teamId, userId, currentMemberId, isAdmin, onToast }: Sch
   };
 
   const openMatchDetail = (matchId: string) => {
-    navigate(`/app/teams/${teamId}/matches/${matchId}`);
+    navigate(getAppPath("match-detail", undefined, { teamId, matchId }));
   };
 
   const handleQuickAttendance = async (
@@ -2318,8 +2358,8 @@ function ScheduleView({ teamId, userId, currentMemberId, isAdmin, onToast }: Sch
 
 export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
   const { teamId } = useParams<{ teamId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     currentTeam,
     isLoadingTeamDetails,
@@ -2331,6 +2371,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
   const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
   const [isRequestingLeave, setIsRequestingLeave] = useState(false);
   const [teamLoadError, setTeamLoadError] = useState("");
+  const scheduleSectionHandledRef = useRef(false);
   const team = currentTeam as TeamDetails | null;
   const currentUserMember = useMemo(
     () => team?.members.find((member) => member.user_id === user?.id) ?? null,
@@ -2342,7 +2383,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
     if (!user) return;
     if (!teamId) {
       clearCurrentTeam();
-      navigate("/app/teams", { replace: true });
+      navigate(getAppPath("teams"), { replace: true });
       return;
     }
     let isMounted = true;
@@ -2358,7 +2399,9 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
     return () => {
       isMounted = false;
     };
-  }, [clearCurrentTeam, fetchTeamDetails, navigate, onToast, teamId, user]);
+    // Store actions (clearCurrentTeam, fetchTeamDetails) are stable; onToast is stable via useCallback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refetch when team or user identity changes
+  }, [teamId, user?.id]);
 
   useEffect(() => {
     if (!teamId) return;
@@ -2366,15 +2409,26 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
   }, [teamId]);
 
   useEffect(() => {
-    if (searchParams.get("section") !== "schedule" || isLoadingTeamDetails || !team) return;
+    scheduleSectionHandledRef.current = false;
+  }, [teamId]);
 
-    const scheduleSection = document.getElementById("team-schedule-section");
-    scheduleSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scheduleSection = searchParams.get("section");
+  useEffect(() => {
+    if (scheduleSection !== "schedule" || isLoadingTeamDetails || !team?.id || scheduleSectionHandledRef.current) {
+      return;
+    }
 
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete("section");
-    setSearchParams(nextParams, { replace: true });
-  }, [isLoadingTeamDetails, searchParams, setSearchParams, team]);
+    scheduleSectionHandledRef.current = true;
+    const scheduleElement = document.getElementById("team-schedule-section");
+    scheduleElement?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    setSearchParams((currentParams) => {
+      if (!currentParams.has("section")) return currentParams;
+      const nextParams = new URLSearchParams(currentParams);
+      nextParams.delete("section");
+      return nextParams;
+    }, { replace: true });
+  }, [scheduleSection, isLoadingTeamDetails, team?.id, setSearchParams]);
 
   useEffect(() => {
     if (!user?.id || !teamId || !currentUserMember?.id) return;
@@ -2385,8 +2439,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
       if (!isMounted) return;
       onToast(TEAM_NOTIFICATION_MESSAGES.playerRemovedFromTeam, "error");
       clearCurrentTeam();
-      console.warn("⚠️ Redirect blocked: handleRemovedFromTeam fired!");
-      // navigate("/app/teams", { replace: true });
+      navigate(getAppPath("teams"), { replace: true });
     };
 
     const verifyCurrentMembership = async () => {
@@ -2422,7 +2475,9 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [checkTeamMembership, clearCurrentTeam, currentUserMember?.id, navigate, onToast, teamId, user?.id]);
+    // Store actions and navigate/onToast are stable; poll only when membership context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- teamId, user?.id, currentUserMember?.id
+  }, [teamId, user?.id, currentUserMember?.id]);
 
   const handleRequestLeaveTeam = async () => {
     if (!teamId) return;
@@ -2441,7 +2496,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
   if (!user) {
     return (
       <section className={styles.page}>
-        <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
+        <button type="button" className={styles.backButton} onClick={() => navigate(getAppPath("teams"))}>
           <ArrowLeft size={18} />
           Đội bóng
         </button>
@@ -2460,7 +2515,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
   if (!teamId) {
     return (
       <section className={styles.page}>
-        <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
+        <button type="button" className={styles.backButton} onClick={() => navigate(getAppPath("teams"))}>
           <ArrowLeft size={18} />
           Đội bóng
         </button>
@@ -2476,7 +2531,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
   if (teamLoadError && !isLoadingTeamDetails && !team) {
     return (
       <section className={styles.page}>
-        <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
+        <button type="button" className={styles.backButton} onClick={() => navigate(getAppPath("teams"))}>
           <ArrowLeft size={18} />
           Đội bóng
         </button>
@@ -2491,7 +2546,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
 
   return (
     <section className={styles.page}>
-      <button type="button" className={styles.backButton} onClick={() => navigate("/app/teams")}>
+      <button type="button" className={styles.backButton} onClick={() => navigate(getAppPath("teams"))}>
         <ArrowLeft size={18} />
         Đội bóng
       </button>
@@ -2541,7 +2596,7 @@ export function TeamDetail({ user, onRequireAuth, onToast }: TeamDetailProps) {
         <div className={styles.detailGrid}>
           <MembersView
             teamId={teamId}
-            members={team?.members ?? []}
+            members={team?.members ?? EMPTY_TEAM_MEMBERS}
             isAdmin={isAdmin}
             isLoading={isLoadingTeamDetails}
             currentUserId={user.id}

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CanvasTool } from "../CanvasToolSidebar";
@@ -81,7 +82,7 @@ export function useWorkspaceControls({
 }: UseWorkspaceControlsOptions) {
   const navigate = useNavigate();
 
-  const applyPitchSize = (nextPitchSize: PitchSize, options: { updateUrl?: boolean } = {}) => {
+  const applyPitchSize = useCallback((nextPitchSize: PitchSize, options: { updateUrl?: boolean } = {}) => {
     setSavedPlayersByPitch((current) => ({ ...current, [pitchSize]: players }));
     setSavedFormationByPitch((current) => ({ ...current, [pitchSize]: formation }));
     setSavedCustomCountByPitch((current) => ({ ...current, [pitchSize]: customCount }));
@@ -108,7 +109,31 @@ export function useWorkspaceControls({
       const nextUrl = getAppRouteUrl("lineup", nextPitchSize);
       navigate(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     }
-  };
+  }, [
+    customCount,
+    drawLines,
+    formation,
+    navigate,
+    opponentMarkers,
+    pitchSize,
+    players,
+    savedCustomCountByPitch,
+    savedDrawLinesByPitch,
+    savedFormationByPitch,
+    savedOpponentMarkersByPitch,
+    savedPlayersByPitch,
+    setActiveBottomSheetTool,
+    setActiveTool,
+    setCurrentMode,
+    setCustomCount,
+    setDrawLines,
+    setFormation,
+    setIsDrawMode,
+    setOpponentMarkers,
+    setPitchSize,
+    setPlayers,
+    setRedoDrawLines,
+  ]);
 
   const resetPositions = () => {
     const nextCustomCount = pitchSize === "custom" ? activePlayers.length || 5 : customCount;

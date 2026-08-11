@@ -12,9 +12,8 @@ import {
   pitchOptions,
   type FormationKey,
 } from "../formationData";
-import { isPitchSize, type PitchSize } from "../appRouting";
+import { isPitchSize, getAppPath, type PitchSize } from "../appRouting";
 import { useAnimationPlaybackControls } from "./useAnimationPlaybackControls";
-import { useAppRouting } from "./useAppRouting";
 import { useAuth } from "./useAuth";
 import { useDrawingControls } from "./useDrawingControls";
 import { useLineupExportActions } from "./useLineupExportActions";
@@ -81,7 +80,7 @@ export function useAppController() {
     savedOpponentMarkersByPitch, setSavedOpponentMarkersByPitch, drawLines, setDrawLines,
     savedDrawLinesByPitch, setSavedDrawLinesByPitch, isDrawMode, setIsDrawMode,
     isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, copyStatus, setCopyStatus,
-    selectedMobilePlayerId, setSelectedMobilePlayerId, selectedMobilePlayer, activeTab, setActiveTab,
+    selectedMobilePlayerId, setSelectedMobilePlayerId, selectedMobilePlayer,
     currentMode, setCurrentMode, activeTool, setActiveTool, activeBottomSheetTool, setActiveBottomSheetTool,
     activePlayers, benchCount, pitchRef, drawLayerRef, frameListRef,
   } = useUnifiedWorkspaceState(sharedLineup);
@@ -262,6 +261,38 @@ export function useAppController() {
     setLineupName,
     setLockerCategory,
   });
+  const { applyPitchSize, resetPositions, resetWorkspace } = useWorkspaceControls({
+    pitchSize,
+    formation,
+    customCount,
+    players,
+    activePlayers,
+    opponentMarkers,
+    drawLines,
+    savedPlayersByPitch,
+    savedFormationByPitch,
+    savedCustomCountByPitch,
+    savedOpponentMarkersByPitch,
+    savedDrawLinesByPitch,
+    showAllCanvasObjects,
+    clearDragState,
+    setPitchSize,
+    setFormation,
+    setCustomCount,
+    setPlayers,
+    setSavedPlayersByPitch,
+    setSavedFormationByPitch,
+    setSavedCustomCountByPitch,
+    setOpponentMarkers,
+    setSavedOpponentMarkersByPitch,
+    setDrawLines,
+    setSavedDrawLinesByPitch,
+    setRedoDrawLines,
+    setIsDrawMode,
+    setCurrentMode,
+    setActiveTool,
+    setActiveBottomSheetTool,
+  });
   const { loadSavedLineup } = useLineupRestoreActions({
     invalidMessage: copy.invalidLineupData,
     showToast,
@@ -281,7 +312,7 @@ export function useAppController() {
     setCurrentMode,
     setActiveTool,
     setActiveBottomSheetTool,
-    setActiveTab,
+    navigateToLineup: () => navigate(getAppPath("lineup", pitchSize)),
     setIsDrawMode,
   });
   const { copyShareLink, downloadLineupImage } = useLineupExportActions({
@@ -315,38 +346,6 @@ export function useAppController() {
       setActiveTool,
       setActiveBottomSheetTool,
     });
-  const { applyPitchSize, resetPositions, resetWorkspace } = useWorkspaceControls({
-    pitchSize,
-    formation,
-    customCount,
-    players,
-    activePlayers,
-    opponentMarkers,
-    drawLines,
-    savedPlayersByPitch,
-    savedFormationByPitch,
-    savedCustomCountByPitch,
-    savedOpponentMarkersByPitch,
-    savedDrawLinesByPitch,
-    showAllCanvasObjects,
-    clearDragState,
-    setPitchSize,
-    setFormation,
-    setCustomCount,
-    setPlayers,
-    setSavedPlayersByPitch,
-    setSavedFormationByPitch,
-    setSavedCustomCountByPitch,
-    setOpponentMarkers,
-    setSavedOpponentMarkersByPitch,
-    setDrawLines,
-    setSavedDrawLinesByPitch,
-    setRedoDrawLines,
-    setIsDrawMode,
-    setCurrentMode,
-    setActiveTool,
-    setActiveBottomSheetTool,
-  });
   const lockerCategories: { value: LockerCategory; label: string }[] = [
     { value: "all", label: copy.allCategories },
     { value: "5", label: copy.pitchLabels[5] },
@@ -406,7 +405,6 @@ export function useAppController() {
     setActiveTool(nextTool);
     setActiveBottomSheetTool(nextTool);
     setCurrentMode(nextMode);
-    setActiveTab("lineup");
     setIsLineupMenuOpen(false);
     setIsUserMenuOpen(false);
     setIsDrawMode(nextTool === "DRAW_TOOL");
@@ -438,17 +436,6 @@ export function useAppController() {
   const getSavedLineupThumbnail = getSavedLineupThumbnailValue;
   const getSavedLineupDateTime = getSavedLineupDateTimeValue;
 
-  const { switchAppTab } = useAppRouting({
-    pitchSize,
-    applyPitchSize,
-    setActiveTab,
-    setCurrentMode,
-    setActiveTool,
-    setActiveBottomSheetTool,
-    setIsLineupMenuOpen,
-    setIsUserMenuOpen,
-  });
-
   return {
     copy,
     user,
@@ -460,9 +447,12 @@ export function useAppController() {
     setAuthDialogMode,
     setIsAuthScreenOpen,
     setIsUserMenuOpen,
-    switchAppTab,
     signOut,
     navigate,
+    applyPitchSize,
+    setCurrentMode,
+    setActiveTool,
+    setActiveBottomSheetTool,
     language,
     authHashError,
     isPasswordRecovery,
@@ -480,7 +470,6 @@ export function useAppController() {
     closeRecoveryScreen,
     requestNewResetLink,
     openSignInFromRecovery,
-    activeTab,
     profileUsername,
     profileAvatarUrl,
     profileBio,

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AnimationTimeline } from "./AnimationTimeline";
 import { AppContent } from "./AppContent";
 import { AppHeader } from "./AppHeader";
@@ -25,10 +26,12 @@ import { ToastStack } from "./ToastStack";
 import { getDisplayPosition } from "./formationData";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
 import { localizeError } from "./appI18n";
-import type { useAppController } from "./hooks/useAppController";
+import { getAppPath, type AppPage } from "./appRouting";
+import { useAppControllerContext } from "./AppControllerContext";
+import { useLineupUrlSync } from "./hooks/useLineupUrlSync";
 import { useFullscreen } from "./hooks/useFullscreen";
 
-type AppViewProps = { model: ReturnType<typeof useAppController> };
+type AppViewProps = { page: AppPage };
 
 const isPortableTouchDevice = () => {
   if (typeof window === "undefined") return false;
@@ -57,8 +60,10 @@ const isViewportLandscape = () => {
     ?? window.matchMedia("(orientation: landscape)").matches;
 };
 
-export function AppView({ model }: AppViewProps) {
-  const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, notifications, showToast, showAllCanvasObjects } = model;
+export function AppView({ page }: AppViewProps) {
+  const model = useAppControllerContext();
+  const routerNavigate = useNavigate();
+  const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, applyPitchSize, setCurrentMode, setActiveTool, setActiveBottomSheetTool, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, notifications, showToast, showAllCanvasObjects } = model;
   const workspaceRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, isPseudoFullscreen, enterFullscreenFromGesture, toggleFullscreen } = useFullscreen(workspaceRef);
   const [prefersLandscapePitch, setPrefersLandscapePitch] = useState(false);
@@ -75,7 +80,7 @@ export function AppView({ model }: AppViewProps) {
     || (isPortableViewport && isLandscapeViewport)
     || (prefersLandscapePitch && isDesktopViewport);
   const isPortraitFullscreen = isFullscreen && !isLandscapeViewport;
-  const isAppPageScrollable = activeTab !== "lineup";
+  const isAppPageScrollable = page !== "lineup";
   const workspaceShellClassName = [
     "workspace-fullscreen-shell",
     isAppPageScrollable ? "workspace-fullscreen-shell--scrollable" : "",
@@ -92,6 +97,19 @@ export function AppView({ model }: AppViewProps) {
     ? isPitchLandscape ? "Sân dọc" : "Sân ngang"
     : isPitchLandscape ? "Portrait pitch" : "Landscape pitch";
 
+  useLineupUrlSync({
+    pitchSize,
+    applyPitchSize,
+    setCurrentMode,
+    setActiveTool,
+    setActiveBottomSheetTool,
+    enabled: page === "lineup",
+  });
+
+  useEffect(() => {
+    setIsUserMenuOpen((open) => (open ? false : open));
+  }, [page, setIsUserMenuOpen]);
+
   useEffect(() => {
     if (!isFullscreen) return;
     setPrefersLandscapePitch(true);
@@ -101,9 +119,9 @@ export function AppView({ model }: AppViewProps) {
   }, [isFullscreen]);
 
   useEffect(() => {
-    const isLineupFullscreen = activeTab === "lineup" && isFullscreen;
-    const isLineupPortraitFullscreen = activeTab === "lineup" && isPortraitFullscreen;
-    const isScrollableAppPage = activeTab !== "lineup";
+    const isLineupFullscreen = page === "lineup" && isFullscreen;
+    const isLineupPortraitFullscreen = page === "lineup" && isPortraitFullscreen;
+    const isScrollableAppPage = page !== "lineup";
 
     document.body.classList.toggle("lineup-mobile-dock", isLineupFullscreen);
     document.body.classList.toggle("lineup-portrait-fullscreen", isLineupPortraitFullscreen);
@@ -115,7 +133,7 @@ export function AppView({ model }: AppViewProps) {
       document.documentElement.classList.remove("app-page-scrollable");
       document.body.classList.remove("app-page-scrollable");
     };
-  }, [activeTab, isFullscreen, isPortraitFullscreen]);
+  }, [page, isFullscreen, isPortraitFullscreen]);
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1025px)");
@@ -191,17 +209,17 @@ export function AppView({ model }: AppViewProps) {
           setIsAuthScreenOpen(true);
         }}
         onToggleUserMenu={() => setIsUserMenuOpen((current) => !current)}
-        onOpenProfile={() => switchAppTab("profile")}
-        onOpenLocker={() => switchAppTab("locker")}
-        onOpenTeams={() => switchAppTab("teams")}
-        onOpenWorkspace={() => switchAppTab("lineup")}
-        onOpenTeamDetail={(teamId) => navigate(`/app/teams/${teamId}`)}
+        onOpenProfile={() => routerNavigate(getAppPath("profile"))}
+        onOpenLocker={() => routerNavigate(getAppPath("locker"))}
+        onOpenTeams={() => routerNavigate(getAppPath("teams"))}
+        onOpenWorkspace={() => routerNavigate(getAppPath("lineup", pitchSize))}
+        onOpenTeamDetail={(teamId) => routerNavigate(getAppPath("team-detail", pitchSize, { teamId }))}
         onTeamMemberRemoved={(removedTeamId) => {
           const path = window.location.pathname;
           const isOnRemovedTeam =
             path === `/app/teams/${removedTeamId}` || path.startsWith(`/app/teams/${removedTeamId}/`);
           if (isOnRemovedTeam) {
-            navigate("/app/teams", { replace: true });
+            routerNavigate(getAppPath("teams"), { replace: true });
           }
         }}
         onSignOut={async () => {
@@ -239,7 +257,7 @@ export function AppView({ model }: AppViewProps) {
       isLandscapeViewport &&
       !isFullscreen &&
       !isLandscapePromptDismissed &&
-      activeTab === "lineup" ? (
+      page === "lineup" ? (
         <MobileLandscapePrompt
           title={language === "vi" ? "Xoay ngang đội hình" : "Rotate lineup to landscape"}
           description={
@@ -255,7 +273,7 @@ export function AppView({ model }: AppViewProps) {
       ) : null}
       <DashboardShell isTacticsView={false} isScrollable={isAppPageScrollable}>
         <AppContent
-          activeTab={activeTab}
+          activeTab={page}
           profileView={
           <ProfileView
             copy={copy}
@@ -531,7 +549,7 @@ export function AppView({ model }: AppViewProps) {
         />
       </DashboardShell>
       </WorkspaceFrame>
-      <LineupDragPreview preview={activeTab === "lineup" ? dragPreview : null} />
+      <LineupDragPreview preview={page === "lineup" ? dragPreview : null} />
       <ToastStack toasts={toasts} />
       </div>
     </main>
