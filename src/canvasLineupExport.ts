@@ -1,6 +1,10 @@
-import { getBenchNames, type DrawLine, type FormationPlayer, type OpponentMarker } from "./formationData";
+import { buildDrawGeometry, projectFromEnd, strokeDrawGeometry } from "./drawGeometry";
+import { carriesBall, getBenchNames, type DrawLine, type FormationPlayer, type OpponentMarker } from "./formationData";
 import type { TacticalMarker } from "./tacticalData";
 import { pitchPointToDisplay, type PitchOrientation } from "./pitchPointer";
+
+/** Mirrors PitchField: how close the ball counts as being at a player's feet. */
+const BALL_ATTACH_RADIUS = 5;
 
 type CanvasRect = {
   x: number;
@@ -240,20 +244,82 @@ export function renderLineupCanvas({
 
   if (showAllCanvasObjects) {
     drawLines.forEach((line) => {
-      if (line.points.length < 2) return;
+      const displayPoints = line.points.map((point) => pitchPointToDisplay(point.x, point.y, orientation));
+
+      // Ghost marker: where the run or dribble ends. Resolved first, because the
+      // arrow has to stop at its edge instead of under it.
+      const anchorId = Number(line.anchor?.slice(1));
+      const isOpponent = line.anchor?.startsWith("o") ?? false;
+      const hasGhost = line.anchor
+        ? isOpponent
+          ? opponentMarkers.some((marker) => marker.id === anchorId && marker.onPitch)
+          : activePlayers.some((player) => player.id === anchorId)
+        : false;
+      const radius = Math.max(css(9), pitchWidth * 0.016);
+      const geometry = buildDrawGeometry(
+        {
+          kind: line.kind,
+          side: line.side,
+          points: displayPoints,
+          ghostRadius: hasGhost ? (radius / pitchHeight) * 100 : 0,
+        },
+        pitchWidth / pitchHeight,
+      );
+      strokeDrawGeometry(context, geometry, px, py, css(5));
+
+      // Where the ball ends up, when the player who acted had it at their feet.
+      const start = line.points[0];
+      const ballRadius = Math.max(css(8), pitchWidth * 0.014);
+      if (
+        showAnimationTimeline &&
+        ballMarker?.onPitch &&
+        carriesBall(line.kind) &&
+        displayPoints.length >= 2 &&
+        Math.hypot(ballMarker.x - start.x, ballMarker.y - start.y) <= BALL_ATTACH_RADIUS
+      ) {
+        const lineEnd = line.points[line.points.length - 1];
+        const endsOnToken =
+          hasGhost ||
+          [...activePlayers, ...opponentMarkers.filter((marker) => marker.onPitch)].some(
+            (marker) => Math.hypot(marker.x - lineEnd.x, marker.y - lineEnd.y) <= BALL_ATTACH_RADIUS,
+          );
+        const ballAt = endsOnToken
+          ? projectFromEnd(displayPoints, pitchWidth / pitchHeight, {
+              across: ((radius + ballRadius) / pitchHeight) * 100,
+            })
+          : displayPoints[displayPoints.length - 1];
+        context.save();
+        context.globalAlpha = 0.6;
+        context.fillStyle = "#f8fafc";
+        context.strokeStyle = "rgba(15,23,42,0.5)";
+        context.lineWidth = css(1.5);
+        context.beginPath();
+        context.arc(px(ballAt.x), py(ballAt.y), ballRadius, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+        context.restore();
+      }
+
+      if (!hasGhost || displayPoints.length < 2) return;
+
+      const end = displayPoints[displayPoints.length - 1];
       context.save();
-      context.strokeStyle = "#facc15";
-      context.lineWidth = css(3);
-      context.lineCap = "round";
-      context.lineJoin = "round";
+      context.globalAlpha = 0.45;
+      context.fillStyle = isOpponent ? "#dc2626" : "#f8fafc";
+      context.strokeStyle = "rgba(15,23,42,0.55)";
+      context.lineWidth = css(1.5);
+      context.setLineDash([css(3), css(2)]);
       context.beginPath();
-      const firstPoint = pitchPointToDisplay(line.points[0].x, line.points[0].y, orientation);
-      context.moveTo(px(firstPoint.x), py(firstPoint.y));
-      line.points.slice(1).forEach((point) => {
-        const displayPoint = pitchPointToDisplay(point.x, point.y, orientation);
-        context.lineTo(px(displayPoint.x), py(displayPoint.y));
-      });
+      context.arc(px(end.x), py(end.y), radius, 0, Math.PI * 2);
+      context.fill();
       context.stroke();
+      context.setLineDash([]);
+      context.globalAlpha = 0.75;
+      context.fillStyle = isOpponent ? "#ffffff" : "#0f172a";
+      context.font = `900 ${Math.round(radius)}px "Segoe UI", sans-serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(String(anchorId), px(end.x), py(end.y));
       context.restore();
     });
   }

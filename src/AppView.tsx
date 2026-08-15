@@ -6,6 +6,7 @@ import { AppOverlays } from "./AppOverlays";
 import { DashboardShell } from "./DashboardShell";
 import { LineupDragPreview } from "./DragPreview";
 import { DrawControls } from "./DrawControls";
+import { DrawToolPanel } from "./DrawToolPanel";
 import { LineupColumn } from "./LineupColumn";
 import { LineupFooterActions } from "./LineupFooterActions";
 import { LineupHeaderActions } from "./LineupHeaderActions";
@@ -54,7 +55,7 @@ const isViewportLandscape = () => {
 };
 
 export function AppView({ model }: AppViewProps) {
-  const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showAllCanvasObjects } = model;
+  const { copy, user, languageMeta, isUserMenuOpen, userMenuRef, toggleLanguage, setAuthDialogMode, setIsAuthScreenOpen, setIsUserMenuOpen, switchAppTab, signOut, navigate, language, authHashError, isPasswordRecovery, isRecoveryExpiryError, isAuthScreenOpen, recoveryDone, recoveryPassword, recoveryConfirm, recoveryStatus, isRecoverySubmitting, authDialogMode, setRecoveryPassword, setRecoveryConfirm, handleUpdatePassword, closeRecoveryScreen, requestNewResetLink, openSignInFromRecovery, activeTab, profileUsername, profileAvatarUrl, profileBio, profileFavoriteTeam, profileFavoritePosition, profileLocation, isAvatarUploading, isProfileLoading, avatarInputRef, handleAvatarFileChange, setProfileUsername, setProfileBio, setProfileFavoriteTeam, setProfileFavoritePosition, setProfileLocation, updateProfile, savedLineups, lockerCategories, lockerCategory, filteredSavedLineups, deletingLineupId, getSavedLineupFormatLabel, getSavedLineupThumbnail, getSavedLineupDateTime, setLockerCategory, loadSavedLineup, shareSavedLineup, deleteSavedLineup, activePlayers, benchCount, renamePlayer, renameExtraPlayer, addPlayerInput, removeExtraPlayerInput, isAnimationTool, isDrawMode, pitchSize, lockerStatus, isLockerLoading, handleSaveCurrentLineup, resetWorkspace, selectedMobilePlayer, setSelectedMobilePlayerId, activeBottomSheetTool, draggingId, draggingOpponentId, draggingTacticalMarkerId, showMarkerTray, showAnimationTimeline, applySandboxTool, players, opponentMarkers, ballMarker, isBallOnPitch, handleDragStart, handleDragMove, stopDragging, handleOpponentDragStart, handleOpponentDragMove, stopOpponentDragging, handleTacticalMarkerPointerDown, handleTacticalMarkerPointerMove, stopTacticalMarkerDragging, pitchRef, drawLayerRef, animationOpponentMarkers, animationMarkerMap, drawLines, showDrawTools, isPlaying, startDrawing, continueDrawing, stopDrawing, isMobileSquadDrawerOpen, setIsMobileSquadDrawerOpen, animationFrames, currentFrameIndex, isLooping, playbackFrames, frameListRef, playAnimationFromStart, pause, stopAnimationPlayback, toggleLoop, clearFrames, selectFrameFromList, removeFrame, addFrame, frameListDrag, showDrawSheet, redoDrawLines, activeDrawKind, setActiveDrawKind, hoveredAnchor, clearDrawHover, undoDrawLine, redoDrawLine, clearDrawLines, copyStatus, copyShareLink, downloadLineupImage, dragPreview, toasts, showAllCanvasObjects } = model;
   const workspaceRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, isPseudoFullscreen, enterFullscreenFromGesture, toggleFullscreen } = useFullscreen(workspaceRef);
   const [prefersLandscapePitch, setPrefersLandscapePitch] = useState(false);
@@ -318,6 +319,15 @@ export function AppView({ model }: AppViewProps) {
                   showMarkerTray={showMarkerTray}
                   showAnimationPanel={showAnimationTimeline}
                   onSelectTool={applySandboxTool}
+                  drawTools={
+                    showDrawTools ? (
+                      <DrawToolPanel
+                        copy={copy}
+                        activeKind={activeDrawKind}
+                        onSelectKind={setActiveDrawKind}
+                      />
+                    ) : null
+                  }
                   markerTray={
                     showMarkerTray ? (
                       <MarkerTray
@@ -353,11 +363,13 @@ export function AppView({ model }: AppViewProps) {
                       isPlaying={isPlaying}
                       isLandscape={isPitchLandscape}
                       showAllCanvasObjects={showAllCanvasObjects}
+                      hoveredAnchor={hoveredAnchor}
                       draggingPlayerId={draggingId}
                       draggingOpponentId={draggingOpponentId}
                       draggingBallId={draggingTacticalMarkerId}
                       labels={{ player: copy.player, dragPlayer: copy.dragPlayer, dragOpponent: copy.dragOpponent }}
                       getPositionLabel={(position) => getDisplayPosition(position, language)}
+                      onClearDrawHover={clearDrawHover}
                       onStartDrawing={startDrawing}
                       onContinueDrawing={continueDrawing}
                       onStopDrawing={stopDrawing}
@@ -422,6 +434,13 @@ export function AppView({ model }: AppViewProps) {
               }
               drawControls={
                 showDrawSheet && isDrawMode ? (
+                  <>
+                    <DrawToolPanel
+                      copy={copy}
+                      activeKind={activeDrawKind}
+                      variant="strip"
+                      onSelectKind={setActiveDrawKind}
+                    />
                     <DrawControls
                       undoLabel={copy.undo}
                       redoLabel={copy.redo}
@@ -433,6 +452,7 @@ export function AppView({ model }: AppViewProps) {
                       onRedo={redoDrawLine}
                       onClear={clearDrawLines}
                     />
+                  </>
                 ) : null
               }
               footerActions={

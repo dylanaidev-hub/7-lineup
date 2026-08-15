@@ -6,7 +6,11 @@ import {
   normalizeSharedLineup,
 } from "./lineupShare";
 import { formationsBySize, isFormationKey } from "./formationPresets";
-import { createOpponentMarkersFromSharedLineup, createPlayersFromSharedLineup } from "./formationFactories";
+import {
+  createDrawLinesFromSharedLineup,
+  createOpponentMarkersFromSharedLineup,
+  createPlayersFromSharedLineup,
+} from "./formationFactories";
 import { isPitchSize } from "./appRouting";
 import type { FormationKey } from "./formationTypes";
 
@@ -94,6 +98,92 @@ describe("share payload", () => {
     expect(normalizeSharedLineup({}, realValidators)).toBeNull();
     expect(normalizeSharedLineup({ formation: "9-9-9", players: [] }, realValidators)).toBeNull();
     expect(normalizeSharedLineup({ formation: "2-3-1", players: "not-an-array" }, realValidators)).toBeNull();
+  });
+
+  it("round-trips every draw kind and side", () => {
+    const drawn = [
+      // a curved run: every kind but the dribble and the zones keeps its whole path
+      { id: 1, kind: "run" as const, side: "us" as const, anchor: "p7", points: [{ x: 20, y: 20 }, { x: 28, y: 38 }, { x: 40, y: 50 }] },
+      { id: 2, kind: "pass" as const, side: "them" as const, points: [{ x: 10, y: 10 }, { x: 60, y: 60 }] },
+      { id: 3, kind: "dribble" as const, side: "them" as const, anchor: "o2", points: [{ x: 12, y: 14 }, { x: 30, y: 40 }] },
+      { id: 4, kind: "block" as const, side: "them" as const, points: [{ x: 50, y: 50 }, { x: 55, y: 62 }] },
+      { id: 5, kind: "zoneRect" as const, side: "us" as const, points: [{ x: 20, y: 20 }, { x: 70, y: 45 }] },
+      { id: 6, kind: "zoneEllipse" as const, side: "us" as const, points: [{ x: 30, y: 30 }, { x: 60, y: 70 }] },
+      { id: 7, kind: "link" as const, side: "us" as const, points: [{ x: 30, y: 70 }, { x: 70, y: 70 }] },
+      { id: 8, points: [{ x: 10, y: 10 }, { x: 12, y: 16 }, { x: 20, y: 24 }] },
+    ];
+    const payload = buildSharePayload(
+      7,
+      "2-3-1" as FormationKey,
+      0,
+      [player(1, 50, 90, "Dũng")],
+      [],
+      drawn,
+    );
+
+    const decoded = decodeSharePayload<FormationKey>(encodeSharePayloadObject(payload), realValidators);
+
+    expect(decoded!.drawLines).toEqual(drawn);
+    expect(createDrawLinesFromSharedLineup(decoded!)).toEqual(drawn);
+  });
+
+  it("renders lines shared before draw kinds existed as freehand", () => {
+    const decoded = decodeSharePayload<FormationKey>(encodeSharePayloadObject(board()), realValidators);
+
+    expect(decoded!.drawLines![0].kind).toBeUndefined();
+    expect(decoded!.drawLines![0].side).toBeUndefined();
+  });
+
+  it("refuses kinds, sides and anchors a tampered payload made up", () => {
+    const hostile = normalizeSharedLineup(
+      {
+        version: 2,
+        pitchSize: 7,
+        formation: "2-3-1",
+        players: [player(1, 50, 90, "x")],
+        drawLines: [
+          { id: 1, kind: "<script>", side: "#f00", points: [{ x: 1e9, y: -4 }, { x: 20, y: 20 }] },
+          { id: 2, kind: "run", side: "us", anchor: "'; drop table", points: [{ x: 10, y: 10 }, { x: 20, y: 20 }] },
+          { id: 3, kind: "pass", anchor: "p3", points: [{ x: 10, y: 10 }, { x: 20, y: 20 }] },
+          { id: 4, kind: "dribble", points: [{ x: 10, y: 10 }, { x: 20, y: 20 }, { x: 30, y: 30 }] },
+        ],
+      },
+      realValidators,
+    );
+
+    expect(hostile!.drawLines).toEqual([
+      { id: 1, points: [{ x: 100, y: 0 }, { x: 20, y: 20 }] },
+      { id: 2, kind: "run", side: "us", points: [{ x: 10, y: 10 }, { x: 20, y: 20 }] },
+      { id: 3, kind: "pass", points: [{ x: 10, y: 10 }, { x: 20, y: 20 }] },
+      { id: 4, kind: "dribble", points: [{ x: 10, y: 10 }, { x: 20, y: 20 }] },
+    ]);
+  });
+
+  it("drops draw lines that cannot be rendered", () => {
+    const junk = normalizeSharedLineup(
+      {
+        version: 2,
+        pitchSize: 7,
+        formation: "2-3-1",
+        players: [player(1, 50, 90, "x")],
+        drawLines: [
+          { id: 1, points: [{ x: 10, y: 10 }] },
+          { id: 2, points: [] },
+          { id: 3, points: "nope" },
+          { id: "4", points: [{ x: 10, y: 10 }, { x: 20, y: 20 }] },
+          null,
+        ],
+      },
+      realValidators,
+    );
+
+    expect(junk!.drawLines).toEqual([]);
+
+    const notAnArray = normalizeSharedLineup(
+      { version: 2, pitchSize: 7, formation: "2-3-1", players: [player(1, 50, 90, "x")], drawLines: {} },
+      realValidators,
+    );
+    expect(notAnArray!.drawLines).toEqual([]);
   });
 
   it("clamps hostile coordinates from a tampered row back onto the pitch", () => {

@@ -1,3 +1,6 @@
+import { buildDrawGeometry, strokeDrawGeometry } from "./drawGeometry";
+import type { DrawKind, DrawSide } from "./formationTypes";
+
 type ThumbnailPlayer = {
   id: number;
   starterName: string;
@@ -13,6 +16,8 @@ type ThumbnailOpponentMarker = {
 
 type ThumbnailDrawLine = {
   points: { x: number; y: number }[];
+  kind?: DrawKind;
+  side?: DrawSide;
 };
 
 type CreateLineupThumbnailArgs = {
@@ -79,17 +84,7 @@ export const createLineupThumbnail = ({
 
   if (showAllCanvasObjects) {
     drawLines.forEach((line) => {
-      if (line.points.length < 2) return;
-      context.save();
-      context.strokeStyle = "#facc15";
-      context.lineWidth = 2;
-      context.lineCap = "round";
-      context.lineJoin = "round";
-      context.beginPath();
-      context.moveTo(px(line.points[0].x), py(line.points[0].y));
-      line.points.slice(1).forEach((point) => context.lineTo(px(point.x), py(point.y)));
-      context.stroke();
-      context.restore();
+      strokeDrawGeometry(context, buildDrawGeometry(line, pitchWidth / pitchHeight), px, py, 3);
     });
   }
 

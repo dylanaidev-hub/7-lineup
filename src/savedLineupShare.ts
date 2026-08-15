@@ -1,4 +1,4 @@
-import { buildSharePayload, encodeSharePayloadObject } from "./lineupShare";
+import { buildSharePayload, encodeSharePayloadObject, normalizeDrawLines } from "./lineupShare";
 import type { StoredLineupState } from "./lineupState";
 import { createShortShareLink } from "./shareLinks";
 
@@ -17,7 +17,7 @@ export const createSavedLineupShareUrl = async <TFormation extends string>(
     shareableCount,
     lineupData.players,
     Array.isArray(lineupData.opponentMarkers) ? lineupData.opponentMarkers : [],
-    Array.isArray(lineupData.drawLines) ? lineupData.drawLines : [],
+    normalizeDrawLines(lineupData.drawLines),
     Array.isArray(lineupData.animationFrames) ? lineupData.animationFrames : [],
     lineupData.currentMode ?? (lineupData.pitchSize === "custom" ? "CUSTOM" : "LINEUP"),
   );

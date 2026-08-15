@@ -1,4 +1,5 @@
 import type { PitchSize } from "./appRouting";
+import type { DrawKind, DrawSide } from "./formationTypes";
 import type { WorkspaceMode } from "./stores/tacticalStore";
 import { cloneTacticalFrames, type TacticalFrame, type TacticalPlaybook } from "./tacticalData";
 
@@ -23,6 +24,9 @@ export type StoredOpponentMarker = {
 export type StoredDrawLine = {
   id: number;
   points: { x: number; y: number }[];
+  kind?: DrawKind;
+  side?: DrawSide;
+  anchor?: string;
 };
 
 export type StoredLineupState<TFormation extends string = string> = {
