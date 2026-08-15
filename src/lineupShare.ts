@@ -1,4 +1,13 @@
 import type { PitchSize } from "./appRouting";
+import {
+  canAnchorGhost,
+  isDrawAnchor,
+  isDrawKind,
+  isDrawSide,
+  isRubberBandKind,
+  type DrawKind,
+  type DrawSide,
+} from "./formationTypes";
 import type { WorkspaceMode } from "./stores/tacticalStore";
 import { cloneTacticalFrames, normalizeTacticalFrame, type TacticalFrame } from "./tacticalData";
 
@@ -22,6 +31,9 @@ type SharedOpponentMarker = {
 type SharedDrawLine = {
   id: number;
   points: { x: number; y: number }[];
+  kind?: DrawKind;
+  side?: DrawSide;
+  anchor?: string;
 };
 
 export type SharedLineup<TFormation extends string = string> = {
@@ -51,6 +63,37 @@ export const clampCoordinate = (value: unknown, fallback: number) =>
 
 export const clampDrawCoordinate = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : fallback;
+
+/**
+ * Draw lines arrive from pasted URLs and from `share_links` rows, which anyone
+ * holding the public anon key can write. Kind and side are enums so a payload
+ * can never hand the renderer a colour or a class name; points are clamped and
+ * degenerate lines are dropped.
+ */
+export const normalizeDrawLines = (value: unknown): SharedDrawLine[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((line): line is SharedDrawLine => typeof line?.id === "number" && Array.isArray(line.points))
+    .map((line) => {
+      const kind = isDrawKind(line.kind) ? line.kind : undefined;
+      const points = line.points
+        .filter((point) => typeof point?.x === "number" && typeof point?.y === "number")
+        .map((point) => ({
+          x: clampDrawCoordinate(point.x, 50),
+          y: clampDrawCoordinate(point.y, 50),
+        }));
+
+      return {
+        id: line.id,
+        points: isRubberBandKind(kind) ? points.slice(0, 2) : points,
+        ...(kind ? { kind } : {}),
+        ...(isDrawSide(line.side) ? { side: line.side } : {}),
+        ...(kind && canAnchorGhost(kind) && isDrawAnchor(line.anchor) ? { anchor: line.anchor } : {}),
+      };
+    })
+    .filter((line) => line.points.length >= 2);
+};
 
 export const clampCustomCount = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(11, Math.max(0, Math.round(value))) : 0;
@@ -92,6 +135,9 @@ export const buildSharePayload = <TFormation extends string>(
         x: Math.round(point.x * 10) / 10,
         y: Math.round(point.y * 10) / 10,
       })),
+      ...(line.kind ? { kind: line.kind } : {}),
+      ...(line.side ? { side: line.side } : {}),
+      ...(line.anchor ? { anchor: line.anchor } : {}),
     })),
     animationFrames: cloneTacticalFrames(animationFrames),
   };
@@ -145,7 +191,7 @@ export const normalizeSharedLineup = <TFormation extends string>(
     formation: parsed.formation,
     players: parsed.players.filter((player) => typeof player?.id === "number") as SharedLineup<TFormation>["players"],
     opponentMarkers: Array.isArray(parsed.opponentMarkers) ? parsed.opponentMarkers : [],
-    drawLines: Array.isArray(parsed.drawLines) ? parsed.drawLines : [],
+    drawLines: normalizeDrawLines(parsed.drawLines),
     animationFrames: Array.isArray(parsed.animationFrames)
       ? (parsed.animationFrames.map(normalizeTacticalFrame).filter(Boolean) as TacticalFrame[])
       : [],

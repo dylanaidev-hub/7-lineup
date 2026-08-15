@@ -1,5 +1,5 @@
 import type { PitchSize } from "./appRouting";
-import { clampCoordinate, clampCustomCount, clampDrawCoordinate, type SharedLineup } from "./lineupShare";
+import { clampCoordinate, clampCustomCount, normalizeDrawLines, type SharedLineup } from "./lineupShare";
 import type { WorkspaceMode } from "./stores/tacticalStore";
 import type { DrawLine, FormationKey, FormationPlayer, OpponentMarker } from "./formationTypes";
 import { getFormationPoints } from "./formationPresets";
@@ -56,20 +56,7 @@ export const createOpponentMarkersFromSharedLineup = (sharedLineup: SharedLineup
 };
 
 export const createDrawLinesFromSharedLineup = (sharedLineup: SharedLineup<FormationKey>): DrawLine[] =>
-  Array.isArray(sharedLineup.drawLines)
-    ? sharedLineup.drawLines
-        .filter((line) => typeof line?.id === "number" && Array.isArray(line.points))
-        .map((line) => ({
-          id: line.id,
-          points: line.points
-            .filter((point) => typeof point?.x === "number" && typeof point?.y === "number")
-            .map((point) => ({
-              x: clampDrawCoordinate(point.x, 50),
-              y: clampDrawCoordinate(point.y, 50),
-            })),
-        }))
-        .filter((line) => line.points.length > 0)
-    : [];
+  normalizeDrawLines(sharedLineup.drawLines);
 
 export const createPlayersFromSharedLineup = (sharedLineup: SharedLineup<FormationKey>): FormationPlayer[] => {
   const pitchSize = sharedLineup.pitchSize ?? 7;

@@ -13,6 +13,7 @@ type LineupStageProps = {
   showAnimationPanel: boolean;
   onSelectTool: (tool: CanvasTool) => void;
   markerTray?: ReactNode;
+  drawTools?: ReactNode;
   pitch: ReactNode;
   mobileSquadDrawer?: ReactNode;
   animationTimeline?: ReactNode;
@@ -28,6 +29,7 @@ export function LineupStage({
   showAnimationPanel,
   onSelectTool,
   markerTray,
+  drawTools,
   pitch,
   mobileSquadDrawer,
   animationTimeline,
@@ -48,6 +50,7 @@ export function LineupStage({
     >
       <CanvasToolSidebar activeTool={activeTool} drawLabel={drawLabel} isFullscreen={isFullscreen} onSelectTool={onSelectTool} />
       {markerTray}
+      {drawTools}
       {pitchNode}
       {mobileSquadDrawer}
       {animationTimeline}

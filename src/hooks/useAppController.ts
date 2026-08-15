@@ -186,6 +186,10 @@ export function useAppController() {
   const {
     redoDrawLines,
     setRedoDrawLines,
+    activeDrawKind,
+    setActiveDrawKind,
+    hoveredAnchor,
+    clearDrawHover,
     startDrawing,
     continueDrawing,
     stopDrawing,
@@ -196,7 +200,10 @@ export function useAppController() {
     drawLayerRef,
     isDrawMode,
     showDrawTools,
+    drawLines,
     setDrawLines,
+    players: activePlayers,
+    opponentMarkers,
   });
   const {
     draggingId,
@@ -572,6 +579,10 @@ export function useAppController() {
     frameListDrag,
     showDrawSheet,
     redoDrawLines,
+    activeDrawKind,
+    setActiveDrawKind,
+    hoveredAnchor,
+    clearDrawHover,
     undoDrawLine,
     redoDrawLine,
     clearDrawLines,
