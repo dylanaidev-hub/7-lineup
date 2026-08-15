@@ -15,6 +15,7 @@ export type AppCopy = {
   share: string;
   shareAll: string;
   copied: string;
+  copiedShortLink: string;
   download: string;
   draw: string;
   clear: string;
@@ -138,6 +139,7 @@ export const copyByLanguage = {
     share: "Chia sẻ",
     shareAll: "Chia sẻ tất cả",
     copied: "Đã sao chép",
+    copiedShortLink: "Đã sao chép liên kết (hết hạn sau 7 ngày)",
     download: "Tải ảnh",
     draw: "Vẽ",
     clear: "Xoá",
@@ -264,6 +266,7 @@ export const copyByLanguage = {
     share: "Share",
     shareAll: "Share all",
     copied: "Copied",
+    copiedShortLink: "Link copied (expires in 7 days)",
     download: "Download",
     draw: "Draw",
     clear: "Clear",

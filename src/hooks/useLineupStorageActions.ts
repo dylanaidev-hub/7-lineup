@@ -21,6 +21,7 @@ type StorageCopy = {
   invalidLineupData: string;
   share: string;
   copied: string;
+  copiedShortLink: string;
 };
 
 type UseLineupStorageActionsOptions = {
@@ -172,10 +173,10 @@ export function useLineupStorageActions({
       return;
     }
 
-    const url = createSavedLineupShareUrl(data, window.location.href);
+    const { url, isShortLink } = await createSavedLineupShareUrl(data, window.location.href);
     const copied = await copyTextOrPrompt(url.toString(), copy.share);
     if (copied) {
-      showToast(copy.copied);
+      showToast(isShortLink ? copy.copiedShortLink : copy.copied);
     }
   };
 
