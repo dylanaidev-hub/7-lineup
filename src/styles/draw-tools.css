@@ -1,0 +1,214 @@
+/* Drawing tools: a card inside the green stage on desktop — same treatment as
+   the marker tray it shares that column with — and a scrolling strip inside the
+   draw sheet on mobile. */
+
+.draw-tool-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  border: 1px solid rgba(232, 245, 233, 0.14);
+  border-radius: 16px;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(9, 38, 24, 0.78), rgba(9, 26, 18, 0.62));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 26px rgba(7, 16, 12, 0.16);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+}
+
+.draw-tool-hint {
+  margin: 0;
+  color: rgba(232, 245, 233, 0.5);
+  font-size: 9px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+@media (min-width: 1025px) {
+  .sandbox-canvas-stage > .draw-tool-panel--column {
+    grid-column: 3;
+    grid-row: 1;
+    /* hug the buttons, never stretch to the pitch's height */
+    align-self: center;
+    justify-self: end;
+    width: 172px;
+    height: auto;
+    max-height: clamp(380px, calc(100vh - 310px), 600px);
+  }
+}
+
+.draw-tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.draw-tool-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(232, 245, 233, 0.72);
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.draw-tool-button:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.draw-tool-button.active {
+  border-color: rgba(92, 203, 132, 0.85);
+  background: rgba(92, 203, 132, 0.16);
+  color: #ffffff;
+}
+
+.draw-tool-preview {
+  display: block;
+  /* a glyph, not a stroke sample: no plate behind it */
+  width: 34px;
+  height: 16px;
+}
+
+/* The marker the next stroke would start from. The draw layer covers the
+   tokens, so this cannot be a `:hover` — it comes from the pointer scan in
+   useDrawingControls. */
+.player-token.draw-anchor-hover .kit-disc,
+.opponent-pitch-dot.draw-anchor-hover {
+  box-shadow:
+    0 0 0 3px rgba(125, 224, 163, 0.9),
+    0 0 14px rgba(125, 224, 163, 0.55);
+  transform: scale(1.08);
+}
+
+.player-token.draw-anchor-hover .kit-disc,
+.opponent-pitch-dot.draw-anchor-hover {
+  transition:
+    box-shadow 0.12s ease,
+    transform 0.12s ease;
+}
+
+.opponent-pitch-dot.draw-anchor-hover {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* Ghost markers: where a run or dribble ends. */
+.draw-ghost-marker {
+  position: absolute;
+  z-index: 8;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  background: rgba(248, 250, 252, 0.4);
+  color: rgba(15, 23, 42, 0.85);
+  font-size: 11px;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+/* Where the ball ends up after the drawn action. */
+.draw-ghost-ball {
+  position: absolute;
+  z-index: 8;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55) var(--soccer-ball-icon) center / 100% 100% no-repeat;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.draw-ghost-marker--opponent {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(220, 38, 38, 0.45);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* The strip lives in the mobile draw sheet; the column is desktop-only. */
+.draw-tool-panel--strip {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .draw-tool-panel--column {
+    display: none;
+  }
+
+  .draw-tool-panel--strip {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    border: none;
+    background: transparent;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .draw-tool-panel--strip .draw-tool-grid {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+
+  /* The mobile draw sheet zeroes font sizes and hides labels for its own icon
+     buttons (`.lineup-footer-actions button`), and only re-enables pointer
+     events per child — so the strip has to opt back in explicitly. */
+  .lineup-column.tool-draw .footer-formation-switch {
+    flex-wrap: wrap;
+  }
+
+  .lineup-footer-actions .draw-tool-panel--strip {
+    pointer-events: auto;
+  }
+
+  .lineup-footer-actions .draw-tool-panel--strip .draw-tool-button {
+    display: flex;
+    width: 64px;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    padding: 6px 4px;
+    border-radius: 10px;
+    background: rgba(8, 31, 21, 0.9);
+    font-size: 9px;
+    line-height: 1.1;
+  }
+
+  .lineup-footer-actions .draw-tool-panel--strip .draw-tool-button span {
+    display: block;
+    max-width: none;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lineup-footer-actions .draw-tool-panel--strip .draw-tool-button svg {
+    width: 100%;
+    height: auto;
+  }
+
+  .draw-tool-panel--strip .draw-tool-hint {
+    display: none;
+  }
+}
+

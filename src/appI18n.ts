@@ -23,6 +23,16 @@ export type AppCopy = {
   undo: string;
   redo: string;
   clearLines: string;
+  drawTools: string;
+  drawSideHint: string;
+  drawKindRun: string;
+  drawKindPass: string;
+  drawKindDribble: string;
+  drawKindBlock: string;
+  drawKindZoneRect: string;
+  drawKindZoneEllipse: string;
+  drawKindLink: string;
+  drawKindFree: string;
   player: string;
   players: string;
   opponent: string;
@@ -147,6 +157,16 @@ export const copyByLanguage = {
     undo: "Hoàn tác",
     redo: "Làm lại",
     clearLines: "Xoá nét vẽ",
+    drawTools: "Công cụ vẽ",
+    drawSideHint: "Nét vẽ bắt đầu từ cầu thủ đối thủ sẽ có màu đỏ, còn lại màu trắng. Khối và vùng luôn màu đỏ.",
+    drawKindRun: "Chạy chỗ",
+    drawKindPass: "Chuyền/sút",
+    drawKindDribble: "Dẫn bóng",
+    drawKindBlock: "Chặn hướng",
+    drawKindZoneRect: "Khối",
+    drawKindZoneEllipse: "Vùng",
+    drawKindLink: "Nối tuyến",
+    drawKindFree: "Vẽ tự do",
     player: "Cầu thủ",
     players: "Cầu thủ",
     opponent: "Đối thủ",
@@ -274,6 +294,16 @@ export const copyByLanguage = {
     undo: "Undo",
     redo: "Redo",
     clearLines: "Clear lines",
+    drawTools: "Drawing tools",
+    drawSideHint: "Lines started on an opponent come out red, everything else white. Boxes and zones are always red.",
+    drawKindRun: "Run",
+    drawKindPass: "Pass/shot",
+    drawKindDribble: "Dribble",
+    drawKindBlock: "Block",
+    drawKindZoneRect: "Box",
+    drawKindZoneEllipse: "Zone",
+    drawKindLink: "Line link",
+    drawKindFree: "Freehand",
     player: "Player",
     players: "Players",
     opponent: "Opponent",

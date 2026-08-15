@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { AppTab, PitchSize } from "../appRouting";
 import type { CanvasTool } from "../CanvasToolSidebar";
 import { createOpponentMarkers, type DrawLine, type FormationKey, type FormationPlayer, type OpponentMarker } from "../formationData";
-import { clampCustomCount } from "../lineupShare";
+import { clampCustomCount, normalizeDrawLines } from "../lineupShare";
 import { isStoredLineupState } from "../lineupSerializer";
 import type { SavedLineupRecord } from "../lineupState";
 import { useTacticalStore, type WorkspaceMode } from "../stores/tacticalStore";
@@ -75,7 +75,7 @@ export function useLineupRestoreActions(options: Options) {
     options.setSavedCustomCountByPitch(data.savedCustomCountByPitch ?? {});
     options.setOpponentMarkers(Array.isArray(data.opponentMarkers) ? data.opponentMarkers : createOpponentMarkers());
     options.setSavedOpponentMarkersByPitch(data.savedOpponentMarkersByPitch ?? {});
-    options.setDrawLines(Array.isArray(data.drawLines) ? data.drawLines : []);
+    options.setDrawLines(normalizeDrawLines(data.drawLines));
     options.setSavedDrawLinesByPitch(data.savedDrawLinesByPitch ?? {});
     const loadedMode = data.currentMode ?? (data.pitchSize === "custom" ? "CUSTOM" : "LINEUP");
     const loadedTool = loadedMode === "ANIMATION" ? "ANIMATION_TOOL" : "PERSONNEL_TOOL";
