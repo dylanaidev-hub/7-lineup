@@ -58,7 +58,7 @@ function seoFilesPlugin(routes: string[], articles: ContentfulRoute[]): Plugin {
         return `  <url><loc>${SITE_URL}${route === "/" ? "/" : route}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}</url>`;
       }).join("\n");
       await writeFile(path.join(dist, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemap}\n</urlset>\n`, "utf8");
-      await writeFile(path.join(dist, "robots.txt"), `User-agent: *\nAllow: /\nDisallow: /app/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`, "utf8");
+      await writeFile(path.join(dist, "robots.txt"), `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /s/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`, "utf8");
 
       const redirects = [
         { from: "/tin-tuc-kien-thuc", to: "/tin-tuc" },

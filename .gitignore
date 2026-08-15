@@ -10,3 +10,5 @@ vite.config.d.ts
 .DS_Store
 .cache/
 .vercel
+
+.playwright-mcp/

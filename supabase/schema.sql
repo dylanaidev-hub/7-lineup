@@ -185,3 +185,61 @@ using (
   and auth.uid()::text = (storage.foldername(name))[1]
 );
 
+
+-- =====================================================================
+-- Short share links. Anonymous sharing has to keep working without an
+-- account, so this table is anon-writable by design; the damage is bounded
+-- by three caps rather than by auth:
+--   * 7 day TTL          -- expired rows are invisible to select
+--   * 2000 rows          -- global, trimmed on insert (no cron needed)
+--   * 50 KB per payload  -- ~30 animation frames; holds the adversarial
+--                           worst case at 100 MB, 20% of the free tier
+-- Rows are untrusted input: the client re-validates every payload it reads
+-- (normalizeSharedLineup in src/lineupShare.ts).
+-- =====================================================================
+create table if not exists public.share_links (
+  id text primary key,
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '7 days',
+  constraint share_links_id_format check (id ~ '^[a-z0-9]{8}$'),
+  constraint share_links_payload_size check (pg_column_size(payload) < 50000)
+);
+
+create index if not exists share_links_created_at_idx on public.share_links (created_at desc);
+
+alter table public.share_links enable row level security;
+
+drop policy if exists "Anyone can read live share links" on public.share_links;
+create policy "Anyone can read live share links"
+on public.share_links for select
+using (expires_at > now());
+
+drop policy if exists "Anyone can create share links" on public.share_links;
+create policy "Anyone can create share links"
+on public.share_links for insert
+with check (true);
+
+-- No update or delete policy: clients can create and read links, nothing else.
+
+create or replace function public.trim_share_links()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  delete from public.share_links where expires_at <= now();
+
+  delete from public.share_links
+  where id in (
+    select id from public.share_links order by created_at desc offset 1999
+  );
+
+  return new;
+end;
+$$;
+
+drop trigger if exists share_links_trim on public.share_links;
+create trigger share_links_trim
+before insert on public.share_links
+for each row execute function public.trim_share_links();

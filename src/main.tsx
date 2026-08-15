@@ -17,6 +17,8 @@ import "./styles.css";
 type AuthDialogMode = "sign_in" | "sign_up";
 
 const CanvasApp = lazy(() => import("./App"));
+// Lazy so the formation tables it validates against stay out of the landing bundle.
+const ShortLinkRedirect = lazy(() => import("./ShortLinkRedirect"));
 
 const routeCopy = {
   vi: {
@@ -237,6 +239,18 @@ function CanvasRoute() {
   );
 }
 
+function ShortLinkRoute() {
+  const { language } = useLanguage();
+  return (
+    <>
+      <SeoHead title="Đội hình được chia sẻ | Đội Hình Sân Cỏ" description="Mở đội hình được chia sẻ." path="/app/lineup" robots="noindex,nofollow" />
+      <Suspense fallback={<AppLoadingScreen message={routeCopy[language].loading} />}>
+        <ShortLinkRedirect />
+      </Suspense>
+    </>
+  );
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -265,6 +279,7 @@ function RootRouter() {
       <Route path="/app/tactics" element={<TacticsRouteRedirect />} />
       <Route path="/app/profile" element={<CanvasRoute />} />
       <Route path="/app/locker" element={<CanvasRoute />} />
+      <Route path="/s/:code" element={<ShortLinkRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

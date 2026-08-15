@@ -2,7 +2,8 @@ import { renderLineupCanvas } from "../canvasLineupExport";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { PitchSize } from "../appRouting";
 import { type DrawLine, type FormationKey, type FormationPlayer, type OpponentMarker } from "../formationData";
-import { encodeSharePayload } from "../lineupShare";
+import { buildSharePayload, encodeSharePayloadObject } from "../lineupShare";
+import { createShortShareLink } from "../shareLinks";
 import { copyTextOrPrompt } from "../shareUtils";
 import { useTacticalStore, type WorkspaceMode } from "../stores/tacticalStore";
 import type { TacticalMarker } from "../tacticalData";
@@ -10,6 +11,7 @@ import type { TacticalMarker } from "../tacticalData";
 type ExportCopy = {
   share: string;
   copied: string;
+  copiedShortLink: string;
   player: string;
   downloaded: string;
 };
@@ -50,25 +52,28 @@ export function useLineupExportActions({
   showToast,
 }: UseLineupExportActionsOptions) {
   const copyShareLink = async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set(
-      "lineup",
-      encodeSharePayload(
-        pitchSize,
-        formation,
-        pitchSize === "custom" ? activePlayers.length : customCount,
-        players,
-        opponentMarkers,
-        drawLines,
-        useTacticalStore.getState().frames,
-        currentMode,
-      ),
+    const payload = buildSharePayload(
+      pitchSize,
+      formation,
+      pitchSize === "custom" ? activePlayers.length : customCount,
+      players,
+      opponentMarkers,
+      drawLines,
+      useTacticalStore.getState().frames,
+      currentMode,
     );
+
+    const shortUrl = await createShortShareLink(payload, window.location.href);
+
+    // Falls back to the full inline payload whenever the short link cannot be
+    // stored (no Supabase, offline, payload over the size constraint).
+    const url = shortUrl ?? new URL(window.location.href);
+    if (!shortUrl) url.searchParams.set("lineup", encodeSharePayloadObject(payload));
 
     const copied = await copyTextOrPrompt(url.toString(), copy.share);
     if (copied) {
       setCopyStatus("copied");
-      showToast(copy.copied);
+      showToast(shortUrl ? copy.copiedShortLink : copy.copied);
       window.setTimeout(() => setCopyStatus("idle"), 1800);
     }
   };
